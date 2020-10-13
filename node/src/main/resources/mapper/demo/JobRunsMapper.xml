@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tron.web.mapper.JobRunsMapper">
+
+  <resultMap id="JobRunResultMap" type="com.tron.web.entity.JobRun">
+    <result column="id" property="id" jdbcType="VARCHAR"/>
+    <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    <result column="deleted_at" property="deletedAt" jdbcType="TIMESTAMP"/>
+    <result column="finished_at" property="finishedAt" jdbcType="TIMESTAMP"/>
+    <result column="job_spec_id" property="jobSpecID" jdbcType="VARCHAR"/>
+    <result column="status" property="status" jdbcType="TINYINT"/>
+		<result column="result" property="result" jdbcType="VARCHAR"/>
+		<result column="error" property="error" jdbcType="VARCHAR"/>
+    <result column="initiator_id" property="initiatorId" jdbcType="BIGINT"/>
+    <result column="payment" property="payment" jdbcType="BIGINT"/>
+    <result column="creation_height" property="creationHeight" jdbcType="BIGINT"/>
+    <result column="observed_height" property="observedHeight" jdbcType="BIGINT"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.tron.web.entity.JobRun">
+		insert into job_runs
+		(
+		`id`,
+  	`job_spec_id`,
+  	`initiator_id`,
+  	`status`,
+  	`payment`,
+  	`creation_height`,
+  	`params`
+		)
+		values
+		(
+		#{id},
+		#{jobSpecID},
+		#{initiatorId},
+		#{status},
+		#{payment},
+		#{creationHeight},
+		#{params}
+		)
+	</insert>
+
+	<sql id="Job_Run_Column">
+        id, `job_spec_id`, `initiator_id`, `status`, `result`, `error`, `payment`, `creation_height`, `observed_height`, created_at, updated_at, deleted_at, finished_at
+  </sql>
+
+  <select id="getById" parameterType="java.lang.String" resultType="com.tron.web.entity.JobRun" resultMap="JobRunResultMap">
+		select
+		<include refid="Job_Run_Column"/>
+		from job_runs
+		where `id` = #{id}
+	</select>
+
+	<select id="getList" resultType="com.tron.web.entity.JobRun" resultMap="JobRunResultMap">
+		select
+		<include refid="Job_Run_Column"/>
+		from job_runs
+		order by `created_at` desc
+		limit #{offset},#{limit}
+	</select>
+
+	<select id="getListByJobId" resultType="com.tron.web.entity.JobRun" resultMap="JobRunResultMap">
+		select
+		<include refid="Job_Run_Column"/>
+		from job_runs
+		where `job_spec_id` = #{id}
+		order by `created_at` desc
+		limit #{offset},#{limit}
+	</select>
+
+	<update id="updateResult">
+		UPDATE job_runs
+		SET `status` = #{status},
+				updated_at = DATE_FORMAT(NOW(),'%Y-%m-%d %H:%m:%s')
+		<if test="error!=null and error!=''">
+			,`error` = #{error}
+		</if>
+		<if test="result!=null and result!=''">
+			,`result` = #{result}
+		</if>
+		WHERE `id` = #{id}
+	</update>
+
+	<select id="getCount" resultType="long">
+		select count(1)
+		from job_runs
+		<if test="jobId!=null and jobId!=''">
+			where `job_spec_id` = #{jobId}
+		</if>
+	</select>
+
+</mapper>

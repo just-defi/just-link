@@ -1,0 +1,24 @@
+.gradle/
+.idea/
+build/
+logs/
+
+node/HELP.md
+node/.gradle
+node/build/
+node/logs/
+node/src/main/resources/static
+!node/gradle/wrapper/gradle-wrapper.jar
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### IntelliJ IDEA ###
+node/.idea
+node/*.iws
+node/*.iml
+node/*.ipr
+node/out/
+!**/src/main/**/out/
+!**/src/test/**/out/
+
+*.log

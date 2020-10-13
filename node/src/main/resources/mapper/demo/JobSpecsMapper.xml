@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tron.web.mapper.JobSpecsMapper">
+
+	<resultMap id="JobSpecResultMap" type="com.tron.web.entity.JobSpec">
+		<result column="id" property="id" jdbcType="VARCHAR"/>
+		<result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+		<result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+		<result column="deleted_at" property="deletedAt" jdbcType="TIMESTAMP"/>
+		<result column="start_at" property="startAt" jdbcType="TIMESTAMP"/>
+		<result column="end_at" property="endAt" jdbcType="TIMESTAMP"/>
+		<result column="min_payment" property="minPayment" jdbcType="BIGINT"/>
+		<result column="params" property="params" jdbcType="LONGVARCHAR"/>
+	</resultMap>
+
+  <insert id="insert" parameterType="com.tron.web.entity.JobSpec">
+		insert into job_specs
+		(
+		`id`,
+  	`start_at`,
+  	`end_at`,
+  	`min_payment`,
+  	`params`
+		)
+		values
+		(
+		#{id},
+		#{startAt},
+		#{endAt},
+		#{minPayment},
+		#{params}
+		)
+	</insert>
+
+  <select id="getById" parameterType="java.lang.String" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
+		select id, `start_at`, `end_at`, `min_payment`, `params`, created_at, updated_at, deleted_at
+		from job_specs
+		where `id` = #{id}
+	</select>
+
+	<select id="getAll" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
+		select id, `start_at`, `end_at`, `min_payment`, created_at, updated_at, deleted_at
+		from job_specs
+	</select>
+
+	<select id="getList" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
+		select id, `start_at`, `end_at`, `min_payment`, created_at, updated_at, deleted_at
+		from job_specs
+		where `deleted_at` is null
+		order by `created_at` desc
+		limit #{offset},#{limit}
+	</select>
+
+	<select id="getCount" resultType="long">
+		select count(1)
+		from job_specs
+		where `deleted_at` is null
+	</select>
+
+	<update id="deleteJob">
+		update job_specs
+		set deleted_at = #{deletedAt}
+		where id = #{id}
+	</update>
+
+</mapper>

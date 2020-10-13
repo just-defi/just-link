@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tron.web.mapper.TaskRunsMapper">
+
+  <resultMap id="TaskRunResultMap" type="com.tron.web.entity.TaskRun">
+    <result column="id" property="id" jdbcType="VARCHAR"/>
+    <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+    <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+    <result column="job_run_id" property="jobRunID" jdbcType="VARCHAR"/>
+    <result column="result" property="result" jdbcType="VARCHAR"/>
+    <result column="status" property="status" jdbcType="TINYINT"/>
+    <result column="task_spec_id" property="taskSpecId" jdbcType="BIGINT"/>
+    <result column="minimum_confirmations" property="minimumConfirmations" jdbcType="BIGINT"/>
+    <result column="confirmations" property="confirmations" jdbcType="BIGINT"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.tron.web.entity.TaskRun">
+		insert into task_runs
+		(
+		`id`,
+  	`job_run_id`,
+  	`task_spec_id`,
+  	`minimum_confirmations`,
+  	`confirmations`
+		)
+		values
+		(
+		#{id},
+		#{jobRunID},
+		#{taskSpecId},
+		#{minimumConfirmations},
+		#{confirmations}
+		)
+	</insert>
+
+  <select id="getById" parameterType="java.lang.String" resultType="com.tron.web.entity.TaskRun" resultMap="TaskRunResultMap">
+		select id, `job_run_id`, `task_spec_id`, `status`, `result`, `minimum_confirmations`, `confirmations`, created_at, updated_at
+		from task_runs
+		where `id` = #{id}
+	</select>
+
+	<select id="getByJobRunId" parameterType="java.lang.String" resultType="com.tron.web.entity.TaskRun" resultMap="TaskRunResultMap">
+		select id, `job_run_id`, `task_spec_id`, `status`, `result`, `minimum_confirmations`, `confirmations`, created_at, updated_at
+		from task_runs
+		where `job_run_id` = #{id}
+		order by `task_spec_id` asc
+	</select>
+
+	<update id="updateResult">
+		UPDATE task_runs
+    SET `status` = #{status},
+				updated_at = DATE_FORMAT(NOW(),'%Y-%m-%d %H:%m:%s')
+    <if test="error!=null and error!=''">
+			,`error` = #{error}
+		</if>
+		<if test="result!=null and result!=''">
+			,`result` = #{result}
+		</if>
+    WHERE `id` = #{id}
+	</update>
+
+</mapper>
