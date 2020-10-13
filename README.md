@@ -10,7 +10,9 @@ if you are interested in contributing please contact us, email: team@justlink.io
 
 2. Install Java
 
-3. Build
+3. Install NodeJS (>=10.0)
+
+4. Build
 ```
 ./gradlew clean build
 ```
