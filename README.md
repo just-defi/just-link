@@ -19,9 +19,9 @@ if you are interested in contributing please contact us, email: team@justlink.io
 
 ## Run node
 
-After build successfully, node-{version}.jar will be generated in dir `node/build/libs`.
+After build successfully, `node-{version}.jar` will be generated in dir `node/build/libs`.
 
-1. Start MySQL first. Initializing the table using the latest sql file in path `node/src/main/resources/db/migration`.
+1. Start MySQL first. Initializing the tables using the latest sql file in path `node/src/main/resources/db/migration`.
 
 2. Start the JustLink node:
 
@@ -30,8 +30,8 @@ java -jar node-v1.0.jar --key key.store 2>&1 &
 ```
 
 Note:
-- The `key.store` file contain the private key that this node use. The format refer to the file: `node/src/main/resources/key.store`.
-- You can just put a new application.yml in current dir to replace the default config file.
+- The `key.store` file contain the private key that this node use. The format refer to: `node/src/main/resouces/key.store.template`.
+- You can just put a new `application.yml` in the working dir to replace the default spring config file.
 
 ## Project Structrue
 
