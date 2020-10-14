@@ -2,6 +2,7 @@
 .idea/
 build/
 logs/
+key.store
 
 node/HELP.md
 node/.gradle
