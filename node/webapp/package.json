@@ -1,6 +1,6 @@
 {
   "name": "justlink-webapp",
-  "version": "1.0",
+  "version": "1.0.0",
   "dependencies": {
     "antd": "^3.9.0",
     "autoprefixer": "7.1.6",
