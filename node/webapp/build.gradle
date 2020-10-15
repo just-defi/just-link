@@ -3,6 +3,8 @@ plugins {
 	id "java"
 }
 
+sourceCompatibility = 1.8
+
 task npmBuild(type: NpmTask, dependsOn: npmInstall) {
 	group = 'node'
 	args = ['run', 'build']

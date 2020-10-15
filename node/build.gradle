@@ -87,6 +87,10 @@ def binaryRelease(taskName, jarName, mainClass) {
 
 		manifest {
 			attributes "Main-Class": "${mainClass}"
+			attributes "Spring-Boot-Classpath-Index": "BOOT-INF/classpath.idx"
+			attributes "Start-Class": "com.tron.OracleApplication"
+			attributes "Spring-Boot-Classes": "BOOT-INF/classes/"
+			attributes "Spring-Boot-Lib": "BOOT-INF/lib/"
 		}
 	}
 }

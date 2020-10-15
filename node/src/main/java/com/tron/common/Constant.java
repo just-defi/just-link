@@ -7,17 +7,23 @@ public class Constant {
 
   public static final String TRX_DECIMAL_STR = "1000000";
 
-//  public static final String HTTP_EVENT_HOST = "api.trongrid.io";
-//  public static final String FULLNODE_HOST = "api.trongrid.io";
+  public static String HTTP_EVENT_HOST = "api.trongrid.io";
+  public static String FULLNODE_HOST = "api.trongrid.io";
 
-  public static final String HTTP_EVENT_HOST = "event.nileex.io"; // for test
-  public static final String FULLNODE_HOST = "api.nileex.io"; // for test
+//  public static String HTTP_EVENT_HOST = "event.nileex.io"; // for test
+//  public static String FULLNODE_HOST = "api.nileex.io"; // for test
+
+  public static void initEnv(String env) {
+    if ("dev".equals(env)) {
+      HTTP_EVENT_HOST = "event.nileex.io";
+      FULLNODE_HOST = "api.nileex.io";
+    }
+  }
 
   public static final int HTTP_MAX_RETRY_TIME = 3;
 
   public static final String FULFIL_METHOD_SIGN =
           "fulfillOracleRequest(bytes32,uint256,address,bytes4,uint256,bytes32)";
-          //"fulfillOracleRequest(bytes32,uint256,address,bytes4,uint256,int256)";
 
   // task type
   public static final String TASK_TYPE_HTTP_GET = "httpget";

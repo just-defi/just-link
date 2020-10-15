@@ -1,8 +1,12 @@
 package com.tron;
 
+import static com.tron.common.Constant.FULLNODE_HOST;
+import static com.tron.common.Constant.HTTP_EVENT_HOST;
+
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.tron.client.OracleClient;
+import com.tron.common.Constant;
 import com.tron.job.JobSubscriber;
 import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;
@@ -33,6 +37,7 @@ public class OracleApplication {
 			log.error("init ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
+		Constant.initEnv(argv.env);
 		SpringApplication.run(OracleApplication.class, args);
 		OracleClient oracleClient = new OracleClient();
 		oracleClient.run();
@@ -48,9 +53,15 @@ public class OracleApplication {
 						order = 1)
 		private String key;
 		@Parameter(
+						names = {"--env", "-e"},
+						help = true,
+						description = "specify the env",
+						order = 2)
+		private String env;
+		@Parameter(
 						names = "--help",
 						help = true,
-						order = 2)
+						order = 3)
 		private boolean help;
 	}
 }

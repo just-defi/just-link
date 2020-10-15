@@ -1,6 +1,6 @@
 {
-  "name": "justlink_operation_UI",
-  "version": "0.1.0",
+  "name": "justlink-webapp",
+  "version": "1.0",
   "dependencies": {
     "antd": "^3.9.0",
     "autoprefixer": "7.1.6",
