@@ -46,8 +46,9 @@ class Jobs extends Component {
   componentDidMount() {
     this.getJobs(1);
     if(this.props.location.state && this.props.location.state.create){
-      this.setState({textValue: this.props.location.state.code});
       this.showModal();
+      let input = eval('(' + this.props.location.state.code + ')');
+      this.setState({textValue:      JSON.stringify(input, null, 4)});
     }
   }
 
@@ -82,6 +83,7 @@ class Jobs extends Component {
   showModal = () => {
     this.setState({
       visible: true,
+      textValue: ''
     });
   };
 
@@ -169,7 +171,7 @@ class Jobs extends Component {
 
       <Modal
           visible={visible}
-          title="Title"
+          title="Create Job"
           onOk={this.handleOk}
           onCancel={this.handleCancel}
           footer={[
