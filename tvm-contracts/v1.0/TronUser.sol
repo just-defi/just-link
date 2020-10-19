@@ -534,7 +534,7 @@ interface PointerInterface {
     function getAddress() external view returns (address);
 }
 
-interface ChainlinkRequestInterface {
+interface JustlinkRequestInterface {
     function oracleRequest(
         address sender,
         uint256 payment,
@@ -571,10 +571,10 @@ interface AggregatorInterface {
 
 
 /**
- * @title Library for common Chainlink functions
+ * @title Library for common Justlink functions
  * @dev Uses imported CBOR library for encoding to buffer
  */
-library Chainlink {
+library Justlink {
     uint256 internal constant defaultBufferSize = 256; // solhint-disable-line const-name-snakecase
 
     using Buffer for Buffer.buffer;
@@ -589,7 +589,7 @@ library Chainlink {
     }
 
     /**
-     * @notice Initializes a Chainlink request
+     * @notice Initializes a Justlink request
      * @dev Sets the ID, callback address, and callback function signature on the request
      * @param self The uninitialized request
      * @param _id The Job Specification ID
@@ -602,7 +602,7 @@ library Chainlink {
         bytes32 _id,
         address _callbackAddress,
         bytes4 _callbackFunction
-    ) internal pure returns (Chainlink.Request memory) {
+    ) internal pure returns (Justlink.Request memory) {
         Buffer.init(self.buf, defaultBufferSize);
         self.id = _id;
         self.callbackAddress = _callbackAddress;
@@ -726,12 +726,12 @@ contract TRC20Interface {
 }
 
 /**
- * @title The ChainlinkClient contract
+ * @title The JustlinkClient contract
  * @notice Contract writers can inherit this contract in order to create requests for the
- * Chainlink network
+ * Justlink network
  */
-contract ChainlinkClient {
-    using Chainlink for Chainlink.Request;
+contract JustlinkClient {
+    using Justlink for Justlink.Request;
     using SafeMath for uint256;
 
     uint256 constant internal LINK = 10 ** 18;
@@ -741,62 +741,62 @@ contract ChainlinkClient {
 
     JustMid internal justMid;
     TRC20Interface internal token;
-    ChainlinkRequestInterface private oracle;
+    JustlinkRequestInterface private oracle;
     uint256 private requests = 1;
     mapping(bytes32 => address) private pendingRequests;
 
-    event ChainlinkRequested(bytes32 indexed id);
-    event ChainlinkFulfilled(bytes32 indexed id);
-    event ChainlinkCancelled(bytes32 indexed id);
+    event JustlinkRequested(bytes32 indexed id);
+    event JustlinkFulfilled(bytes32 indexed id);
+    event JustlinkCancelled(bytes32 indexed id);
 
     /**
      * @notice Creates a request that can hold additional parameters
      * @param _specId The Job Specification ID that the request will be created for
      * @param _callbackAddress The callback address that the response will be sent to
      * @param _callbackFunctionSignature The callback function signature to use for the callback address
-     * @return A Chainlink Request struct in memory
+     * @return A Justlink Request struct in memory
      */
-    function buildChainlinkRequest(
+    function buildJustlinkRequest(
         bytes32 _specId,
         address _callbackAddress,
         bytes4 _callbackFunctionSignature
-    ) internal pure returns (Chainlink.Request memory) {
-        Chainlink.Request memory req;
+    ) internal pure returns (Justlink.Request memory) {
+        Justlink.Request memory req;
         return req.initialize(_specId, _callbackAddress, _callbackFunctionSignature);
     }
 
     /**
-     * @notice Creates a Chainlink request to the stored oracle address
-     * @dev Calls `chainlinkRequestTo` with the stored oracle address
-     * @param _req The initialized Chainlink Request
+     * @notice Creates a Justlink request to the stored oracle address
+     * @dev Calls `JustlinkRequestTo` with the stored oracle address
+     * @param _req The initialized Justlink Request
      * @param _payment The amount of LINK to send for the request
      * @return The request ID
      */
-    function sendChainlinkRequest(Chainlink.Request memory _req, uint256 _payment)
+    function sendJustlinkRequest(Justlink.Request memory _req, uint256 _payment)
     internal
     returns (bytes32)
     {
-        return sendChainlinkRequestTo(oracle, _req, _payment);
+        return sendJustlinkRequestTo(oracle, _req, _payment);
     }
 
     /**
-     * @notice Creates a Chainlink request to the specified oracle address
+     * @notice Creates a Justlink request to the specified oracle address
      * @dev Generates and stores a request ID, increments the local nonce, and uses `transferAndCall` to
      * send LINK which creates a request on the target oracle contract.
-     * Emits ChainlinkRequested event.
+     * Emits JustlinkRequested event.
      * @param _oracle The address of the oracle for the request
-     * @param _req The initialized Chainlink Request
+     * @param _req The initialized Justlink Request
      * @param _payment The amount of LINK to send for the request
      * @return The request ID
      */
-    function sendChainlinkRequestTo(address _oracle, Chainlink.Request memory _req, uint256 _payment)
+    function sendJustlinkRequestTo(address _oracle, Justlink.Request memory _req, uint256 _payment)
     internal
     returns (bytes32 requestId)
     {
         requestId = keccak256(abi.encodePacked(this, requests));
         _req.nonce = requests;
         pendingRequests[requestId] = _oracle;
-        emit ChainlinkRequested(requestId);
+        emit JustlinkRequested(requestId);
         token.approve(justMidAddress(), _payment);
         require(justMid.transferAndCall(address(this), _oracle, _payment, encodeRequest(_req)), "unable to transferAndCall to oracle");
         requests += 1;
@@ -808,13 +808,13 @@ contract ChainlinkClient {
      * @notice Allows a request to be cancelled if it has not been fulfilled
      * @dev Requires keeping track of the expiration value emitted from the oracle contract.
      * Deletes the request from the `pendingRequests` mapping.
-     * Emits ChainlinkCancelled event.
+     * Emits JustlinkCancelled event.
      * @param _requestId The request ID
      * @param _payment The amount of LINK sent for the request
      * @param _callbackFunc The callback function specified for the request
      * @param _expiration The time of the expiration for the request
      */
-    function cancelChainlinkRequest(
+    function cancelJustlinkRequest(
         bytes32 _requestId,
         uint256 _payment,
         bytes4 _callbackFunc,
@@ -822,9 +822,9 @@ contract ChainlinkClient {
     )
     internal
     {
-        ChainlinkRequestInterface requested = ChainlinkRequestInterface(pendingRequests[_requestId]);
+        JustlinkRequestInterface requested = JustlinkRequestInterface(pendingRequests[_requestId]);
         delete pendingRequests[_requestId];
-        emit ChainlinkCancelled(_requestId);
+        emit JustlinkCancelled(_requestId);
         requested.cancelOracleRequest(_requestId, _payment, _callbackFunc, _expiration);
     }
 
@@ -832,15 +832,15 @@ contract ChainlinkClient {
      * @notice Sets the stored oracle address
      * @param _oracle The address of the oracle contract
      */
-    function setChainlinkOracle(address _oracle) internal {
-        oracle = ChainlinkRequestInterface(_oracle);
+    function setJustlinkOracle(address _oracle) internal {
+        oracle = JustlinkRequestInterface(_oracle);
     }
 
     /**
      * @notice Sets the LINK token address
      * @param _link The address of the LINK token contract
      */
-    function setChainlinkToken(address _link) internal {
+    function setJustlinkToken(address _link) internal {
         token = TRC20Interface(_link);
     }
 
@@ -864,7 +864,7 @@ contract ChainlinkClient {
      * @notice Retrieves the stored address of the oracle contract
      * @return The address of the oracle contract
      */
-    function chainlinkOracleAddress()
+    function JustlinkOracleAddress()
     internal
     view
     returns (address)
@@ -878,7 +878,7 @@ contract ChainlinkClient {
      * @param _oracle The address of the oracle contract that will fulfill the request
      * @param _requestId The request ID used for the response
      */
-    function addChainlinkExternalRequest(address _oracle, bytes32 _requestId)
+    function addJustlinkExternalRequest(address _oracle, bytes32 _requestId)
     internal
     notPendingRequest(_requestId)
     {
@@ -889,12 +889,12 @@ contract ChainlinkClient {
 
     /**
      * @notice Encodes the request to be sent to the oracle contract
-     * @dev The Chainlink node expects values to be in order for the request to be picked up. Order of types
+     * @dev The Justlink node expects values to be in order for the request to be picked up. Order of types
      * will be validated in the oracle contract.
-     * @param _req The initialized Chainlink Request
+     * @param _req The initialized Justlink Request
      * @return The bytes payload for the `transferAndCall` method
      */
-    function encodeRequest(Chainlink.Request memory _req)
+    function encodeRequest(Justlink.Request memory _req)
     private
     view
     returns (bytes memory)
@@ -916,21 +916,21 @@ contract ChainlinkClient {
      * @dev Use if the contract developer prefers methods instead of modifiers for validation
      * @param _requestId The request ID for fulfillment
      */
-    function validateChainlinkCallback(bytes32 _requestId)
+    function validateJustlinkCallback(bytes32 _requestId)
     internal
-    recordChainlinkFulfillment(_requestId)
+    recordJustlinkFulfillment(_requestId)
         // solhint-disable-next-line no-empty-blocks
     {}
 
     /**
      * @dev Reverts if the sender is not the oracle of the request.
-     * Emits ChainlinkFulfilled event.
+     * Emits JustlinkFulfilled event.
      * @param _requestId The request ID for fulfillment
      */
-    modifier recordChainlinkFulfillment(bytes32 _requestId) {
+    modifier recordJustlinkFulfillment(bytes32 _requestId) {
         require(msg.sender == pendingRequests[_requestId], "Source must be the oracle of the request");
         delete pendingRequests[_requestId];
-        emit ChainlinkFulfilled(_requestId);
+        emit JustlinkFulfilled(_requestId);
         _;
     }
 
@@ -945,12 +945,12 @@ contract ChainlinkClient {
 }
 
 /**
- * @title An example Chainlink contract with aggregation
+ * @title An example Justlink contract with aggregation
  * @notice Requesters can use this contract as a framework for creating
- * requests to multiple Chainlink nodes and running aggregation
+ * requests to multiple Justlink nodes and running aggregation
  * as the contract receives answers.
  */
-contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
+contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     using SignedSafeMath for int256;
 
     struct Answer {
@@ -988,7 +988,7 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
      * @param _justMid The address of the JustMid token
      */
     constructor(address _link, address _justMid) public Ownable() {
-        setChainlinkToken(_link);
+        setJustlinkToken(_link);
         setJustMid(_justMid);
         //, uint128 _paymentAmount, uint128 _minimumResponses,
         //        address[] _oracles, bytes32[] _jobIds
@@ -996,7 +996,7 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
     }
 
     /**
-     * @notice Creates a Chainlink request for each oracle in the oracles array.
+     * @notice Creates a Justlink request for each oracle in the oracles array.
      * @dev This example does not include request parameters. Reference any documentation
      * associated with the Job IDs used to determine the required parameters per-request.
      */
@@ -1005,13 +1005,13 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
     ensureAuthorizedRequester()
     returns (bytes32)
     {
-        Chainlink.Request memory request;
+        Justlink.Request memory request;
         bytes32 requestId;
         uint256 oraclePayment = paymentAmount;
 
         for (uint i = 0; i < oracles.length; i++) {
-            request = buildChainlinkRequest(jobIds[i], this, this.chainlinkCallback.selector);
-            requestId = sendChainlinkRequestTo(oracles[i], request, oraclePayment);
+            request = buildJustlinkRequest(jobIds[i], this, this.justlinkCallback.selector);
+            requestId = sendJustlinkRequestTo(oracles[i], request, oraclePayment);
             requestAnswers[requestId] = answerCounter;
         }
         answers[answerCounter].minimumResponses = minimumResponses;
@@ -1025,15 +1025,15 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
     }
 
     /**
-     * @notice Receives the answer from the Chainlink node.
+     * @notice Receives the answer from the Justlink node.
      * @dev This function can only be called by the oracle that received the request.
-     * @param _clRequestId The Chainlink request ID associated with the answer
-     * @param _response The answer provided by the Chainlink node
+     * @param _clRequestId The Justlink request ID associated with the answer
+     * @param _response The answer provided by the Justlink node
      */
-    function chainlinkCallback(bytes32 _clRequestId, int256 _response)
+    function justlinkCallback(bytes32 _clRequestId, int256 _response)
     external
     {
-        validateChainlinkCallback(_clRequestId);
+        validateJustlinkCallback(_clRequestId);
 
         uint256 answerId = requestAnswers[_clRequestId];
         delete requestAnswers[_clRequestId];
@@ -1106,10 +1106,10 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
     }
 
     /**
-     * @notice Cancels an outstanding Chainlink request.
+     * @notice Cancels an outstanding Justlink request.
      * The oracle contract requires the request ID and additional metadata to
      * validate the cancellation. Only old answers can be cancelled.
-     * @param _requestId is the identifier for the chainlink request being cancelled
+     * @param _requestId is the identifier for the Justlink request being cancelled
      * @param _payment is the amount of LINK paid to the oracle for the request
      * @param _expiration is the time when the request expires
      */
@@ -1128,10 +1128,10 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
         answers[answerId].responses.push(0);
         deleteAnswer(answerId);
 
-        cancelChainlinkRequest(
+        cancelJustlinkRequest(
             _requestId,
             _payment,
-            this.chainlinkCallback.selector,
+            this.justlinkCallback.selector,
             _expiration
         );
     }
@@ -1149,7 +1149,7 @@ contract Aggregator is AggregatorInterface, ChainlinkClient, Ownable {
     }
 
     /**
-     * @dev Performs aggregation of the answers received from the Chainlink nodes.
+     * @dev Performs aggregation of the answers received from the Justlink nodes.
      * Assumes that at least half the oracles are honest and so can't contol the
      * middle of the ordered responses.
      * @param _answerId The answer ID associated with the group of requests
