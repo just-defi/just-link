@@ -19,6 +19,7 @@ import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;
+import com.tron.job.adapters.ContractAdapter;
 import com.tron.keystore.KeyStore;
 import com.tron.web.entity.TronTx;
 import java.io.IOException;
@@ -52,6 +53,7 @@ import org.tron.protos.Protocol;
 public class OracleClient {
 
   private static final String EVENT_NAME = "OracleRequest";
+  private static final long MIN_FEE_LIMIT = 3_000_000L;   // 2 trx
 
   private static HashMap<String, Set<String>> listeningAddrs = Maps.newHashMap();
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
@@ -87,7 +89,7 @@ public class OracleClient {
     params.put("contract_address",request.getContractAddr());
     params.put("function_selector",FULFIL_METHOD_SIGN);
     params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
-    params.put("fee_limit", 100000000);
+    params.put("fee_limit", calculateFeeLimit(request.getPayment()));
     params.put("call_value",0);
     params.put("visible",true);
     HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
@@ -254,5 +256,19 @@ public class OracleClient {
 
   public static boolean checkTransactionStatus(String transactionId) {
     return true;
+  }
+
+  private static long calculateFeeLimit(long payment) {
+    /*double trxBalance = 0;
+    try {
+      trxBalance = ContractAdapter.getTradePriceWithTRX(ContractAdapter.TradePair.JUST_TRX) * payment;
+    } catch (IOException e) {
+      return MIN_FEE_LIMIT;
+    }
+    if (Math.round(trxBalance) < MIN_FEE_LIMIT) {
+      log.warn("the payment maybe even can't afford the energy cost, payment: {}", payment);
+    }
+    return Math.max(MIN_FEE_LIMIT, Math.round(trxBalance * 20 / 100));*/
+    return MIN_FEE_LIMIT;
   }
 }

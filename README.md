@@ -27,11 +27,13 @@ After build successfully, `node-{version}.jar` will be generated in dir `node/bu
 
 ```
 java -jar node-v1.0.jar --key key.store 2>&1 &
+// customize some configuration
+java -jar node-v1.0.jar --server.port=8081 --spring.profiles.active=dev --key key.store 2>&1 &
 ```
 
 Note:
 - The `key.store` file contain the private key that this node use. The format refer to: `node/src/main/resouces/key.store.template`.
-- You can just put a new `application.yml` in the working dir to replace the default spring config file.
+- You can just put a new `application.yml` or `application-{ENV}.yml` in the working dir to replace the default spring config file.
 
 ## Project Structrue
 

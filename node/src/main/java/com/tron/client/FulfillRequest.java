@@ -10,7 +10,7 @@ import lombok.Data;
 public class FulfillRequest {
   private String contractAddr;
   private String requestId;
-  private int payment;
+  private long payment;
   private String callbackAddress;
   private String callbackFunctionId;
   private long expiration;
