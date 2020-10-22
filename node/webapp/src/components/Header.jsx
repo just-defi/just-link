@@ -4,7 +4,7 @@ import {Link} from "react-router-dom";
 
 import {enquireScreen} from 'enquire-js';
 
-const LOGO_URL = 'https://gw.alipayobjects.com/zos/rmsportal/gVAKqIsuJCepKNbgbSwE.svg';
+const LOGO_URL = 'logo-blue.svg';
 
 class Header extends React.Component {
   state = {
