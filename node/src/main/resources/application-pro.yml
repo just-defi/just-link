@@ -15,3 +15,6 @@ spring:
     locations: classpath:db/migration
     clean-disabled: true
     baselineOnMigrate: true
+
+node:
+  minPayment: 2
