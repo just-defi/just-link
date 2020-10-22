@@ -52,7 +52,7 @@ function getClientEnvironment(publicUrl) {
       {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PUBLIC_URL: publicUrl,
-        API_URL: process.env.API_URL || `http://47.90.254.128:8080`,
+        API_URL: process.env.API_URL || `http://localhost:8080`,
       }
     );
 
