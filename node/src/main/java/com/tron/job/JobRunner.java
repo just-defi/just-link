@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Slf4j
@@ -30,6 +31,8 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
+  @Value("${node.minPayment:#{1}}")
+  private Long nodeMinPayment;
 
   public List<Initiator> getAllJobInitiatorList() {
     List<Initiator> initiators = new ArrayList<>();
@@ -173,7 +176,7 @@ public class JobRunner {
 
     Long minPayment;
     if (jobSpec.getMinPayment() == null) {
-      minPayment = 1L;
+      minPayment = nodeMinPayment;
     } else {
       minPayment = jobSpec.getMinPayment();
     }
