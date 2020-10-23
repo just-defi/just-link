@@ -19,7 +19,7 @@ class Header extends React.Component {
     });
 
     let path = window.location.hash;
-    this.setState({currentPath: path.split('/')[1]})
+    this.setState({currentPath: path.split('/')[1]==''?'jobs':path.split('/')[1]});
   }
 
   handleShowMenu = () => {
@@ -46,11 +46,6 @@ class Header extends React.Component {
 
     const menu = (
         <Menu mode={menuMode} id="nav" key="nav" onClick={this.handleMenuClick} selectedKeys={[currentPath]}>
-          <Menu.Item key="dashboard">
-            <Link to="/dashboard">
-              Dashboard
-            </Link>
-          </Menu.Item>
           <Menu.Item key="jobs">
             <Link to="/jobs">
               Jobs
