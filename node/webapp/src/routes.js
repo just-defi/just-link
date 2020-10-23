@@ -17,12 +17,6 @@ export const routes = [
     component: Login
   },
   {
-    path: "/dashboard",
-    label: "Dashboard",
-    icon: "fa",
-    component: Dashboard
-  },
-  {
     path: "/jobs/:id",
     label: "JobDetail",
     icon: "fa",
@@ -37,9 +31,9 @@ export const routes = [
 
   {
     path: "/",
-    label: "Dashboard",
+    label: "Jobs",
     icon: "fa",
-    component: () => <Redirect to="/dashboard" />
+    component: () => <Redirect to="/jobs" />
   },
 
 ];
