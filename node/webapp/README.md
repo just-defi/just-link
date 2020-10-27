@@ -6,8 +6,12 @@
 
 ```bash
 > npm install
-> npm start
+to start with localhost, use
+> npm start 
+to start with ip, use
+> HOST=x.x.x.x npm start
 ```
+
 
 # Build
 
