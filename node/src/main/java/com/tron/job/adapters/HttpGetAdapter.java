@@ -36,25 +36,29 @@ public class HttpGetAdapter extends BaseAdapter {
   public R perform(R input) {
     R result  = new R();
     HttpResponse response = requestWithRetry(url);
-    HttpEntity responseEntity = response.getEntity();
+    if (response != null) {
+      HttpEntity responseEntity = response.getEntity();
+      try {
+        JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
 
-    try {
-      JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
-
-      String[] paths = path.split("\\.");
-      for (String key : paths) {
-        if (data.isJsonArray()) {
-          data = data.getAsJsonArray().get(Integer.parseInt(key));
-        } else {
-          data = data.getAsJsonObject().get(key);
+        String[] paths = path.split("\\.");
+        for (String key : paths) {
+          if (data.isJsonArray()) {
+            data = data.getAsJsonArray().get(Integer.parseInt(key));
+          } else {
+            data = data.getAsJsonObject().get(key);
+          }
         }
+        double value = data.getAsDouble();
+        result.put("result", value);
+      } catch (IOException e) {
+        result.replace("code", 1);
+        result.replace("msg", "parse response failed, url:" + url);
+        log.info("parse response failed");
       }
-      double value = data.getAsDouble();
-      result.put("result", value);
-    } catch (IOException e) {
+    } else {
       result.replace("code", 1);
-      result.replace("msg", "parse response failed, url:" + url);
-      log.info("parse response failed");
+      result.replace("msg", "request failed, url:" + url);
     }
 
     return result;
