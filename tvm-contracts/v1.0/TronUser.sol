@@ -1005,6 +1005,7 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     ensureAuthorizedRequester()
     returns (bytes32)
     {
+        require(oracles.length > 0, "Please set oracles and jobIds");
         Justlink.Request memory request;
         bytes32 requestId;
         uint256 oraclePayment = paymentAmount;
