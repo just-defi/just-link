@@ -17,4 +17,4 @@ spring:
     baselineOnMigrate: true
 
 node:
-  minPayment: 2
+  minPayment: 100000
