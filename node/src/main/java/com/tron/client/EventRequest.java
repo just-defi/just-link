@@ -1,5 +1,6 @@
 package com.tron.client;
 
+import java.math.BigInteger;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -15,6 +16,6 @@ public class EventRequest {
   private String data;
   private long dataVersion;
   private String requestId;
-  private long payment;
+  private BigInteger payment;
   private String contractAddr;
 }
