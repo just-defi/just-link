@@ -31,7 +31,7 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
-  @Value("${node.minPayment:#{1}}")
+  @Value("${node.minPayment:#{100000}}")
   private Long nodeMinPayment;
 
   public List<Initiator> getAllJobInitiatorList() {
