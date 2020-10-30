@@ -5,10 +5,13 @@ import static com.tron.common.Constant.FULLNODE_HOST;
 import static com.tron.common.Constant.HTTP_EVENT_HOST;
 import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 import static com.tron.common.Constant.ONE_HOUR;
+import static com.tron.common.Constant.ONE_MINUTE;
 
 import com.beust.jcommander.internal.Sets;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.tron.client.message.BroadCastResponse;
@@ -24,6 +27,7 @@ import com.tron.keystore.KeyStore;
 import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.InetAddress;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -55,6 +59,9 @@ public class OracleClient {
 
   private static final String EVENT_NAME = "OracleRequest";
   private static final long MIN_FEE_LIMIT = 3_000_000L;   // 2 trx
+
+  private static Cache<String, String> requestIdsCache = CacheBuilder.newBuilder().maximumSize(10000)
+          .expireAfterWrite(12, TimeUnit.HOURS).recordStats().build();
 
   private static HashMap<String, Set<String>> listeningAddrs = Maps.newHashMap();
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
@@ -167,9 +174,14 @@ public class OracleClient {
                 long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
                 String requestId = (String)eventData.getResult().get("requestId");
                 BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
+                if (requestIdsCache.getIfPresent(requestId) != null) {
+                  log.info("this event has been handled, requestid:{}", requestId);
+                  continue;
+                }
                 JobSubscriber.receiveLogRequest(
                         new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
                                 cancelExpiration, data, dataVersion,requestId, payment, addr));
+                requestIdsCache.put(requestId, "");
               }
             }
     );
@@ -228,7 +240,7 @@ public class OracleClient {
       if (consumeIndexMap.containsKey(addr)) {
         params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
       } else {
-        params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_HOUR));
+        params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
       }
       String urlPath = String.format("/v1/contracts/%s/events", addr);
       HttpResponse httpResponse = requestEvent(urlPath, params);
