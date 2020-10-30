@@ -32,6 +32,7 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
+
   @Value("${node.minPayment:#{'100000'}}")
   private String nodeMinPayment;
 
