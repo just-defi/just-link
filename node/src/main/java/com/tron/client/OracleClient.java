@@ -15,7 +15,7 @@ import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.EventData;
 import com.tron.client.message.EventResponse;
 import com.tron.client.message.TriggerResponse;
-import com.tron.common.util.AbiUtil;
+import com.tron.common.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;

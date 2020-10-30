@@ -20,7 +20,7 @@ public class FulfillRequest {
   public List<Object> toList() {
     List<Object> list = Lists.newArrayList();
     list.add(requestId);
-    list.add(payment);
+    list.add(payment.toString());
     list.add(callbackAddress);
     list.add(callbackFunctionId);
     list.add(expiration);
