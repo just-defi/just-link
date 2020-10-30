@@ -32,6 +32,7 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
+
   @Value("${node.minPayment:#{'100000'}}")
   private String nodeMinPayment;
 
@@ -62,6 +63,7 @@ public class JobRunner {
         jobRunId = jobRunId.replaceAll("-", "");
         jobRun.setId(jobRunId);
         jobRun.setJobSpecID(event.getJobId());
+        jobRun.setRequestId(event.getRequestId());
         jobRun.setStatus(1);
         jobRun.setCreationHeight(event.getBlockNum());
         jobRun.setPayment(0L);  // todo
@@ -188,7 +190,12 @@ public class JobRunner {
       return false;
     }
 
-    // TODO repeated requestId check
+    // repeated requestId check
+    String runId = jobRunsService.getByRequestId(event.getRequestId());
+    if (runId != null) {
+      log.warn("event repeated request id {}", event.getRequestId());
+      return false;
+    }
 
     return true;
   }
