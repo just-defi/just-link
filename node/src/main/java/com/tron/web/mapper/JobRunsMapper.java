@@ -19,4 +19,6 @@ public interface JobRunsMapper {
   int updateResult(@Param("id") String id, @Param("status") int status, @Param("result") String result, @Param("error") String error);
 
   long getCount(@Param("jobId") String jobId);
+
+  String getByRequestId(@Param("requestId") String requestId);
 }

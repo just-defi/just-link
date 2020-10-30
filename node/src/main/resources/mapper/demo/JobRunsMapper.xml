@@ -90,4 +90,10 @@
 		</if>
 	</select>
 
+	<select id="getByRequestId" resultType="String">
+		select id
+		from job_runs
+		where `request_id` = #{requestId}
+	</select>
+
 </mapper>
