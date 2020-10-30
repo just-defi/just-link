@@ -62,6 +62,8 @@ public class SendRequest {
         String result = EntityUtils.toString(response.getEntity());
         JsonObject data = (JsonObject) JsonParser.parseString(result);
         return data.getAsJsonPrimitive("data").getAsLong();
+      }else {
+        System.out.println("[alarm]getPrice fail. jobId="+jobId);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -146,6 +148,10 @@ public class SendRequest {
       for (int i = 0; i < contractArray.length; i++) {
         String contract = contractArray[i];
         long price = getPrice(jobIdArray[i]);
+        if (price == 0) {
+          forceMap.addAndGet(contract, mills);
+          continue;
+        }
         if (prePriceMap.containsKey(contract) && !compare(contract, price)
             && !mustForce(forceMap, contract)) {
           forceMap.addAndGet(contract, mills);
