@@ -224,7 +224,7 @@ public class OracleClient {
     } else {  // for production
       Map<String, String> params = Maps.newHashMap();
       params.put("order_by", "block_timestamp,asc");
-      params.put("only_confirmed", "true");
+      //params.put("only_confirmed", "true");
       if (consumeIndexMap.containsKey(addr)) {
         params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
       } else {
