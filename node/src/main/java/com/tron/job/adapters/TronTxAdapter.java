@@ -23,7 +23,7 @@ public class TronTxAdapter extends BaseAdapter {
     FulfillRequest fulfillRequest = new FulfillRequest(
         event.getContractAddr(),
         event.getRequestId(),
-        (int)event.getPayment(),
+        event.getPayment(),
         event.getCallbackAddr(),
         event.getCallbackFunctionId(),
         event.getCancelExpiration(),

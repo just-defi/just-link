@@ -14,6 +14,7 @@ import com.tron.web.service.JobRunsService;
 import com.tron.web.service.JobSpecsService;
 import com.tron.client.EventRequest;
 import com.tron.web.service.TronTxService;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,8 +32,8 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
-  @Value("${node.minPayment:#{1}}")
-  private Long nodeMinPayment;
+  @Value("${node.minPayment:#{'100000'}}")
+  private String nodeMinPayment;
 
   public List<Initiator> getAllJobInitiatorList() {
     List<Initiator> initiators = new ArrayList<>();
@@ -63,7 +64,7 @@ public class JobRunner {
         jobRun.setJobSpecID(event.getJobId());
         jobRun.setStatus(1);
         jobRun.setCreationHeight(event.getBlockNum());
-        jobRun.setPayment(event.getPayment());
+        jobRun.setPayment(0L);  // todo
         jobRun.setInitiatorId(job.getInitiators().get(0).getId());
         String params = com.tron.web.common.util.JsonUtil.obj2String(event);
         jobRun.setParams(params);
@@ -174,14 +175,15 @@ public class JobRunner {
       return false;
     }
 
-    Long minPayment;
-    if (jobSpec.getMinPayment() == null) {
-      minPayment = nodeMinPayment;
-    } else {
-      minPayment = jobSpec.getMinPayment();
-    }
+    BigInteger minPayment;
+//    if (jobSpec.getMinPayment() == null) {
+//      minPayment = nodeMinPayment;
+//    } else {
+//      minPayment = jobSpec.getMinPayment();
+//    }
+    minPayment = new BigInteger(nodeMinPayment);
 
-    if (event.getPayment() > 0 && minPayment.compareTo(event.getPayment()) > 0) {
+    if (event.getPayment().compareTo(new BigInteger("0")) > 0 && minPayment.compareTo(event.getPayment()) > 0) {
       log.warn("rejecting job {} with payment {} below minimum threshold ({})", event.getJobId(), event.getPayment(), minPayment);
       return false;
     }
