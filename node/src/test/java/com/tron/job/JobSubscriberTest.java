@@ -2,6 +2,7 @@ package com.tron.job;
 
 import com.tron.OracleApplication;
 import com.tron.client.EventRequest;
+import java.math.BigInteger;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
 import org.junit.Before;
@@ -32,7 +33,7 @@ public class JobSubscriberTest {
         "",
         1,
         "1129035f0f96441e7eb4c8ee95b894fb9e01c11d143fd7eb80a59ed33d9d18eb",
-        100,
+        new BigInteger("100"),
         "TNweaBP3y96ui2aR3yGPCTDAscoJ2hKR5E"
     );
 
