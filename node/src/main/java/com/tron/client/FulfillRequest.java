@@ -1,6 +1,7 @@
 package com.tron.client;
 
 import com.google.common.collect.Lists;
+import java.math.BigInteger;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,7 +11,7 @@ import lombok.Data;
 public class FulfillRequest {
   private String contractAddr;
   private String requestId;
-  private long payment;
+  private BigInteger payment;
   private String callbackAddress;
   private String callbackFunctionId;
   private long expiration;

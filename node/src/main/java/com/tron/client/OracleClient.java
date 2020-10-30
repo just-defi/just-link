@@ -23,6 +23,7 @@ import com.tron.job.adapters.ContractAdapter;
 import com.tron.keystore.KeyStore;
 import com.tron.web.entity.TronTx;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -89,7 +90,7 @@ public class OracleClient {
     params.put("contract_address",request.getContractAddr());
     params.put("function_selector",FULFIL_METHOD_SIGN);
     params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
-    params.put("fee_limit", calculateFeeLimit(request.getPayment()));
+    params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
     params.put("call_value",0);
     params.put("visible",true);
     HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
@@ -165,7 +166,7 @@ public class OracleClient {
                 String data = (String)eventData.getResult().get("data");
                 long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
                 String requestId = (String)eventData.getResult().get("requestId");
-                long payment = Long.parseLong((String)eventData.getResult().get("payment"));
+                BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
                 JobSubscriber.receiveLogRequest(
                         new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
                                 cancelExpiration, data, dataVersion,requestId, payment, addr));

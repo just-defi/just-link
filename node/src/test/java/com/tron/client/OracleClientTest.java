@@ -7,6 +7,7 @@ import com.tron.common.Constant;
 import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.math.BigInteger;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,7 +40,7 @@ public class OracleClientTest {
       request = new FulfillRequest(
               "TNweaBP3y96ui2aR3yGPCTDAscoJ2hKR5E",
               "bf6263dad699d6ef3f80a204a92488776c55a703bbe08f118708179f1345a86d",
-              100,
+              new BigInteger("1000000000000000000000"),
               "TGpAFMZKd7rjjzz2E4WzYVKwBovWaFVcEQ",
               "6a9705b400000000000000000000000000000000000000000000000000000000",
               1600670994,
