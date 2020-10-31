@@ -76,4 +76,8 @@ public class JobRunsServiceImpl implements JobRunsService {
   public List<TaskRun> getTaskRunsByJobRunId(String id) {
     return taskRunsMapper.getByJobRunId(id);
   }
+
+  public String getByRequestId(String requestId) {
+    return jobRunsMapper.getByRequestId(requestId);
+  }
 }

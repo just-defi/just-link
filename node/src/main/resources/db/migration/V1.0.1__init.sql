@@ -75,7 +75,7 @@ CREATE TABLE `job_runs`  (
   `job_spec_id` varchar(36) NOT NULL,
   `result` varchar(255),
   `error` varchar(255),
-  `request_id` bigint,
+  `request_id` varchar(127),
   `params` text,
   `status` tinyint NOT NULL DEFAULT 0 COMMENT '0:init 1:processing 2:complete 3:error',
   `initiator_id` bigint,

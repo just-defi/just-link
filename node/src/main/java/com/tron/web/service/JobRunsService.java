@@ -23,4 +23,6 @@ public interface JobRunsService {
   int updateJobResult(String runId, int status, String result, String errorStr);
 
   List<TaskRun> getTaskRunsByJobRunId(String id);
+
+  String getByRequestId(String requestId);
 }
