@@ -39,7 +39,7 @@ public class SendRequest {
       params.put("contract_address", contract);
       params.put("function_selector", "requestRateUpdate()");
       params.put("parameter", "");
-      params.put("fee_limit", 100000000);
+      params.put("fee_limit", 10000000);
       params.put("call_value", 0);
       params.put("visible", true);
       BroadCastResponse rps = Tool.triggerContract(key, params, fullnode);
