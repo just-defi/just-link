@@ -74,8 +74,6 @@ public class JustSwapAdapter extends BaseAdapter {
             break;
         }
       }
-    } catch (IOException e) {
-      log.error("get pair price failed! msg:" + e.getMessage());
     } catch (Exception e) {
       log.error("get pair price failed! msg:" + e.getMessage());
     }

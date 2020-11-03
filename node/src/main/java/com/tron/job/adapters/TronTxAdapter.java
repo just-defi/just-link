@@ -19,19 +19,19 @@ public class TronTxAdapter extends BaseAdapter {
   @Override
   public R perform(R input) {
     // send tx
-    EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
-    FulfillRequest fulfillRequest = new FulfillRequest(
-        event.getContractAddr(),
-        event.getRequestId(),
-        event.getPayment(),
-        event.getCallbackAddr(),
-        event.getCallbackFunctionId(),
-        event.getCancelExpiration(),
-        codecData((long)input.get("result")));
-        //Long.toString((long)input.get("result")));
-        //(Long) input.get("result"));
-
     try {
+      EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
+      FulfillRequest fulfillRequest = new FulfillRequest(
+          event.getContractAddr(),
+          event.getRequestId(),
+          event.getPayment(),
+          event.getCallbackAddr(),
+          event.getCallbackFunctionId(),
+          event.getCancelExpiration(),
+          codecData((long)input.get("result")));
+          //Long.toString((long)input.get("result")));
+          //(Long) input.get("result"));
+
       TronTx tx = OracleClient.fulfil(fulfillRequest);
       tx.setValue((long)input.get("result"));
       tx.setSentAt(1L);

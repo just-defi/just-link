@@ -35,7 +35,7 @@ public class ConvertUsdAdapter extends BaseAdapter {
         JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
 
         double value = 1;
-        if (data.isJsonArray()) {
+        if (data.isJsonArray() && data.getAsJsonArray().size() > 6) {
           data = data.getAsJsonArray().get(6);
           value = data.getAsDouble();
         }
@@ -43,7 +43,7 @@ public class ConvertUsdAdapter extends BaseAdapter {
         value = (long)input.get("result") * value;
 
         result.put("result", Math.round(value));
-      } catch (IOException e) {
+      } catch (Exception e) {
         result.put("result", input.get("result"));
         log.info("parse response failed, url:" + url);
       }

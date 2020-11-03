@@ -95,8 +95,8 @@ public class JobSpecsController {
 
       return R.ok().put("data", value);
     } catch (Exception e) {
-      log.error("get job result failed, error : " + e.getMessage());
-      return R.error(ResultStatus.GET_JOB_DETAIL_FAILED);
+      log.error("get job result failed, jobId:" + jobId + ", error : " + e.getMessage());
+      return R.error(ResultStatus.GET_JOB_DETAIL_FAILED).put("data", 0);
     }
   }
 }
