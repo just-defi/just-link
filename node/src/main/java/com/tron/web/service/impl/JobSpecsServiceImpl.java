@@ -2,6 +2,7 @@ package com.tron.web.service.impl;
 
 import com.tron.common.Constant;
 import com.tron.common.TronException;
+import com.tron.job.JobCache;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
 import com.tron.job.adapters.HttpGetAdapter;
@@ -33,6 +34,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   private JobSpecsMapper jobSpecsMapper;
   private InitiatorMapper initiatorMapper;
   private TaskSpecsMapper taskSpecsMapper;
+  private JobCache jobCache;
 
   public JobSpec insert(JobSpecRequest jsr) throws TronException {
 
@@ -47,6 +49,14 @@ public class JobSpecsServiceImpl implements JobSpecsService {
       taskSpecsMapper.insertList(jobSpec.getTaskSpecs());
     } else {
       return null;
+    }
+
+    if (jobCache.isCacheEnable()) {
+      for (TaskSpec taskSpec : jobSpec.getTaskSpecs()) {
+        if (taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
+          jobCache.addToCacheList(jobSpec.getId());
+        }
+      }
     }
 
     return jobSpec;

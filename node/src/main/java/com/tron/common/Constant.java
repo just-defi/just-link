@@ -34,6 +34,7 @@ public class Constant {
   public static final String TASK_TYPE_TRX_TO_USDT = "trx2usdt";
   public static final String TASK_TYPE_RECIPROCAL = "reciprocal";
   public static final String TASK_TYPE_JUST_SWAP = "justswap";
+  public static final String TASK_TYPE_CACHE = "cache";
 
   // initiator type
   public static final String INITIATOR_TYPE_RUN_LOG = "runlog";

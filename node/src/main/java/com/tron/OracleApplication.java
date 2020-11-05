@@ -7,6 +7,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.tron.client.OracleClient;
 import com.tron.common.Constant;
+import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;
@@ -14,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.tron.common.parameter.CommonParameter;
 
 @Slf4j
@@ -38,7 +40,9 @@ public class OracleApplication {
 			System.exit(-1);
 		}
 		Constant.initEnv(argv.env);
-		SpringApplication.run(OracleApplication.class, args);
+		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
+		JobCache jobCache = context.getBean(JobCache.class);
+		jobCache.run();
 		OracleClient oracleClient = new OracleClient();
 		oracleClient.run();
 		JobSubscriber.setup();
