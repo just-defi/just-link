@@ -29,11 +29,11 @@ public class ConvertUsdtAdapter extends BaseAdapter {
     } catch (IOException e) {
       result.replace("code", 1);
       result.replace("msg", "get usdt-trx value failed");
-      log.error("get usdt-trx value failed");
+      log.error("get usdt-trx value failed, msg: {}", e.getMessage());
     } catch (Exception e) {
       result.replace("code", 1);
       result.replace("msg", "convert USDT failed");
-      log.error("convert USDT failed");
+      log.error("convert USDT failed, msg: {}", e.getMessage());
     }
 
     return result;

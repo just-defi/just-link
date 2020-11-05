@@ -64,6 +64,10 @@ public class JobSubscriber {
 
   public static Long getJobResultById(String jobId) {
     R result = jobRunner.getJobResultById(jobId);
-    return (Long) result.get("result");
+    if (result.get("code").equals(0)) {
+      return (Long) result.get("result");
+    } else {
+      return 0L;
+    }
   }
 }

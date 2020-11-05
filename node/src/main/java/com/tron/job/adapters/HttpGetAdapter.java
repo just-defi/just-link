@@ -51,7 +51,7 @@ public class HttpGetAdapter extends BaseAdapter {
         }
         double value = data.getAsDouble();
         result.put("result", value);
-      } catch (IOException e) {
+      } catch (Exception e) {
         result.replace("code", 1);
         result.replace("msg", "parse response failed, url:" + url);
         log.info("parse response failed");

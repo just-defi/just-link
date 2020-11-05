@@ -207,7 +207,8 @@ public class JobRunner {
     R preTaskResult = new R();
     preTaskResult.put("result", null);
     for (TaskSpec taskSpec : job.getTaskSpecs()) {
-      if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX)) {
+      if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX) ||
+          taskSpec.getType().equals(Constant.TASK_TYPE_CONVERT_USD)) {
         break;
       }
 
@@ -216,7 +217,7 @@ public class JobRunner {
       if (r.get("code").equals(0)) {
         preTaskResult.replace("result", r.get("result"));
       } else {
-        log.error(taskSpec.getType() + " run failed");
+        log.error(taskSpec.getType() + " run failed when get job result, job id: {}, msg: {}", jobId, r.get("msg"));
         preTaskResult.replace("code", r.get("code"));
         preTaskResult.replace("msg", r.get("msg"));
         break;
