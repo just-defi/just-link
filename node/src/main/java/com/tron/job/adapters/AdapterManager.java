@@ -36,6 +36,9 @@ public class AdapterManager {
       case Constant.TASK_TYPE_TRX_TO_USDT:
         adapter = new ConvertUsdtAdapter();
         break;
+      case Constant.TASK_TYPE_CACHE:
+        adapter = new CacheAdapter();
+        break;
       default:
         break;
     }

@@ -32,9 +32,12 @@ public class JobCache {
   @Value("${node.cacheEnable:#{false}}")
   private Boolean cacheEnable;
 
+  @Value("${node.cacheCount:#{5}}")
+  private int cacheCount;
+
   private Set<String> jobList = Sets.newHashSet();
   private Cache<String, Queue<Long>> jobResultCache = CacheBuilder.newBuilder().maximumSize(10000)
-      .expireAfterWrite(10, TimeUnit.MINUTES).build();
+      .expireAfterWrite(30, TimeUnit.MINUTES).build();
 
   private ScheduledExecutorService cacheExecutor = Executors.newSingleThreadScheduledExecutor();
 
@@ -102,9 +105,10 @@ public class JobCache {
     }
     valueList.offer(value);
 
-    while (valueList.size() > 5) {
+    while (valueList.size() > cacheCount) {
       valueList.poll();
     }
+    jobResultCache.put(jobId, valueList);
   }
 
   public Long cacheGet(String jobId) {
