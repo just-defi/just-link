@@ -1151,7 +1151,7 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
 
     /**
      * @dev Performs aggregation of the answers received from the Justlink nodes.
-     * Assumes that at least half the oracles are honest and so can't contol the
+     * Assumes that at least half the oracles are honest, whichcan't control the
      * middle of the ordered responses.
      * @param _answerId The answer ID associated with the group of requests
      */
