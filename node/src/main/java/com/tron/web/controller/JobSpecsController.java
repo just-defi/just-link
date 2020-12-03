@@ -1,5 +1,6 @@
 package com.tron.web.controller;
 
+import com.tron.common.Constant;
 import com.tron.common.TronException;
 import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
@@ -7,6 +8,7 @@ import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.JobSpecRequest;
+import com.tron.web.entity.TaskSpec;
 import com.tron.web.service.JobSpecsService;
 import java.util.ArrayList;
 import java.util.List;
@@ -57,6 +59,14 @@ public class JobSpecsController {
 
       if (result != null){
         jobSubscriber.addJob(result);
+
+        if (jobCache.isCacheEnable()) {
+          for (TaskSpec taskSpec : result.getTaskSpecs()) {
+            if (taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
+              jobCache.addToCacheList(result.getId());
+            }
+          }
+        }
         return R.ok().put("data", "");
       } else {
         return R.error(ResultStatus.CREATE_JOB_FAILED);
