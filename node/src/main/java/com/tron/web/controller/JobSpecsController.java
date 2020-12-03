@@ -1,13 +1,16 @@
 package com.tron.web.controller;
 
 import com.tron.common.TronException;
+import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.JobSpecRequest;
 import com.tron.web.service.JobSpecsService;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.core.runtime.jobs.Job;
@@ -30,6 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class JobSpecsController {
   private JobSpecsService jobSpecsService;
   private JobSubscriber jobSubscriber;
+  private JobCache jobCache;
 
   @GetMapping("/specs")
   public R index(
@@ -96,6 +100,21 @@ public class JobSpecsController {
       return R.ok().put("data", value);
     } catch (Exception e) {
       log.error("get job result failed, jobId:" + jobId + ", error : " + e.getMessage());
+      return R.error(ResultStatus.GET_JOB_DETAIL_FAILED).put("data", 0);
+    }
+  }
+
+  @GetMapping(value = "/cache/{jobId}")
+  public R getJobCache(@PathVariable("jobId") String jobId) {
+    try {
+      Queue<Long> valueList = jobCache.getValueListByJobId(jobId);
+      if (valueList != null) {
+        return R.ok().put("data", valueList.toArray());
+      } else {
+        return R.ok().put("data", new ArrayList<>());
+      }
+    } catch (Exception e) {
+      log.error("get job cache failed, jobId:" + jobId + ", error : " + e.getMessage());
       return R.error(ResultStatus.GET_JOB_DETAIL_FAILED).put("data", 0);
     }
   }

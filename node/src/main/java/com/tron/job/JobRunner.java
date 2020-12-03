@@ -32,6 +32,8 @@ public class JobRunner {
   JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
+  @Autowired
+  private JobCache jobCache;
 
   @Value("${node.minPayment:#{'100000'}}")
   private String nodeMinPayment;
@@ -116,7 +118,16 @@ public class JobRunner {
       for (TaskRun taskRun : taskRuns) {
         preTaskResult.replace("taskRunId", taskRun.getId());
         TaskSpec taskSpec = jobSpecsService.getTasksById(taskRun.getTaskSpecId());
-        R result = executeTask(taskRun, taskSpec, preTaskResult);
+        R result = null;
+        if (jobCache.isCacheEnable() && taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
+          result = new R();
+          jobCache.cachePut(jobRun.getJobSpecID(), (long)preTaskResult.get("result"));
+          long value = jobCache.cacheGet(jobRun.getJobSpecID());
+          result.put("result", value);
+        } else {
+          result = executeTask(taskRun, taskSpec, preTaskResult);
+        }
+
 
         if (result.get("code").equals(0)) {
           preTaskResult.replace("result", result.get("result"));
@@ -202,28 +213,6 @@ public class JobRunner {
 
 
   public R getJobResultById(String jobId) {
-    JobSpec job = jobSpecsService.getById(jobId);
-
-    R preTaskResult = new R();
-    preTaskResult.put("result", null);
-    for (TaskSpec taskSpec : job.getTaskSpecs()) {
-      if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX) ||
-          taskSpec.getType().equals(Constant.TASK_TYPE_CONVERT_USD)) {
-        break;
-      }
-
-      BaseAdapter adapter = AdapterManager.getAdapter(taskSpec);
-      R r = adapter.perform(preTaskResult);
-      if (r.get("code").equals(0)) {
-        preTaskResult.replace("result", r.get("result"));
-      } else {
-        log.error(taskSpec.getType() + " run failed when get job result, job id: {}, msg: {}", jobId, r.get("msg"));
-        preTaskResult.replace("code", r.get("code"));
-        preTaskResult.replace("msg", r.get("msg"));
-        break;
-      }
-    }
-
-    return preTaskResult;
+    return jobCache.getJobResultById(jobId);
   }
 }
