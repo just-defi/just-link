@@ -48,8 +48,8 @@ public class JobCache {
         try {
           System.out.println("test!!!");
           cache();
-        } catch (Exception e) {
-          log.error("cache schedule run error, error msg:" + e.getMessage());
+        } catch (Throwable e) {
+          log.warn("cache schedule run error, error msg:" + e.getMessage());
         }
       }, 0, 1, TimeUnit.MINUTES);
     } else {

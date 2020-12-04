@@ -52,7 +52,7 @@
 		select id, `job_spec_id`, `type`, `params`, created_at, updated_at, deleted_at
 		from task_specs
 		where `job_spec_id` = #{jobId}
-		order by id asc
+		order by `level`,id asc
 	</select>
 
 	<select id="getById" parameterType="java.lang.Long" resultType="com.tron.web.entity.TaskSpec" resultMap="TaskSpecsResultMap">
