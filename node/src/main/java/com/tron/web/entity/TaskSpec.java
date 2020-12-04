@@ -12,6 +12,7 @@ public class TaskSpec implements Serializable {
   private Long confirmations;
   private String type;
   private String params;
+  private Integer level;
   private Date createdAt;
   private Date updatedAt;
   private Date deletedAt;

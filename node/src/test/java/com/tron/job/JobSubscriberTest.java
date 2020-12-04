@@ -25,16 +25,16 @@ public class JobSubscriberTest {
   public void receiveLogRequestTest() throws InterruptedException {
     EventRequest event = new EventRequest(
         100,
-        "228e943babdf4db78402666ca26ed5ed",
+        "f6ee7a6608d6426ea72a9034eff49acc",
         "",
         "TGpAFMZKd7rjjzz2E4WzYVKwBovWaFVcEQ",
         "6a9705b400000000000000000000000000000000000000000000000000000000",
         1600574445,
         "",
         1,
-        "1129035f0f96441e7eb4c8ee95b894fb9e01c11d143fd7eb80a59ed33d9d18eb",
-        new BigInteger("100"),
-        "TNweaBP3y96ui2aR3yGPCTDAscoJ2hKR5E"
+        "1129035f0f96441e7eb4c8ee95b894fb9e01c11d143fd7eb80a59ed33d9d18ed",
+        new BigInteger("1000000"),
+        "TKGBsz6gX8RDMpkma4wPncafWbZFjNkDXB"
     );
 
     JobSubscriber.receiveLogRequest(event);

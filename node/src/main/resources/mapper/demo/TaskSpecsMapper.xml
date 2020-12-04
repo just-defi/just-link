@@ -10,6 +10,7 @@
     <result column="job_spec_id" property="jobSpecID" jdbcType="VARCHAR"/>
     <result column="type" property="type" jdbcType="VARCHAR"/>
     <result column="params" property="params" jdbcType="LONGVARCHAR"/>
+		<result column="level" property="level" jdbcType="INTEGER"/>
   </resultMap>
 
   <insert id="insert" parameterType="com.tron.web.entity.TaskSpec">
@@ -49,14 +50,14 @@
 	</insert>
 
   <select id="getByJobId" parameterType="java.lang.String" resultType="com.tron.web.entity.TaskSpec" resultMap="TaskSpecsResultMap">
-		select id, `job_spec_id`, `type`, `params`, created_at, updated_at, deleted_at
+		select id, `job_spec_id`, `type`, `params`, `level`, created_at, updated_at, deleted_at
 		from task_specs
 		where `job_spec_id` = #{jobId}
 		order by `level`,id asc
 	</select>
 
 	<select id="getById" parameterType="java.lang.Long" resultType="com.tron.web.entity.TaskSpec" resultMap="TaskSpecsResultMap">
-		select id, `job_spec_id`, `type`, `params`, created_at, updated_at, deleted_at
+		select id, `job_spec_id`, `type`, `params`, `level`, created_at, updated_at, deleted_at
 		from task_specs
 		where `id` = #{id}
 	</select>

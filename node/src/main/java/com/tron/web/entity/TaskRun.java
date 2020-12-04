@@ -14,6 +14,7 @@ public class TaskRun {
   private Long minimumConfirmations;
   private Long confirmations;
   private Long payment;
+  private Integer level;
   private Date createdAt;
   private Date updatedAt;
   private String type;

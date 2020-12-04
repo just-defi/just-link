@@ -83,6 +83,7 @@ public class JobRunner {
           taskRun.setId(taskRunId);
           taskRun.setJobRunID(jobRunId);
           taskRun.setTaskSpecId(task.getId());
+          taskRun.setLevel(task.getLevel());
           jobRunsService.insertTaskRun(taskRun);
         }
 

@@ -21,7 +21,8 @@
   	`job_run_id`,
   	`task_spec_id`,
   	`minimum_confirmations`,
-  	`confirmations`
+  	`confirmations`,
+  	`level`
 		)
 		values
 		(
@@ -29,7 +30,8 @@
 		#{jobRunID},
 		#{taskSpecId},
 		#{minimumConfirmations},
-		#{confirmations}
+		#{confirmations},
+		#{level}
 		)
 	</insert>
 
@@ -43,7 +45,7 @@
 		select id, `job_run_id`, `task_spec_id`, `status`, `result`, `minimum_confirmations`, `confirmations`, created_at, updated_at
 		from task_runs
 		where `job_run_id` = #{id}
-		order by `task_spec_id` asc
+		order by `level`,`task_spec_id` asc
 	</select>
 
 	<update id="updateResult">
