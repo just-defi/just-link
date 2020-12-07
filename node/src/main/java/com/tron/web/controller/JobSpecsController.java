@@ -121,6 +121,15 @@ public class JobSpecsController {
       if (valueList != null) {
         return R.ok().put("data", valueList.toArray());
       } else {
+        JobSpec jobSpec = jobSpecsService.getById(jobId);
+        if (jobCache.isCacheEnable()) {
+          for (TaskSpec taskSpec : jobSpec.getTaskSpecs()) {
+            if (taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
+              jobCache.addToCacheList(jobId);
+              //System.out.println("add to cache list");
+            }
+          }
+        }
         return R.ok().put("data", new ArrayList<>());
       }
     } catch (Exception e) {
