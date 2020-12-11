@@ -1,5 +1,7 @@
 package com.tron.common.util;
 
+import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
+
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.net.URI;
@@ -8,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.apache.http.HttpResponse;
+import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
 import org.apache.http.client.methods.HttpGet;
@@ -87,4 +90,40 @@ public class HttpUtil {
     }
     return null;
   }
+
+  public static HttpResponse requestWithRetry(String url) {
+    try {
+      HttpResponse response = getByUri(url);
+      if (response == null) {
+        return null;
+      }
+      int status = response.getStatusLine().getStatusCode();
+      if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+        int retry = 1;
+        while (true) {
+          if (retry > HTTP_MAX_RETRY_TIME) {
+            break;
+          }
+          try {
+            Thread.sleep(100 * retry);
+          } catch (InterruptedException e) {
+            e.printStackTrace();
+          }
+          response = HttpUtil.getByUri(url);
+          if (response == null) {
+            break;
+          }
+          retry++;
+          status = response.getStatusLine().getStatusCode();
+          if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
+            break;
+          }
+        }
+      }
+      return response;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
 }

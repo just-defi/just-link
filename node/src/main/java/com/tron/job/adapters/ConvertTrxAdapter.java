@@ -1,43 +1,41 @@
 package com.tron.job.adapters;
 
-import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.tron.common.Constant;
 import com.tron.common.util.HttpUtil;
 import com.tron.web.common.util.R;
-import java.io.IOException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
 import org.apache.http.util.EntityUtils;
 
 @Slf4j
-public class HttpGetAdapter extends BaseAdapter {
+public class ConvertTrxAdapter extends BaseAdapter {
 
   @Getter
   private String url;
   @Getter
   private String path;
 
-  public HttpGetAdapter(String urlStr, String pathStr) {
+  public ConvertTrxAdapter(String urlStr, String pathStr) {
     url = urlStr;
     path = pathStr;
   }
-
   @Override
   public String taskType() {
-    return Constant.TASK_TYPE_HTTP_GET;
+    return Constant.TASK_TYPE_CONVERT_TRX;
   }
 
   @Override
   public R perform(R input) {
     R result  = new R();
     HttpResponse response = HttpUtil.requestWithRetry(url);
+
     if (response != null) {
       HttpEntity responseEntity = response.getEntity();
+
       try {
         JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
 
@@ -50,16 +48,24 @@ public class HttpGetAdapter extends BaseAdapter {
           }
         }
         double value = data.getAsDouble();
-        result.put("result", value);
+
+        if (Math.abs(value) < 0.000000001) {
+          result.replace("code", 1);
+          result.replace("msg", "convert TRX failed");
+          log.warn("convert TRX failed, value : " + value + ", url : " + url);
+        } else {
+          value = (double) input.get("result") / value;
+          result.put("result", value);
+        }
       } catch (Exception e) {
         result.replace("code", 1);
-        result.replace("msg", "parse response failed, url:" + url);
-        log.info("parse response failed, url:" + url);
+        result.replace("msg", "convert TRX failed");
+        log.warn("parse response failed, url:" + url);
       }
     } else {
       result.replace("code", 1);
-      result.replace("msg", "request failed, url:" + url);
-      log.error("request failed, url:" + url);
+      result.replace("msg", "convert TRX failed");
+      log.warn("request failed, url:" + url);
     }
 
     return result;

@@ -1,14 +1,24 @@
 package com.tron.user;
 
+import static com.tron.common.Constant.FULLNODE_HOST;
+import static com.tron.common.Constant.READONLY_ACCOUNT;
+import static com.tron.common.Constant.TRIGGET_CONSTANT_CONTRACT;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AtomicLongMap;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tron.client.message.BroadCastResponse;
+import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
+import java.io.IOException;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
@@ -27,7 +37,6 @@ public class SendRequest {
   private static ECKey key;
   private static long DEVIATION = 10;
   private static String priceUrl;
-  private static Map<String, Long> prePriceMap = new HashMap<>();
   private static Map<String, Long> deviationMap = new HashMap<>();
   private static Map<String, Long> forceRequestTime = new HashMap<>();
   private static String[] contractArray;
@@ -44,7 +53,7 @@ public class SendRequest {
       params.put("visible", true);
       BroadCastResponse rps = Tool.triggerContract(key, params, fullnode);
       if (rps != null) {
-        System.out.println("trigger " + contract + " Contract result is: " + rps.isResult()
+        System.out.println(new Date() + ": trigger " + contract + " Contract result is: " + rps.isResult()
             + ", msg is: " + rps.getMessage());
       }
     } catch (Exception e) {
@@ -73,7 +82,8 @@ public class SendRequest {
 
   private static boolean compare(String contract, long nowPrice) {
     try {
-      long prePrice = prePriceMap.get(contract);
+      long prePrice = getPriceFromContract(contract);
+      System.out.println(contract +": " + prePrice + "  " + nowPrice);
       long sub = Math.abs(Math.subtractExact(prePrice, nowPrice));
       Long deviation = deviationMap.get(contract);
       deviation = deviation == null ? DEVIATION : deviation;
@@ -120,7 +130,27 @@ public class SendRequest {
     return forceMap.get(contract) >= forceTime;
   }
 
-  public static void main(String[] args) {
+  private static long getPriceFromContract(String contract) throws IOException {
+    String param = AbiUtil.parseParameters("latestAnswer()", "");
+    Map<String, Object> params = Maps.newHashMap();
+    params.put("owner_address", READONLY_ACCOUNT);
+    params.put("contract_address", contract);
+    params.put("function_selector", "latestAnswer()");
+    params.put("parameter", param);
+    params.put("visible", true);
+    HttpResponse response = HttpUtil.post(
+            "https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+    ObjectMapper mapper = new ObjectMapper();
+    assert response != null;
+    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    return Optional.ofNullable((List<String>)result.get("constant_result"))
+            .map(constantResult -> constantResult.get(0))
+            .map(str-> str.replaceAll("^0[x|X]", ""))
+            .map(str -> Long.parseLong(str, 16))
+            .orElseThrow(() -> new IllegalArgumentException("can not get the price, contract:" + contract));
+  }
+
+  public static void main(String[] args) throws InterruptedException {
     if (args.length < 8) {
       throw new RuntimeException(
           "args length must eq 8, request interval, contract address, private key, http url, jobId");
@@ -152,14 +182,13 @@ public class SendRequest {
           forceMap.addAndGet(contract, mills);
           continue;
         }
-        if (prePriceMap.containsKey(contract) && !compare(contract, price)
-            && !mustForce(forceMap, contract)) {
+        if (!compare(contract, price) && !mustForce(forceMap, contract)) {
           forceMap.addAndGet(contract, mills);
         } else {
-          prePriceMap.put(contract, price);
           sendRequest(contract);
           forceMap.remove(contract);
         }
+        Thread.sleep(100);
       }
       sleep(mills);
     }

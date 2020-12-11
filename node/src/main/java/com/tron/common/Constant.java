@@ -5,6 +5,10 @@ public class Constant {
   public static final long ONE_HOUR = 60 * 60 * 1000L;
   public static final long ONE_MINUTE = 60 * 1000L;
 
+  public static final String READONLY_ACCOUNT = "TXmVpin5vq5gdZsciyyjdZgKRUju4st1wM";  // sun
+
+  public static final String TRIGGET_CONSTANT_CONTRACT = "/wallet/triggerconstantcontract";
+
   public static final String TRX_DECIMAL_STR = "1000000";
 
   public static String HTTP_EVENT_HOST = "api.trongrid.io";
@@ -35,6 +39,7 @@ public class Constant {
   public static final String TASK_TYPE_RECIPROCAL = "reciprocal";
   public static final String TASK_TYPE_JUST_SWAP = "justswap";
   public static final String TASK_TYPE_CACHE = "cache";
+  public static final String TASK_TYPE_CONVERT_TRX = "converttrx";
 
   // initiator type
   public static final String INITIATOR_TYPE_RUN_LOG = "runlog";

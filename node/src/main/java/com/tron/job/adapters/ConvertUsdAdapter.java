@@ -26,7 +26,7 @@ public class ConvertUsdAdapter extends BaseAdapter {
   public R perform(R input) {
     R result  = new R();
     String url = "https://api-pub.bitfinex.com/v2/ticker/tUSTUSD";
-    HttpResponse response = requestWithRetry(url);
+    HttpResponse response = HttpUtil.requestWithRetry(url);
 
     if (response != null) {
       HttpEntity responseEntity = response.getEntity();
@@ -49,48 +49,9 @@ public class ConvertUsdAdapter extends BaseAdapter {
       }
     } else {
       result.put("result", input.get("result"));
+      log.warn("request failed, url:" + url);
     }
 
     return result;
-  }
-
-  private HttpResponse requestWithRetry(String url) {
-    try {
-      HttpResponse response = HttpUtil.getByUri(url);
-      if (response == null) {
-        return null;
-      }
-
-      int status = response.getStatusLine().getStatusCode();
-      if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
-        int retry = 1;
-        while(true) {
-          if(retry > HTTP_MAX_RETRY_TIME) {
-            log.warn("request failed, url:" + url);
-            break;
-          }
-          try {
-            Thread.sleep(100 * retry);
-          } catch (InterruptedException e) {
-            e.printStackTrace();
-          }
-          response = HttpUtil.getByUri(url);
-          if (response == null) {
-            break;
-          }
-          retry++;
-          status = response.getStatusLine().getStatusCode();
-          if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
-            break;
-          }
-        }
-      }
-
-      return response;
-    } catch (Exception e) {
-      log.error("request failed, url : " + url);
-    }
-
-    return null;
   }
 }

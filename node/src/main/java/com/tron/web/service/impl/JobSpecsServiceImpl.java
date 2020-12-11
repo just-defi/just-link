@@ -193,6 +193,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
       case Constant.TASK_TYPE_RECIPROCAL:
       case Constant.TASK_TYPE_TRX_TO_USDT:
       case Constant.TASK_TYPE_CACHE:
+      case Constant.TASK_TYPE_CONVERT_TRX:
         break;
       default:
         throw new TronException("Task type " + taskSpec.getType() + " dose dot support");

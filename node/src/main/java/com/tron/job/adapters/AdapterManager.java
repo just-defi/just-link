@@ -18,6 +18,9 @@ public class AdapterManager {
       case Constant.TASK_TYPE_HTTP_POST:
         adapter = null;
         break;
+      case Constant.TASK_TYPE_CONVERT_TRX:
+        adapter = new ConvertTrxAdapter(params.getGet(), params.getPath());
+        break;
       case Constant.TASK_TYPE_MULTIPLY:
         adapter = new MultiplyAdapter(params.getTimes());
         break;
