@@ -27,6 +27,10 @@ import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
 
+/**
+ * will be replaced by class {CheckDeviation}
+ */
+@Deprecated
 public class SendRequest {
 
   private static String SPLIT = ",";
