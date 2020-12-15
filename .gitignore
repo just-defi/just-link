@@ -3,6 +3,7 @@
 build/
 logs/
 key.store
+deviation.yml
 
 node/HELP.md
 node/.gradle

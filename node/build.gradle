@@ -97,5 +97,6 @@ def binaryRelease(taskName, jarName, mainClass) {
 
 artifacts {
 	archives(binaryRelease('buildUserNodeJar', 'UserNode', 'com.tron.user.SendRequest'),
+			binaryRelease('buildCheckDeviationJar', 'CheckDeviation', 'com.tron.user.CheckDeviation'),
 			binaryRelease('buildOracleJar', 'OracleNode', 'com.tron.OracleApplication'))
 }
