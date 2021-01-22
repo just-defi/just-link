@@ -42,10 +42,10 @@ public class JobSubscriberTest {
   }
 
   @Test
-  public void receiveNeRoundTest() throws InterruptedException {
+  public void receiveNewRoundTest() throws InterruptedException {
 
-    JobSubscriber.receiveNewRoundLog("TKGBsz6gX8RDMpkma4wPncafWbZFjNkDXB",
-        "TKGBsz6gX8RDMpkma4wPncafWbZFjNkDXB",
+    JobSubscriber.receiveNewRoundLog("TGm9cecRyrHAUziKrmRASPLb8fgZbJJmF9",
+        "TGm9cecRyrHAUziKrmRASPLb8fgZbJJmF9",
         1,
         1);
     Thread.sleep(10000);

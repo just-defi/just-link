@@ -183,7 +183,7 @@ public class OracleClient {
     tx.setSurrogateId(broadCastResponse.getTxid());
     tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, list));
+    tx.setData(AbiUtil.parseParameters(SUBMIT_METHOD_SIGN, list));
     return tx;
   }
 
@@ -300,8 +300,8 @@ public class OracleClient {
       if (consumeIndexMap.containsKey(addr)) {
         params.put("since", Long.toString(consumeIndexMap.get(addr) +1));
       } else {
-        params.put("since", "1600234218000");
-        //params.put("since", Long.toString(System.currentTimeMillis() - ONE_HOUR));
+        //params.put("since", "1611300134000");
+        params.put("since", Long.toString(System.currentTimeMillis() - ONE_HOUR));
       }
       String urlPath = String.format("/event/contract/%s", addr);
       HttpResponse httpResponse = requestEvent(urlPath, params);

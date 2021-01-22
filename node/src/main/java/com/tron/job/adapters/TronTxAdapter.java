@@ -1,5 +1,6 @@
 package com.tron.job.adapters;
 
+import com.googlecode.cqengine.query.simple.In;
 import com.tron.client.EventRequest;
 import com.tron.client.FulfillRequest;
 import com.tron.client.OracleClient;
@@ -46,7 +47,7 @@ public class TronTxAdapter extends BaseAdapter {
         tx = OracleClient.fulfil(fulfillRequest);
       } else {
         Map<String, Object> params = JsonUtil.json2Map((String)input.get("params"));
-        long roundId = (long)params.get("roundId");
+        long roundId = Long.parseLong(params.get("roundId").toString());
         String addr = String.valueOf(params.get("address"));
 
         tx = OracleClient.submit(addr, roundId, (long)input.get("result"));
