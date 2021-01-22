@@ -42,6 +42,16 @@ public class JobSubscriberTest {
   }
 
   @Test
+  public void receiveNeRoundTest() throws InterruptedException {
+
+    JobSubscriber.receiveNewRoundLog("TKGBsz6gX8RDMpkma4wPncafWbZFjNkDXB",
+        "TKGBsz6gX8RDMpkma4wPncafWbZFjNkDXB",
+        1,
+        1);
+    Thread.sleep(10000);
+  }
+
+  @Test
   public void test1() throws DecoderException {
     String str = "3062666335386330643331373439653161383138616263643330623337376630";
     System.out.println(new String(Hex.decodeHex(str)));

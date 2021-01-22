@@ -54,4 +54,11 @@
 		where `job_spec_id` = #{jobId}
 	</select>
 
+	<select id="getByAddress" parameterType="java.lang.String" resultType="com.tron.web.entity.Initiator" resultMap="InitiatorResultMap">
+		select id, `job_spec_id`, `type`, `address`, created_at, updated_at, deleted_at
+		from initiators
+		where `address` = #{addr}
+		order by id desc limit 1
+	</select>
+
 </mapper>

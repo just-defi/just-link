@@ -28,7 +28,11 @@ public class AdapterManager {
         adapter = new ConvertUsdAdapter();
         break;
       case Constant.TASK_TYPE_TRON_TX:
-        adapter = new TronTxAdapter();
+        if (params != null) {
+          adapter = new TronTxAdapter(params.getVersion());
+        } else {
+          adapter = new TronTxAdapter(null);
+        }
         break;
       case Constant.TASK_TYPE_RECIPROCAL:
         adapter = new ReciprocalAdapter();

@@ -6,10 +6,19 @@ import com.tron.client.OracleClient;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.TronTx;
+import java.util.Map;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class TronTxAdapter extends BaseAdapter {
+
+  @Getter
+  private Long ver;
+
+  public TronTxAdapter(Long version) {
+    ver = version;
+  }
 
   @Override
   public String taskType() {
@@ -20,19 +29,29 @@ public class TronTxAdapter extends BaseAdapter {
   public R perform(R input) {
     // send tx
     try {
-      EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
-      FulfillRequest fulfillRequest = new FulfillRequest(
-          event.getContractAddr(),
-          event.getRequestId(),
-          event.getPayment(),
-          event.getCallbackAddr(),
-          event.getCallbackFunctionId(),
-          event.getCancelExpiration(),
-          codecData((long)input.get("result")));
-          //Long.toString((long)input.get("result")));
-          //(Long) input.get("result"));
+      TronTx tx;
+      if (ver == null || ver == 1) {
+        EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
+        FulfillRequest fulfillRequest = new FulfillRequest(
+            event.getContractAddr(),
+            event.getRequestId(),
+            event.getPayment(),
+            event.getCallbackAddr(),
+            event.getCallbackFunctionId(),
+            event.getCancelExpiration(),
+            codecData((long)input.get("result")));
+        //Long.toString((long)input.get("result")));
+        //(Long) input.get("result"));
 
-      TronTx tx = OracleClient.fulfil(fulfillRequest);
+        tx = OracleClient.fulfil(fulfillRequest);
+      } else {
+        Map<String, Object> params = JsonUtil.json2Map((String)input.get("params"));
+        long roundId = (long)params.get("roundId");
+        String addr = String.valueOf(params.get("address"));
+
+        tx = OracleClient.submit(addr, roundId, (long)input.get("result"));
+      }
+
       tx.setValue((long)input.get("result"));
       tx.setSentAt(1L);
       log.info("tx id : " + tx.getSurrogateId());

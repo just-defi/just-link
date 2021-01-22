@@ -55,6 +55,17 @@ public class JobSubscriber {
     jobRunner.addJobRun(event);
   }
 
+  public static void receiveNewRoundLog(String addr, String startBy, long roundId, long startAt) {
+    // validate request
+    if (startBy == null || startBy.isEmpty()) {
+      log.error("startBy in event request is empty");
+      return;
+    }
+
+    log.info("receive event: roundId:{}, startBy:{}, startAt:{}", roundId, startBy, startAt);
+    jobRunner.addJobRunV2(addr, roundId, startBy, startAt);
+  }
+
   public static void setup() {
     List<Initiator> initiators = jobRunner.getAllJobInitiatorList();
     for (Initiator initiator : initiators) {
