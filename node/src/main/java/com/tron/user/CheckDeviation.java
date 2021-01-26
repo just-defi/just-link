@@ -20,7 +20,6 @@ import com.tron.common.util.Tool;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -126,11 +125,18 @@ public class CheckDeviation {
   }
 
   private static void sendRequest(String contract) {
+    String method;
+    if (!Strings.isNullOrEmpty(config.getAggType()) && "flux".equals(config.getAggType())) {
+      method = "requestNewRound()";
+    } else {
+      method = "requestRateUpdate()";
+    }
+
     try {
       Map<String, Object> params = Maps.newHashMap();
       params.put("owner_address", StringUtil.encode58Check(key.getAddress()));
       params.put("contract_address", contract);
-      params.put("function_selector", "requestRateUpdate()");
+      params.put("function_selector", method);
       params.put("parameter", "");
       params.put("fee_limit", config.getFeelimit().toString());
       params.put("call_value", 0);

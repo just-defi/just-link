@@ -12,6 +12,7 @@ import org.yaml.snakeyaml.Yaml;
 @Data
 public class DeviationConfig {
 
+  private String aggType;
   private long sleep;
   private String fullnode;
   private String privateKey;
