@@ -1,5 +1,6 @@
 package com.tron.job;
 
+import com.google.common.collect.Maps;
 import com.tron.common.Constant;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
@@ -17,6 +18,7 @@ import com.tron.web.service.TronTxService;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -88,6 +90,59 @@ public class JobRunner {
         }
 
         run(jobRun, params);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+  }
+
+  public void addJobRunV2(String addr, long roundId, String startBy, long startAt) {
+
+    try {
+      Initiator initiator = jobSpecsService.getInitiatorByAddress(addr);
+      if (initiator == null) {
+        log.warn("initiator is not exist, address:{}", addr);
+        return;
+      }
+      JobSpec job = jobSpecsService.getById(initiator.getJobSpecID());
+
+      // check run
+      boolean checkResult = true; //validateRun(job, event);
+
+      if (checkResult) {
+        JobRun jobRun = new JobRun();
+        String jobRunId = UUID.randomUUID().toString();
+        jobRunId = jobRunId.replaceAll("-", "");
+        jobRun.setId(jobRunId);
+        jobRun.setJobSpecID(job.getId());
+        jobRun.setRequestId("-");
+        jobRun.setStatus(1);
+        jobRun.setCreationHeight(0L);
+        jobRun.setPayment(0L);  // todo
+        jobRun.setInitiatorId(job.getInitiators().get(0).getId());
+
+        Map<String, Object> params = Maps.newHashMap();
+        params.put("roundId", roundId);
+        params.put("startBy", startBy);
+        params.put("startAt", startAt);
+        params.put("address", addr);
+        String paramsStr = com.tron.web.common.util.JsonUtil.obj2String(params);
+        jobRun.setParams(paramsStr);
+
+        jobRunsService.insert(jobRun);
+
+        for (TaskSpec task : job.getTaskSpecs()) {
+          TaskRun taskRun = new TaskRun();
+          String taskRunId = UUID.randomUUID().toString();
+          taskRunId = taskRunId.replaceAll("-", "");
+          taskRun.setId(taskRunId);
+          taskRun.setJobRunID(jobRunId);
+          taskRun.setTaskSpecId(task.getId());
+          taskRun.setLevel(task.getLevel());
+          jobRunsService.insertTaskRun(taskRun);
+        }
+
+        run(jobRun, paramsStr);
       }
     } catch (Exception e) {
       e.printStackTrace();
