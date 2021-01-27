@@ -2,6 +2,7 @@ package com.tron.job.adapters;
 
 import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 
+import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.tron.common.Constant;
@@ -26,13 +27,16 @@ public class ConvertUsdAdapter extends BaseAdapter {
   public R perform(R input) {
     R result  = new R();
     String url = "https://api-pub.bitfinex.com/v2/ticker/tUSTUSD";
-    HttpResponse response = HttpUtil.requestWithRetry(url);
+    String response = null;
+    try {
+      response = HttpUtil.requestWithRetry(url);
+    } catch (IOException e) {
+      log.info("query USD failed, url:" + url);
+    }
 
-    if (response != null) {
-      HttpEntity responseEntity = response.getEntity();
-
+    if (!Strings.isNullOrEmpty(response)) {
       try {
-        JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
+        JsonElement data = JsonParser.parseString(response);
 
         double value = 1;
         if (data.isJsonArray() && data.getAsJsonArray().size() > 6) {

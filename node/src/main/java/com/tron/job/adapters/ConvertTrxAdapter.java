@@ -1,10 +1,12 @@
 package com.tron.job.adapters;
 
+import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.tron.common.Constant;
 import com.tron.common.util.HttpUtil;
 import com.tron.web.common.util.R;
+import java.io.IOException;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpEntity;
@@ -31,13 +33,16 @@ public class ConvertTrxAdapter extends BaseAdapter {
   @Override
   public R perform(R input) {
     R result  = new R();
-    HttpResponse response = HttpUtil.requestWithRetry(url);
+    String response = null;
+    try {
+      response = HttpUtil.requestWithRetry(url);
+    } catch (IOException e) {
+      log.warn("request failed, err:" + e.getMessage());
+    }
 
-    if (response != null) {
-      HttpEntity responseEntity = response.getEntity();
-
+    if (Strings.isNullOrEmpty(response)) {
       try {
-        JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
+        JsonElement data = JsonParser.parseString(response);
 
         String[] paths = path.split("\\.");
         for (String key : paths) {

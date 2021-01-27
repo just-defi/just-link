@@ -11,6 +11,7 @@ import static com.tron.common.Constant.SUBMIT_METHOD_SIGN;
 import com.beust.jcommander.internal.Sets;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
@@ -30,6 +31,7 @@ import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -94,7 +96,7 @@ public class OracleClient {
    * @param request
    * @return transactionid
    */
-  public static TronTx fulfil(FulfillRequest request) throws IOException, BadItemException {
+  public static TronTx fulfil(FulfillRequest request) throws IOException, URISyntaxException {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address",request.getContractAddr());
@@ -103,12 +105,10 @@ public class OracleClient {
     params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
     params.put("call_value",0);
     params.put("visible",true);
-    HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+    String response = HttpUtil.post("https", FULLNODE_HOST,
             "/wallet/triggersmartcontract", params);
-    HttpEntity responseEntity = response.getEntity();
     TriggerResponse triggerResponse = null;
-    String responsrStr = EntityUtils.toString(responseEntity);
-    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+    triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
 
     // sign
     ECKey key = KeyStore.getKey();
@@ -125,7 +125,7 @@ public class OracleClient {
     response = HttpUtil.post("https", FULLNODE_HOST,
             "/wallet/broadcasthex", params);
     BroadCastResponse broadCastResponse =
-            JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+            JsonUtil.json2Obj(response, BroadCastResponse.class);
 
     TronTx tx = new TronTx();
     tx.setFrom(KeyStore.getAddr());
@@ -217,11 +217,10 @@ public class OracleClient {
     requestIdsCache.put(addr + roundId, "");
   }
 
-  public HttpResponse requestEvent(String urlPath, Map<String, String> params) {
-    HttpResponse response = HttpUtil.get("https", HTTP_EVENT_HOST,
+  public String requestEvent(String urlPath, Map<String, String> params) throws IOException {
+    String response = HttpUtil.get("https", HTTP_EVENT_HOST,
             urlPath, params);
-    int status = response.getStatusLine().getStatusCode();
-    if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+    if (Strings.isNullOrEmpty(response)) {
       int retry = 1;
       for (;;) {
         if(retry > HTTP_MAX_RETRY_TIME) {
@@ -235,8 +234,7 @@ public class OracleClient {
         response = HttpUtil.get("https", HTTP_EVENT_HOST,
                 urlPath, params);
         retry++;
-        status = response.getStatusLine().getStatusCode();
-        if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
+        if (!Strings.isNullOrEmpty(response)) {
           break;
         }
       }
@@ -254,14 +252,13 @@ public class OracleClient {
         params.put("since", Long.toString(System.currentTimeMillis() - ONE_HOUR));
       }
       String urlPath = String.format("/event/contract/%s", addr);
-      HttpResponse httpResponse = requestEvent(urlPath, params);
-      HttpEntity responseEntity = httpResponse.getEntity();
       try {
-        String responseStr = EntityUtils.toString(responseEntity);
+        String httpResponse = requestEvent(urlPath, params);
         ObjectMapper om = new ObjectMapper();
-        return om.readValue(responseStr, new TypeReference<List<EventData>>() {});
+        return om.readValue(httpResponse, new TypeReference<List<EventData>>() {});
       } catch (IOException e) {
         log.error("parse response failed, err: {}", e.getMessage());
+        return null;
       }
     } else {  // for production
       Map<String, String> params = Maps.newHashMap();
@@ -273,18 +270,16 @@ public class OracleClient {
         params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
       }
       String urlPath = String.format("/v1/contracts/%s/events", addr);
-      HttpResponse httpResponse = requestEvent(urlPath, params);
-      HttpEntity responseEntity = httpResponse.getEntity();
-      EventResponse response = null;
+      String httpResponse = null;
       try {
-        String responseStr = EntityUtils.toString(responseEntity);
-        response = JsonUtil.json2Obj(responseStr, EventResponse.class);
+        httpResponse = requestEvent(urlPath, params);
       } catch (IOException e) {
         log.error("parse response failed, err: {}", e.getMessage());
+        return null;
       }
+      EventResponse response = JsonUtil.json2Obj(httpResponse, EventResponse.class);
       return response.getData();
     }
-    return null;
   }
 
   private void updateConsumeMap(String addr, long timestamp) {

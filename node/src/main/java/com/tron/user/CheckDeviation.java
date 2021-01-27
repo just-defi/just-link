@@ -19,8 +19,8 @@ import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -111,10 +111,9 @@ public class CheckDeviation {
   private static long getPrice(String jobUrl) {
     long price = 0;
     try {
-      HttpResponse response = HttpUtil.getByUri(jobUrl);
-      if (response != null && response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-        String result = EntityUtils.toString(response.getEntity());
-        JsonObject data = (JsonObject) JsonParser.parseString(result);
+      String response = HttpUtil.getByUri(jobUrl);
+      if (!Strings.isNullOrEmpty(response)) {
+        JsonObject data = (JsonObject) JsonParser.parseString(response);
         return data.getAsJsonPrimitive("data").getAsLong();
       } else {
         log.error("[alarm]getPrice fail. job="+jobUrl);
@@ -126,11 +125,18 @@ public class CheckDeviation {
   }
 
   private static void sendRequest(String contract) {
+    String method;
+    if (!Strings.isNullOrEmpty(config.getAggType()) && "flux".equals(config.getAggType())) {
+      method = "requestNewRound()";
+    } else {
+      method = "requestRateUpdate()";
+    }
+
     try {
       Map<String, Object> params = Maps.newHashMap();
       params.put("owner_address", StringUtil.encode58Check(key.getAddress()));
       params.put("contract_address", contract);
-      params.put("function_selector", "requestRateUpdate()");
+      params.put("function_selector", method);
       params.put("parameter", "");
       params.put("fee_limit", config.getFeelimit().toString());
       params.put("call_value", 0);
@@ -145,7 +151,7 @@ public class CheckDeviation {
     }
   }
 
-  private static long getPriceFromContract(String contract) throws IOException {
+  private static long getPriceFromContract(String contract) throws IOException, URISyntaxException {
     String param = AbiUtil.parseParameters("latestAnswer()", "");
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", READONLY_ACCOUNT);
@@ -153,11 +159,10 @@ public class CheckDeviation {
     params.put("function_selector", "latestAnswer()");
     params.put("parameter", param);
     params.put("visible", true);
-    HttpResponse response = HttpUtil.post(
+    String response = HttpUtil.post(
             "https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
-    assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(str-> str.replaceAll("^0[x|X]", ""))

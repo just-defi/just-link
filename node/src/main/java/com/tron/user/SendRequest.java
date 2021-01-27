@@ -5,6 +5,7 @@ import static com.tron.common.Constant.READONLY_ACCOUNT;
 import static com.tron.common.Constant.TRIGGET_CONSTANT_CONTRACT;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.google.common.util.concurrent.AtomicLongMap;
 import com.google.gson.JsonObject;
@@ -14,6 +15,7 @@ import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -70,10 +72,9 @@ public class SendRequest {
   private static long getPrice(String jobId) {
     long price = 0;
     try {
-      HttpResponse response = HttpUtil.getByUri(priceUrl + jobId);
-      if (response != null && response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-        String result = EntityUtils.toString(response.getEntity());
-        JsonObject data = (JsonObject) JsonParser.parseString(result);
+      String response = HttpUtil.getByUri(priceUrl + jobId);
+      if (Strings.isNullOrEmpty(response)) {
+        JsonObject data = (JsonObject) JsonParser.parseString(response);
         return data.getAsJsonPrimitive("data").getAsLong();
       }else {
         System.out.println("[alarm]getPrice fail. jobId="+jobId);
@@ -134,7 +135,7 @@ public class SendRequest {
     return forceMap.get(contract) >= forceTime;
   }
 
-  private static long getPriceFromContract(String contract) throws IOException {
+  private static long getPriceFromContract(String contract) throws IOException, URISyntaxException {
     String param = AbiUtil.parseParameters("latestAnswer()", "");
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", READONLY_ACCOUNT);
@@ -142,11 +143,10 @@ public class SendRequest {
     params.put("function_selector", "latestAnswer()");
     params.put("parameter", param);
     params.put("visible", true);
-    HttpResponse response = HttpUtil.post(
+    String response = HttpUtil.post(
             "https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
-    assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(str-> str.replaceAll("^0[x|X]", ""))
