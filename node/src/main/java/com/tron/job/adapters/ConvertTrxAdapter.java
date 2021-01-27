@@ -40,7 +40,7 @@ public class ConvertTrxAdapter extends BaseAdapter {
       log.warn("request failed, err:" + e.getMessage());
     }
 
-    if (Strings.isNullOrEmpty(response)) {
+    if (!Strings.isNullOrEmpty(response)) {
       try {
         JsonElement data = JsonParser.parseString(response);
 

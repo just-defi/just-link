@@ -20,6 +20,7 @@ import com.tron.keystore.KeyStore;
 import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -50,7 +51,8 @@ public class FluxAggregator {
    * @param
    * @return transactionid
    */
-  public static TronTx submit(String addr, long roundId, long result) throws IOException {
+  public static TronTx submit(String addr, long roundId, long result)
+      throws IOException, URISyntaxException {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", addr);
@@ -62,12 +64,10 @@ public class FluxAggregator {
     params.put("fee_limit", MIN_FEE_LIMIT);
     params.put("call_value",0);
     params.put("visible",true);
-    HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+    String response = HttpUtil.post("https", FULLNODE_HOST,
         "/wallet/triggersmartcontract", params);
-    HttpEntity responseEntity = response.getEntity();
     TriggerResponse triggerResponse = null;
-    String responsrStr = EntityUtils.toString(responseEntity);
-    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+    triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
 
     // sign
     ECKey key = KeyStore.getKey();
@@ -84,7 +84,7 @@ public class FluxAggregator {
     response = HttpUtil.post("https", FULLNODE_HOST,
         "/wallet/broadcasthex", params);
     BroadCastResponse broadCastResponse =
-        JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+        JsonUtil.json2Obj(response, BroadCastResponse.class);
     TronTx tx = new TronTx();
     tx.setFrom(KeyStore.getAddr());
     tx.setTo(addr);
@@ -108,13 +108,11 @@ public class FluxAggregator {
       params.put("parameter", AbiUtil.parseParameters(ROUND_STATE_METHOD_SIGN, list));
       params.put("visible",true);
 
-      HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+      String response = HttpUtil.post("https", FULLNODE_HOST,
           "/wallet/triggersmartcontract", params);
-      HttpEntity responseEntity = response.getEntity();
-      String responsrStr = EntityUtils.toString(responseEntity);
       ObjectMapper mapper = new ObjectMapper();
       assert response != null;
-      Map<String, Object> result = mapper.readValue(responsrStr, Map.class);
+      Map<String, Object> result = mapper.readValue(response, Map.class);
 
       // decode result
       List<Type> ret =  ContractDecoder.decode(ROUND_STATE_RESULT_SIGN, ((List<String>)result.get("constant_result")).get(0));
@@ -135,6 +133,7 @@ public class FluxAggregator {
   }
 
   public static boolean checkOracleRoundState(OracleRoundState oracleRoundState) {
+    System.out.println(oracleRoundState);
     if (oracleRoundState == null) {
       return false;
     }
@@ -153,7 +152,7 @@ public class FluxAggregator {
     BigInteger minFunds = oracleRoundState.getPaymentAmount().multiply(
         new BigInteger(String.valueOf(oracleRoundState.getOracleCount() * 3)));
     if (oracleRoundState.getAvailableFunds() == null ||
-        minFunds.compareTo(oracleRoundState.getAvailableFunds()) < 0) {
+        minFunds.compareTo(oracleRoundState.getAvailableFunds()) > 0) {
       log.warn("aggregator is underfunded");
       return false;
     }
