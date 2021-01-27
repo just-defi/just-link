@@ -2,6 +2,7 @@ package com.tron.job.adapters;
 
 import com.googlecode.cqengine.query.simple.In;
 import com.tron.client.EventRequest;
+import com.tron.client.FluxAggregator;
 import com.tron.client.FulfillRequest;
 import com.tron.client.OracleClient;
 import com.tron.web.common.util.JsonUtil;
@@ -50,7 +51,7 @@ public class TronTxAdapter extends BaseAdapter {
         long roundId = Long.parseLong(params.get("roundId").toString());
         String addr = String.valueOf(params.get("address"));
 
-        tx = OracleClient.submit(addr, roundId, (long)input.get("result"));
+        tx = FluxAggregator.submit(addr, roundId, (long)input.get("result"));
       }
 
       tx.setValue((long)input.get("result"));
