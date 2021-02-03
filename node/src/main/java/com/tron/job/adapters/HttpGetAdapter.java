@@ -44,7 +44,7 @@ public class HttpGetAdapter extends BaseAdapter {
       log.info("parse response failed, err:" + e.getMessage());
     }
 
-    if (Strings.isNullOrEmpty(response)) {
+    if (!Strings.isNullOrEmpty(response)) {
       try {
         JsonElement data = JsonParser.parseString(response);
 

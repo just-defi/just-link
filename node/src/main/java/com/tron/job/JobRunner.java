@@ -96,7 +96,7 @@ public class JobRunner {
     }
   }
 
-  public void addJobRunV2(String addr, long roundId, String startBy, long startAt) {
+  public void addJobRunV2(String addr, long roundId, String startBy, long startAt, BigInteger payment) {
 
     try {
       Initiator initiator = jobSpecsService.getInitiatorByAddress(addr);
@@ -107,7 +107,7 @@ public class JobRunner {
       JobSpec job = jobSpecsService.getById(initiator.getJobSpecID());
 
       // check run
-      boolean checkResult = true; //validateRun(job, event);
+      boolean checkResult = validateRunV2(job, initiator.getJobSpecID(), payment);
 
       if (checkResult) {
         JobRun jobRun = new JobRun();
@@ -261,6 +261,28 @@ public class JobRunner {
     String runId = jobRunsService.getByRequestId(event.getRequestId());
     if (runId != null) {
       log.warn("event repeated request id {}", event.getRequestId());
+      return false;
+    }
+
+    return true;
+  }
+
+  private boolean validateRunV2(JobSpec jobSpec, String jobId, BigInteger payment) {
+    if (jobSpec == null) {
+      log.warn("failed to find job spec, ID: " + jobId);
+      return false;
+    }
+
+    if (jobSpec.archived()) {
+      log.warn("Trying to run archived job " + jobSpec.getId());
+      return false;
+    }
+
+    BigInteger minPayment;
+    minPayment = new BigInteger(nodeMinPayment);
+
+    if (payment != null && payment.compareTo(new BigInteger("0")) > 0 && minPayment.compareTo(payment) > 0) {
+      log.warn("rejecting job {} with payment {} below minimum threshold ({})", jobId, payment, minPayment);
       return false;
     }
 
