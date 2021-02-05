@@ -4,6 +4,7 @@ import static com.tron.job.adapters.ContractAdapter.TradePair.BTC_TRX;
 import static com.tron.job.adapters.ContractAdapter.TradePair.DICE_TRX;
 import static com.tron.job.adapters.ContractAdapter.TradePair.JUST_TRX;
 import static com.tron.job.adapters.ContractAdapter.TradePair.SUN_TRX;
+import static com.tron.job.adapters.ContractAdapter.TradePair.USDJ_TRX;
 import static com.tron.job.adapters.ContractAdapter.TradePair.WIN_TRX;
 
 import com.tron.job.adapters.ContractAdapter;
@@ -14,7 +15,7 @@ import org.junit.Test;
 public class ContractAdapterTest {
 
   @Test
-  public void testGetTRXBalance() throws IOException {
+  public void testGetTRXBalance() throws Exception {
     System.out.println(ContractAdapter.getTRXBalance(
             "TYukBQZ2XXCcRCReAUguyXncCWNY9CEiDQ", true));
     System.out.println(ContractAdapter.getTRXBalance(
@@ -22,7 +23,7 @@ public class ContractAdapterTest {
   }
 
   @Test
-  public void testGetBalance() throws IOException {
+  public void testGetBalance() throws Exception {
     BigInteger balance = ContractAdapter.balanceOf(
             "TQcia2H2TU3WrFk9sKtdK9qCfkW8XirfPQ",
             "TMwFHYXLJaRUPeW6421aqXL4ZEzPRFGkGT");
@@ -30,7 +31,7 @@ public class ContractAdapterTest {
   }
 
   @Test
-  public void testGetDecimal() throws IOException {
+  public void testGetDecimal() throws Exception {
     System.out.println(ContractAdapter.getDecimal(JUST_TRX.getTrc20Addr()));
     System.out.println(ContractAdapter.getDecimal(BTC_TRX.getTrc20Addr()));
     System.out.println(ContractAdapter.getDecimal(DICE_TRX.getTrc20Addr()));
@@ -39,7 +40,7 @@ public class ContractAdapterTest {
   }
 
   @Test
-  public void testGetTradePriceWithTRX() throws IOException {
-    System.out.println(ContractAdapter.getTradePriceWithTRX(JUST_TRX));
+  public void testGetTradePriceWithTRX() throws Exception {
+    System.out.println(ContractAdapter.getTradePriceWithTRX(USDJ_TRX));
   }
 }
