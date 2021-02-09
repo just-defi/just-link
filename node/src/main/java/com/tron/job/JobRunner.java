@@ -78,21 +78,26 @@ public class JobRunner {
 
         jobRunsService.insert(jobRun);
 
-        for (TaskSpec task : job.getTaskSpecs()) {
-          TaskRun taskRun = new TaskRun();
-          String taskRunId = UUID.randomUUID().toString();
-          taskRunId = taskRunId.replaceAll("-", "");
-          taskRun.setId(taskRunId);
-          taskRun.setJobRunID(jobRunId);
-          taskRun.setTaskSpecId(task.getId());
-          taskRun.setLevel(task.getLevel());
-          jobRunsService.insertTaskRun(taskRun);
-        }
+        insertTaskRuns(jobRunId, job.getTaskSpecs());
 
         run(jobRun, params);
       }
     } catch (Exception e) {
+      log.error("add job run failed, error msg:" + e.getMessage());
       e.printStackTrace();
+    }
+  }
+
+  private void insertTaskRuns(String jobRunId, List<TaskSpec> taskSpecs) {
+    for (TaskSpec task : taskSpecs) {
+      TaskRun taskRun = new TaskRun();
+      String taskRunId = UUID.randomUUID().toString();
+      taskRunId = taskRunId.replaceAll("-", "");
+      taskRun.setId(taskRunId);
+      taskRun.setJobRunID(jobRunId);
+      taskRun.setTaskSpecId(task.getId());
+      taskRun.setLevel(task.getLevel());
+      jobRunsService.insertTaskRun(taskRun);
     }
   }
 
@@ -131,20 +136,12 @@ public class JobRunner {
 
         jobRunsService.insert(jobRun);
 
-        for (TaskSpec task : job.getTaskSpecs()) {
-          TaskRun taskRun = new TaskRun();
-          String taskRunId = UUID.randomUUID().toString();
-          taskRunId = taskRunId.replaceAll("-", "");
-          taskRun.setId(taskRunId);
-          taskRun.setJobRunID(jobRunId);
-          taskRun.setTaskSpecId(task.getId());
-          taskRun.setLevel(task.getLevel());
-          jobRunsService.insertTaskRun(taskRun);
-        }
+        insertTaskRuns(jobRunId, job.getTaskSpecs());
 
         run(jobRun, paramsStr);
       }
     } catch (Exception e) {
+      log.error("add job run failed, error msg:" + e.getMessage());
       e.printStackTrace();
     }
   }
@@ -202,10 +199,9 @@ public class JobRunner {
         jobRunsService.updateJobResult(runId, 3, null, String.valueOf(preTaskResult.get("msg")));
       }
     } catch (Exception e) {
+      log.error("execute job run error, msg:" + e.getMessage());
       e.printStackTrace();
     }
-
-
   }
 
   private R executeTask(TaskRun taskRun, TaskSpec taskSpec, R input) {

@@ -66,10 +66,10 @@ public class JobSubscriber {
     }
 
     // Ignore rounds we started
-//    if (KeyStore.getAddr().equals(startBy)) {
-//      log.info("Ignoring new round request: we started this round, contract:{}, roundId:{}", addr, roundId);
-//      return;
-//    }
+    if (KeyStore.getAddr().equals(startBy)) {
+      log.info("Ignoring new round request: we started this round, contract:{}, roundId:{}", addr, roundId);
+      return;
+    }
 
     OracleRoundState roundState = FluxAggregator.getOracleRoundState(addr, roundId);
     boolean checkResult = FluxAggregator.checkOracleRoundState(roundState);
