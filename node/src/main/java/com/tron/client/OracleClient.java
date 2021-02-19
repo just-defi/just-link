@@ -37,6 +37,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -68,7 +70,7 @@ public class OracleClient {
   private static Cache<String, String> requestIdsCache = CacheBuilder.newBuilder().maximumSize(10000)
           .expireAfterWrite(12, TimeUnit.HOURS).recordStats().build();
 
-  private static HashMap<String, Set<String>> listeningAddrs = Maps.newHashMap();
+  private static ConcurrentHashMap<String, Set<String>> listeningAddrs = new ConcurrentHashMap<>();
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
   private ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
