@@ -14,6 +14,7 @@ public class DeviationConfig {
 
   private String aggType;
   private long sleep;
+  private String schema;
   private String fullnode;
   private String privateKey;
   private BigInteger feelimit;

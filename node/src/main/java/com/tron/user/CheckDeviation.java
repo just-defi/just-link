@@ -38,6 +38,7 @@ public class CheckDeviation {
   private static long DEVIATION = 10;
   private static Map<String, Long> deviationMap = new HashMap<>();
   private static Map<String, Long> forceRequestTime = new HashMap<>();
+  private static String schema = "https";
 
   public static void main(String[] args) {
     Args argv = new Args();
@@ -53,6 +54,9 @@ public class CheckDeviation {
     try {
       config = DeviationConfig.loadConfig(argv.config);
       key = ECKey.fromPrivate(ByteArray.fromHexString(config.getPrivateKey()));
+      if (!Strings.isNullOrEmpty(config.getSchema())) {
+        schema = config.getSchema();
+      }
       run();
     } catch (FileNotFoundException e) {
       e.printStackTrace();
@@ -138,7 +142,7 @@ public class CheckDeviation {
       params.put("fee_limit", config.getFeelimit().toString());
       params.put("call_value", 0);
       params.put("visible", true);
-      BroadCastResponse rps = Tool.triggerContract(key, params, config.getFullnode());
+      BroadCastResponse rps = Tool.triggerContract(key, params, schema, config.getFullnode());
       if (rps != null) {
         log.info("trigger " + contract + " Contract result is: " + rps.isResult()
                 + ", msg is: " + rps.getMessage());
@@ -157,7 +161,7 @@ public class CheckDeviation {
     params.put("parameter", param);
     params.put("visible", true);
     String response = HttpUtil.post(
-            "https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+            schema, FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
     Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
