@@ -39,6 +39,7 @@ public class CheckDeviation {
   private static Map<String, Long> deviationMap = new HashMap<>();
   private static Map<String, Long> forceRequestTime = new HashMap<>();
   private static String schema = "https";
+  private static String fullnode = FULLNODE_HOST;
 
   public static void main(String[] args) {
     Args argv = new Args();
@@ -56,6 +57,9 @@ public class CheckDeviation {
       key = ECKey.fromPrivate(ByteArray.fromHexString(config.getPrivateKey()));
       if (!Strings.isNullOrEmpty(config.getFullnodeSchema())) {
         schema = config.getFullnodeSchema();
+      }
+      if (!Strings.isNullOrEmpty(config.getFullnode())) {
+        fullnode = config.getFullnode();
       }
       run();
     } catch (FileNotFoundException e) {
@@ -161,7 +165,7 @@ public class CheckDeviation {
     params.put("parameter", param);
     params.put("visible", true);
     String response = HttpUtil.post(
-            schema, FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+            schema, fullnode, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
     Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
