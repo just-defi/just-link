@@ -54,8 +54,8 @@ public class CheckDeviation {
     try {
       config = DeviationConfig.loadConfig(argv.config);
       key = ECKey.fromPrivate(ByteArray.fromHexString(config.getPrivateKey()));
-      if (!Strings.isNullOrEmpty(config.getSchema())) {
-        schema = config.getSchema();
+      if (!Strings.isNullOrEmpty(config.getFullnodeSchema())) {
+        schema = config.getFullnodeSchema();
       }
       run();
     } catch (FileNotFoundException e) {
