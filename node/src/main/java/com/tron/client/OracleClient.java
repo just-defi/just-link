@@ -22,6 +22,7 @@ import com.tron.client.message.EventData;
 import com.tron.client.message.EventResponse;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
+import com.tron.common.Config;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;
@@ -65,7 +66,6 @@ public class OracleClient {
 
   private static final String EVENT_NAME = "OracleRequest";
   private static final String EVENT_NEW_ROUND = "NewRound";
-  private static final long MIN_FEE_LIMIT = 20_000_000L;   // 10 trx
 
   private static Cache<String, String> requestIdsCache = CacheBuilder.newBuilder().maximumSize(10000)
           .expireAfterWrite(12, TimeUnit.HOURS).recordStats().build();
@@ -104,7 +104,7 @@ public class OracleClient {
     params.put("contract_address",request.getContractAddr());
     params.put("function_selector",FULFIL_METHOD_SIGN);
     params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
-    params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
+    params.put("fee_limit", Config.getMinFeeLimit());
     params.put("call_value",0);
     params.put("visible",true);
     String response = HttpUtil.post("https", FULLNODE_HOST,
@@ -309,6 +309,6 @@ public class OracleClient {
       log.warn("the payment maybe even can't afford the energy cost, payment: {}", payment);
     }
     return Math.max(MIN_FEE_LIMIT, Math.round(trxBalance * 20 / 100));*/
-    return MIN_FEE_LIMIT;
+    return 0L;
   }
 }
