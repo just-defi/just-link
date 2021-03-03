@@ -14,6 +14,7 @@ import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.OracleRoundState;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
+import com.tron.common.Config;
 import com.tron.common.ContractDecoder;
 import com.tron.common.util.HttpUtil;
 import com.tron.keystore.KeyStore;
@@ -24,11 +25,7 @@ import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
@@ -43,8 +40,6 @@ import org.tron.tronj.abi.datatypes.Uint;
 
 @Slf4j
 public class FluxAggregator {
-
-  private static final long MIN_FEE_LIMIT = 10_000_000L;   // 10 trx
 
   /**
    *
@@ -61,7 +56,7 @@ public class FluxAggregator {
     list.add(roundId);
     list.add(result);
     params.put("parameter", AbiUtil.parseParameters(SUBMIT_METHOD_SIGN, list));
-    params.put("fee_limit", MIN_FEE_LIMIT);
+    params.put("fee_limit", Config.getMinFeeLimit());
     params.put("call_value",0);
     params.put("visible",true);
     String response = HttpUtil.post("https", FULLNODE_HOST,
