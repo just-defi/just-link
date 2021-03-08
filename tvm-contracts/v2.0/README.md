@@ -35,6 +35,24 @@ Keep in mind the oracle variable is currently your node's address rather than yo
 
 
 ## Mainnet
-
-todo
-
+|Pair|Contract|
+|:--|:--|
+| TRX/USD	| TWDRdAdbXuegDNGURDkAq41iACRNLohyt1 |
+| JST/USD	| TMbR5ByrK7PUVtzo7HTb1CdCqAU1EbpKy4 |
+| WIN/USD	| TXA4c5g1hxEpinm44rCByATVTG8PbDXREu |
+| SUN/USD	| TCQkjqrJA5CpBYXLuUJUwXGBjko9hf5pWF |
+| DICE/USD	| TQMADUvfrzoKN4fzvaDRU8ikz5KYEcKq1R |
+| BTC/USD	| TSh5bfR9L9dxy7MA3Pah7uUVHKRwiAbFeF |
+| USDJ/USD	| TTsmtL45Rcz6VKKsPjgrPbzpPKMNCxiuvZ |
+| USDT/USD	| TCcnAueqMNo9QgWbMqH89KoAeNGbbU82Vt |
+| LIVE/USD	| THaQ5Nfdrcn9YraNCSCvwBpvz2t9KCvucy |
+| BTT/USD	| TEEdevx4m6hpo3dBZrXHVXUn8jGKbDp3C7 |
+| JST/TRX	| TDNHjMKsstUgwUQxhYXcGZHMHpjExthJTS |
+| WIN/TRX	| TExcFg5NDNbbqAiw2tsobEgVXAAKr4d7h8 |
+| SUN/TRX	| TRD5w7BQNyivjHZgyGhzhNAYbAWs2cB2hS |
+| DICE/TRX	| TUaA7xy1NbMWPbQhV4J2MfR9hNrnrpwBeP |
+| BTC/TRX	| TKVsr2g31EyaDFaJRKc4x1bARRQKHF17iQ |
+| USDJ/TRX	| TCnjeoqJwmWFWxp9jKTSrLk2fJpqaaVHsD |
+| USDT/TRX	| TWzjJthkw7gy8A1Ff5vohF15Gokkd6DYWq |
+| BTT/TRX	| TR9wiHB8cnrS9oPDqQUQWcCWRJ9hpDW3no |
+| ETH/TRX	| TGSw7F7QUSqYAj7XiWkcuvSoBzmTUHX3pN |
