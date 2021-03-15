@@ -8,57 +8,8 @@ import "./SafeMath32.sol";
 import "./SafeMath64.sol";
 import "./JstTokenInterface.sol";
 import "./SafeMathJustlink.sol";
-
-interface AggregatorInterface {
-  function latestAnswer() external view returns (int256);
-  function latestTimestamp() external view returns (uint256);
-  function latestRound() external view returns (uint256);
-  function getAnswer(uint256 roundId) external view returns (int256);
-  function getTimestamp(uint256 roundId) external view returns (uint256);
-
-  event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 updatedAt);
-  event NewRound(uint256 indexed roundId, address indexed startedBy, uint256 startedAt);
-}
-
-interface AggregatorV3Interface {
-
-  function decimals() external view returns (uint8);
-  function description() external view returns (string memory);
-  function version() external view returns (uint256);
-
-  // getRoundData and latestRoundData should both raise "No data present"
-  // if they do not have data to report, instead of returning unset values
-  // which could be misinterpreted as actual reported values.
-  function getRoundData(uint80 _roundId)
-    external
-    view
-    returns (
-      uint80 roundId,
-      int256 answer,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    );
-  function latestRoundData()
-    external
-    view
-    returns (
-      uint80 roundId,
-      int256 answer,
-      uint256 startedAt,
-      uint256 updatedAt,
-      uint80 answeredInRound
-    );
-}
-
-interface AggregatorValidatorInterface {
-  function validate(
-    uint256 previousRoundId,
-    int256 previousAnswer,
-    uint256 currentRoundId,
-    int256 currentAnswer
-  ) external returns (bool);
-}
+import "./AggregatorValidatorInterface.sol";
+import "./AggregatorV2V3Interface.sol";
 
 /**
  * @title The Prepaid Aggregator contract
