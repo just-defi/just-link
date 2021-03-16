@@ -39,7 +39,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function latestAnswer()
     public
     view
-    virtual
     returns (int256 answer)
   {
     return currentPhase.aggregator.latestAnswer();
@@ -56,7 +55,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function latestTimestamp()
     public
     view
-    virtual
     returns (uint256 updatedAt)
   {
     return currentPhase.aggregator.latestTimestamp();
@@ -74,7 +72,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function getAnswer(uint256 _roundId)
     public
     view
-    virtual
     returns (int256 answer)
   {
     if (_roundId > MAX_ID) return 0;
@@ -98,7 +95,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function getTimestamp(uint256 _roundId)
     public
     view
-    virtual
     returns (uint256 updatedAt)
   {
     if (_roundId > MAX_ID) return 0;
@@ -123,7 +119,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function latestRound()
     public
     view
-    virtual
     returns (uint256 roundId)
   {
     Phase memory phase = currentPhase; // cache storage reads
@@ -158,7 +153,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function getRoundData(uint80 _roundId)
     public
     view
-    virtual
     returns (
       uint80 roundId,
       int256 answer,
@@ -205,7 +199,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function latestRoundData()
     public
     view
-    virtual
     returns (
       uint80 roundId,
       int256 answer,
@@ -242,7 +235,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function proposedGetRoundData(uint80 _roundId)
     public
     view
-    virtual
     hasProposal()
     returns (
       uint80 roundId,
@@ -269,7 +261,6 @@ contract AggregatorProxy is AggregatorV2V3Interface, Owned {
   function proposedLatestRoundData()
     public
     view
-    virtual
     hasProposal()
     returns (
       uint80 roundId,
