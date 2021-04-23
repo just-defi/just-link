@@ -3,6 +3,7 @@ package com.tron.common.util;
 import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tron.common.Config;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -50,6 +51,7 @@ public class HttpUtil {
     CloseableHttpClient client =
             HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     HttpGet httpGet = new HttpGet(uri);
+    httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     try (CloseableHttpResponse response = client.execute(httpGet)) {
       return EntityUtils.toString(response.getEntity());
     } catch (IOException e) {
@@ -81,6 +83,7 @@ public class HttpUtil {
     HttpPost httpPost = new HttpPost(uri);
     httpPost.setEntity(entity);
     httpPost.setHeader("Content-Type", "application/json;charset=utf8");
+    httpPost.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     try (CloseableHttpResponse response = client.execute(httpPost)) {
       return EntityUtils.toString(response.getEntity());
     } catch (IOException e) {
@@ -103,6 +106,7 @@ public class HttpUtil {
 //    CloseableHttpClient client =
 //            HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     HttpGet httpGet = new HttpGet(uri);
+    httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     try (CloseableHttpResponse response = client.execute(httpGet)) {
       return EntityUtils.toString(response.getEntity());
     } catch (IOException e) {
@@ -119,6 +123,7 @@ public class HttpUtil {
     try {
       URI uri = new URI(url);
       HttpGet httpGet = new HttpGet(uri);
+      httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
       HttpResponse response = client.execute(httpGet);
       if (response == null) {
         return null;
