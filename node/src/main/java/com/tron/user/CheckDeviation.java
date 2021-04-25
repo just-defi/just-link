@@ -179,6 +179,9 @@ public class CheckDeviation {
     try {
       long prePrice = getPriceFromContract(contract);
       log.info(contract +": " + prePrice + "  " + nowPrice);
+      if (prePrice == 0) {
+        return true;
+      }
       long sub = Math.abs(Math.subtractExact(prePrice, nowPrice));
       Long deviation = deviationMap.get(contract);
       deviation = deviation == null ? DEVIATION : deviation;
