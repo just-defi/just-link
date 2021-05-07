@@ -34,6 +34,8 @@ public class KeyStore {
       privatekey = PropUtil.readProperty(file.getPath(), "privatekey");
     }
     ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privatekey));
+
+    System.out.println("zyd key.store public address: " + ByteArray.toHexString(ecKey.getAddress()));
   }
 
   public static ECKey getKey() {

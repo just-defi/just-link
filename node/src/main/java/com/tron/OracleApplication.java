@@ -39,6 +39,8 @@ public class OracleApplication {
 			log.error("init ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
+		System.out.println("zyd keystore address: " + KeyStore.getAddr());
+
 		Constant.initEnv(argv.env);
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
 		JobCache jobCache = context.getBean(JobCache.class);

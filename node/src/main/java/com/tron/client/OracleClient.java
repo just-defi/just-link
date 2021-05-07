@@ -58,7 +58,8 @@ import org.tron.protos.Protocol;
 public class OracleClient {
 
   private static final String EVENT_NAME = "OracleRequest";
-  private static final long MIN_FEE_LIMIT = 10_000_000L;   // 10 trx
+  private static final String VRF_EVENT_NAME = "VRFRequest";
+  private static final long MIN_FEE_LIMIT = 100_000_000L;   // 100 trx
 
   private static Cache<String, String> requestIdsCache = CacheBuilder.newBuilder().maximumSize(10000)
           .expireAfterWrite(12, TimeUnit.HOURS).recordStats().build();
@@ -146,7 +147,7 @@ public class OracleClient {
                 // update consumeIndexMap
                 updateConsumeMap(addr, eventData.getBlockTimestamp());
                 // filter the events
-                if (!EVENT_NAME.equals(eventData.getEventName())) {
+                if (/*!EVENT_NAME.equals(eventData.getEventName()) && */!VRF_EVENT_NAME.equals(eventData.getEventName())) {
                   log.warn("this node does not support this event, event name: {}",
                           eventData.getEventName());
                   continue;

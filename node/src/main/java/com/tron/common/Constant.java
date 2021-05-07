@@ -11,11 +11,11 @@ public class Constant {
 
   public static final String TRX_DECIMAL_STR = "1000000";
 
-  public static String HTTP_EVENT_HOST = "api.trongrid.io";
-  public static String FULLNODE_HOST = "api.trongrid.io";
+ // public static String HTTP_EVENT_HOST = "api.trongrid.io";
+ // public static String FULLNODE_HOST = "api.trongrid.io";
 
-//  public static String HTTP_EVENT_HOST = "event.nileex.io"; // for test
-//  public static String FULLNODE_HOST = "api.nileex.io"; // for test
+  public static String HTTP_EVENT_HOST = "event.nileex.io"; // for test
+  public static String FULLNODE_HOST = "api.nileex.io"; // for test
 
   public static void initEnv(String env) {
     if ("dev".equals(env)) {
@@ -40,6 +40,7 @@ public class Constant {
   public static final String TASK_TYPE_JUST_SWAP = "justswap";
   public static final String TASK_TYPE_CACHE = "cache";
   public static final String TASK_TYPE_CONVERT_TRX = "converttrx";
+  public static final String TASK_TYPE_RANDOM = "random";
 
   // initiator type
   public static final String INITIATOR_TYPE_RUN_LOG = "runlog";

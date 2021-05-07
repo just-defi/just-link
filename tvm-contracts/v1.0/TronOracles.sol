@@ -170,7 +170,7 @@ contract TRC20Interface {
  * @title The Justlink Oracle contract
  * @notice Node operators can deploy this contract to fulfill requests sent to them
  */
-contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
+contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     using SafeMath for uint256;
 
     uint256 constant public EXPIRY_TIME = 5 minutes;
@@ -188,6 +188,18 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     uint256 private withdrawableTokens = ONE_FOR_CONSISTENT_GAS_COST;
 
     event OracleRequest(
+        bytes32 indexed specId,
+        address requester,
+        bytes32 requestId,
+        uint256 payment,
+        address callbackAddr,
+        bytes4 callbackFunctionId,
+        uint256 cancelExpiration,
+        uint256 dataVersion,
+        bytes data
+    );
+
+    event VRFRequest(
         bytes32 indexed specId,
         address requester,
         bytes32 requestId,
@@ -293,6 +305,60 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
         );
 
         emit OracleRequest(
+            _specId,
+            _sender,
+            requestId,
+            _payment,
+            _callbackAddress,
+            _callbackFunctionId,
+            expiration,
+            _dataVersion,
+            _data);
+    }
+
+
+    /**
+     * @notice Creates the VRF request
+     * @dev Stores the hash of the params as the on-chain commitment for the request.
+     * Emits VRFRequest event for the Justlink node to detect.
+     * @param _sender The sender of the request
+     * @param _payment The amount of payment given (specified in wei)
+     * @param _specId The Job Specification ID
+     * @param _callbackAddress The callback address for the response
+     * @param _callbackFunctionId The callback function ID for the response
+     * @param _nonce The nonce sent by the requester
+     * @param _dataVersion The specified data version
+     * @param _data The CBOR payload of the request
+     */
+    function vrfRequest(
+        address _sender,
+        uint256 _payment,
+        bytes32 _specId,
+        address _callbackAddress,
+        bytes4 _callbackFunctionId,
+        uint256 _nonce,
+        uint256 _dataVersion,
+        bytes _data
+    )
+    external
+    onlyJustMid
+    checkCallbackAddress(_callbackAddress)
+    {
+        bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
+        require(commitments[requestId] == 0, "Must use a unique ID");
+        // solhint-disable-next-line not-rely-on-time
+        uint256 expiration = now.add(EXPIRY_TIME);
+
+        commitments[requestId] = keccak256(
+            abi.encodePacked(
+                _payment,
+                _callbackAddress,
+                _callbackFunctionId,
+                expiration
+            )
+        );
+
+        emit VRFRequest(
             _specId,
             _sender,
             requestId,
@@ -468,7 +534,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
         assembly { // solhint-disable-line no-inline-assembly
             funcSelector := mload(add(_data, 32))
         }
-        require(funcSelector == this.oracleRequest.selector, "Must use whitelisted functions");
+        require(funcSelector == this.oracleRequest.selector || funcSelector == this.vrfRequest.selector, "Must use whitelisted functions");
         _;
     }
 

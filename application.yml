@@ -1,0 +1,27 @@
+# Tomcat
+server:
+    port: 8080
+spring:
+    # dev|pro
+    profiles:
+        active: dev
+    jackson:
+        time-zone: GMT+8
+        date-format: yyyy-MM-dd HH:mm:ss
+    servlet:
+        multipart:
+            maxRequestSize: 104857600 #100MB
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: '*'
+
+logging:
+  level:
+    com.tron: info
+    com.tron.web.mapper: debug
+
+mybatis:
+  mapper-locations: classpath:/mapper/**/*Mapper.xml

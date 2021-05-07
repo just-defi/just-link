@@ -6,6 +6,7 @@ import com.google.common.cache.CacheBuilder;
 import com.tron.common.Constant;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
+import com.tron.keystore.KeyStore;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.TaskSpec;
@@ -123,6 +124,7 @@ public class JobCache {
 
   public R getJobResultById(String jobId) {
     JobSpec job = jobSpecsService.getById(jobId);
+    System.out.println("zyd adapter 1111");
 
     R preTaskResult = new R();
     preTaskResult.put("result", null);
