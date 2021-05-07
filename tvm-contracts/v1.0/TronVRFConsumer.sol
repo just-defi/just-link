@@ -1167,7 +1167,7 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
         emit NewVRFRound(nonces[_keyHash], msg.sender, blockhash(block.number - 1));
 
         Justlink.Request memory _req;
-        _req = buildJustlinkRequest(_keyHash, this, this.justlinkCallback.selector);
+        _req = buildJustlinkRequest(_keyHash, this, this.rawFulfillRandomness.selector);
         _req.nonce = nonces[_keyHash];
         _req.buf.buf = abi.encode(_keyHash, _seed); //zyd.TODO
         token.approve(justMidAddress(), _fee);
