@@ -211,6 +211,18 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes data
     );
 
+    struct ServiceAgreement { // Tracks oracle commitments to VRF service
+        address vRFOracle; // Oracle committing to respond with VRF service
+        uint96 fee; // Minimum payment for oracle response. Total LINK=1e9*1e18<2^96
+        bytes32 jobID; // ID of corresponding chainlink job in oracle's DB
+    }
+    mapping(bytes32 /* provingKey */ => ServiceAgreement)
+        public serviceAgreements;
+
+    event NewServiceAgreement(bytes32 keyHash, uint256 fee);
+
+    event RandomnessRequestFulfilled(bytes32 requestId, uint256 output);
+
     event CancelOracleRequest(
         bytes32 indexed requestId
     );
@@ -316,6 +328,37 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             _data);
     }
 
+    /**
+    * @notice Commits calling address to serve randomness
+    * @param _fee minimum LINK payment required to serve randomness
+    * @param _node the address of the justlink node with the proving key and job
+    * @param _publicProvingKey public key used to prove randomness
+    * @param _jobID ID of the corresponding justlink job in the justlink node's db
+    */
+    function registerProvingKey(uint256 _fee, address _node, uint256[2] _publicProvingKey, bytes32 _jobID)
+        external
+    {
+        bytes32 keyHash = hashOfKey(_publicProvingKey);
+        address oldVRFOracle = serviceAgreements[keyHash].vRFOracle;
+        require(oldVRFOracle == address(0), "please register a new key");
+        require(_node != address(0), "_node must not be 0x0");
+        serviceAgreements[keyHash].vRFOracle = _node;
+        serviceAgreements[keyHash].jobID = _jobID;
+        // Yes, this revert message doesn't fit in a word
+        /*require(_fee <= 1e9 ether,
+        "you can't charge more than all the LINK in the world, greedy");*/
+        serviceAgreements[keyHash].fee = uint96(_fee);
+        emit NewServiceAgreement(keyHash, _fee);
+    }
+
+    /**
+     * @notice Returns the serviceAgreements key associated with this public key
+     * @param _publicKey the key to return the address for
+     */
+    function hashOfKey(uint256[2] memory _publicKey) public pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_publicKey));
+    }
+
 
     /**
      * @notice Creates the VRF request
@@ -369,6 +412,52 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             _dataVersion,
             _data);
     }
+
+    /**
+       * @notice Called by the justlink node to fulfill requests
+       *
+       * param _proof the proof of randomness. Actual random output built from this
+       *
+       * @dev The structure of _proof corresponds to vrf.MarshaledOnChainResponse,
+       * @dev in the node source code. I.e., it is a vrf.MarshaledProof with the
+       * @dev seed replaced by the preSeed, followed by the hash of the requesting
+       * @dev block.
+       */
+      //function fulfillRandomnessRequest(bytes memory _proof) public {
+    function fulfillRandomnessRequest(
+        bytes32 _requestId,
+        uint256 _payment,
+        address _callbackAddress,
+        bytes4 _callbackFunctionId,
+        uint256 _expiration,
+        bytes32 _data
+    )
+    external
+    onlyAuthorizedNode
+    isValidRequest(_requestId)
+    returns (bool)
+    {
+        emit RandomnessRequestFulfilled(_data, _payment);
+        // All updates to the oracle's fulfillment should come before calling the
+        // callback(addr+functionId) as it is untrusted.
+        // See: https://solidity.readthedocs.io/en/develop/security-considerations.html#use-the-checks-effects-interactions-pattern
+        return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
+
+
+        /*(bytes32 currentKeyHash, Callback memory callback, bytes32 requestId,
+         uint256 randomness) = getRandomnessFromProof(_proof);
+
+        // Pay oracle
+        address oadd = serviceAgreements[currentKeyHash].vRFOracle;
+        withdrawableTokens[oadd] = withdrawableTokens[oadd].add(
+          callback.randomnessFee);
+
+        // Forget request. Must precede callback (prevents reentrancy)
+        delete callbacks[requestId];
+        callBackWithRandomness(requestId, randomness, callback.callbackContract);
+
+        emit RandomnessRequestFulfilled(requestId, randomness);*/
+      }
 
     /**
      * @notice Called by the Justlink node to fulfill requests

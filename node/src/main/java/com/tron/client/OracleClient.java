@@ -1,6 +1,7 @@
 package com.tron.client;
 
 import static com.tron.common.Constant.FULFIL_METHOD_SIGN;
+import static com.tron.common.Constant.VRF_FULFIL_METHOD_SIGN;
 import static com.tron.common.Constant.FULLNODE_HOST;
 import static com.tron.common.Constant.HTTP_EVENT_HOST;
 import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
@@ -96,8 +97,10 @@ public class OracleClient {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address",request.getContractAddr());
-    params.put("function_selector",FULFIL_METHOD_SIGN);
-    params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
+    /*params.put("function_selector",FULFIL_METHOD_SIGN);
+    params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));*/
+    params.put("function_selector",VRF_FULFIL_METHOD_SIGN);
+    params.put("parameter", AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, request.toList()));
     params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
     params.put("call_value",0);
     params.put("visible",true);
@@ -131,6 +134,7 @@ public class OracleClient {
     tx.setSurrogateId(broadCastResponse.getTxid());
     tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
+    //tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     return tx;
   }

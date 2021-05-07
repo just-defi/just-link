@@ -1045,6 +1045,7 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
     mapping(bytes32 /* keyHash */ => uint256 /* nonce */) private nonces;
     event DiceRolled(bytes32 indexed requestId, address indexed roller);
     event DiceLanded(bytes32 indexed requestId, uint256 indexed result);
+    uint256 public randomResult;
 
     /**
      * @notice Deploy with the address of the LINK token and arrays of matching
@@ -1088,9 +1089,12 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
      * @param randomness The random result returned by the oracle
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal {
-        uint256 d20Value = randomness.mod(20).add(1);
+        //uint256 d20Value = randomness.mod(20).add(1);
         //s_results[s_rollers[requestId]] = d20Value;
-        emit DiceLanded(requestId, d20Value);
+        //emit DiceLanded(requestId, d20Value);
+
+        randomResult = randomness;
+        emit DiceLanded(requestId, randomness);
     }
 
     /**
