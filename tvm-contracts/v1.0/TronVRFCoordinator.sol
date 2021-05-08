@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
 
 /**
@@ -112,7 +112,7 @@ interface JustlinkRequestInterface {
         bytes4 callbackFunctionId,
         uint256 nonce,
         uint256 version,
-        bytes data
+        bytes calldata data
     ) external;
 
     function cancelOracleRequest(
@@ -142,7 +142,7 @@ contract JustMid {
 
     function setToken(address tokenAddress) public ;
 
-    function transferAndCall(address from, address to, uint tokens, bytes _data) public returns (bool success) ;
+    function transferAndCall(address from, address to, uint tokens, bytes memory _data) public returns (bool success) ;
 
     function balanceOf(address guy) public view returns (uint);
 
@@ -221,6 +221,8 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
 
     event NewServiceAgreement(bytes32 keyHash, uint256 fee);
 
+    event ZydTestKeySeed(bytes32 keyHash, uint256 seed);
+
     event RandomnessRequestFulfilled(bytes32 requestId, uint256 output);
 
     event CancelOracleRequest(
@@ -248,7 +250,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     function onTokenTransfer(
         address _sender,
         uint256 _amount,
-        bytes _data
+        bytes memory _data
     )
     public
     onlyJustMid
@@ -260,7 +262,8 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             mstore(add(_data, 68), _amount) // ensure correct amount is passed
         }
         // solhint-disable-next-line avoid-low-level-calls
-        require(address(this).delegatecall(_data), "Unable to create request"); // calls oracleRequest
+        (bool status, ) = address(this).delegatecall(_data);
+        require(status, "Unable to create request"); // calls oracleRequest
     }
 
     /**
@@ -296,7 +299,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes4 _callbackFunctionId,
         uint256 _nonce,
         uint256 _dataVersion,
-        bytes _data
+        bytes calldata _data
     )
     external
     onlyJustMid
@@ -335,7 +338,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     * @param _publicProvingKey public key used to prove randomness
     * @param _jobID ID of the corresponding justlink job in the justlink node's db
     */
-    function registerProvingKey(uint256 _fee, address _node, uint256[2] _publicProvingKey, bytes32 _jobID)
+    function registerProvingKey(uint256 _fee, address _node, uint256[2] calldata _publicProvingKey, bytes32 _jobID)
         external
     {
         bytes32 keyHash = hashOfKey(_publicProvingKey);
@@ -357,6 +360,15 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      */
     function hashOfKey(uint256[2] memory _publicKey) public pure returns (bytes32) {
         return keccak256(abi.encodePacked(_publicKey));
+    }
+
+    /**
+     * @dev Reverts if amount is not at least what was agreed upon in the service agreement
+     * @param _feePaid The payment for the request
+     * @param _keyHash The key which the request is for
+     */
+    function sufficientJST(uint256 _feePaid, bytes32 _keyHash) public {
+        require(_feePaid >= serviceAgreements[_keyHash].fee, "Below agreed payment");
     }
 
 
@@ -381,12 +393,15 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes4 _callbackFunctionId,
         uint256 _nonce,
         uint256 _dataVersion,
-        bytes _data
+        bytes calldata _data
     )
     external
     onlyJustMid
     checkCallbackAddress(_callbackAddress)
     {
+        (bytes32 keyHash, uint256 seed) = abi.decode(_data, (bytes32, uint256));
+        emit ZydTestKeySeed(keyHash, seed);
+        sufficientJST(_payment, keyHash);
         bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
         require(commitments[requestId] == 0, "Must use a unique ID");
         // solhint-disable-next-line not-rely-on-time
@@ -401,7 +416,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             )
         );
 
-        emit VRFRequest(
+        /*emit VRFRequest(
             _specId,
             _sender,
             requestId,
@@ -410,7 +425,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             _callbackFunctionId,
             expiration,
             _dataVersion,
-            _data);
+            _data);*/
     }
 
     /**
@@ -441,8 +456,9 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         // All updates to the oracle's fulfillment should come before calling the
         // callback(addr+functionId) as it is untrusted.
         // See: https://solidity.readthedocs.io/en/develop/security-considerations.html#use-the-checks-effects-interactions-pattern
-        return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
-
+        //return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
+        (bool status, ) = _callbackAddress.call(abi.encodePacked(_callbackFunctionId, _requestId, _data));
+        return status;
 
         /*(bytes32 currentKeyHash, Callback memory callback, bytes32 requestId,
          uint256 randomness) = getRandomnessFromProof(_proof);
@@ -499,7 +515,9 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         // All updates to the oracle's fulfillment should come before calling the
         // callback(addr+functionId) as it is untrusted.
         // See: https://solidity.readthedocs.io/en/develop/security-considerations.html#use-the-checks-effects-interactions-pattern
-        return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
+        //return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
+        (bool status, ) = _callbackAddress.call(abi.encodePacked(_callbackFunctionId, _requestId, _data));
+        return status;
     }
 
     /**
@@ -618,7 +636,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @dev Reverts if the given data does not begin with the `oracleRequest` function selector
      * @param _data The data payload of the request
      */
-    modifier permittedFunctionsForLINK(bytes _data) {
+    modifier permittedFunctionsForLINK(bytes memory _data) {
         bytes4 funcSelector;
         assembly { // solhint-disable-line no-inline-assembly
             funcSelector := mload(add(_data, 32))
@@ -640,7 +658,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @dev Reverts if the given payload is less than needed to create a request
      * @param _data The request payload
      */
-    modifier validRequestLength(bytes _data) {
+    modifier validRequestLength(bytes memory _data) {
         require(_data.length >= MINIMUM_REQUEST_LENGTH, "Invalid request length");
         _;
     }

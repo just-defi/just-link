@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.0;
 
 /**
  * @title Ownable
@@ -6,7 +6,7 @@ pragma solidity ^0.4.25;
  * functions, this simplifies the implementation of "user permissions".
  */
 contract Ownable {
-    address public owner;
+    address payable public owner;
 
 
     event OwnershipRenounced(address indexed previousOwner);
@@ -36,7 +36,7 @@ contract Ownable {
      * @dev Allows the current owner to transfer control of the contract to a newOwner.
      * @param _newOwner The address to transfer ownership to.
      */
-    function transferOwnership(address _newOwner) public onlyOwner {
+    function transferOwnership(address payable _newOwner) public onlyOwner {
         _transferOwnership(_newOwner);
     }
 
@@ -44,7 +44,7 @@ contract Ownable {
      * @dev Transfers control of the contract to a newOwner.
      * @param _newOwner The address to transfer ownership to.
      */
-    function _transferOwnership(address _newOwner) internal {
+    function _transferOwnership(address payable _newOwner) internal {
         require(_newOwner != address(0));
         emit OwnershipTransferred(owner, _newOwner);
         owner = _newOwner;
@@ -397,12 +397,12 @@ library CBOR {
         }
     }
 
-    function encodeBytes(Buffer.buffer memory buf, bytes value) internal pure {
+    function encodeBytes(Buffer.buffer memory buf, bytes memory value) internal pure {
         encodeType(buf, MAJOR_TYPE_BYTES, value.length);
         buf.append(value);
     }
 
-    function encodeString(Buffer.buffer memory buf, string value) internal pure {
+    function encodeString(Buffer.buffer memory buf, string memory value) internal pure {
         encodeType(buf, MAJOR_TYPE_STRING, bytes(value).length);
         buf.append(bytes(value));
     }
@@ -559,7 +559,7 @@ interface JustlinkRequestInterface {
         bytes4 callbackFunctionId,
         uint256 nonce,
         uint256 version,
-        bytes data
+        bytes calldata data
     ) external;
 
     function cancelOracleRequest(
@@ -577,7 +577,7 @@ interface JustlinkRequestInterface {
         bytes4 callbackFunctionId,
         uint256 nonce,
         uint256 version,
-        bytes data
+        bytes calldata data
     ) external;
 }
 
@@ -643,7 +643,7 @@ library Justlink {
      * @param self The initialized request
      * @param _data The CBOR data
      */
-    function setBuffer(Request memory self, bytes _data)
+    function setBuffer(Request memory self, bytes memory _data)
     internal pure
     {
         Buffer.init(self.buf, _data.length);
@@ -656,7 +656,7 @@ library Justlink {
      * @param _key The name of the key
      * @param _value The string value to add
      */
-    function add(Request memory self, string _key, string _value)
+    function add(Request memory self, string memory _key, string memory _value)
     internal pure
     {
         self.buf.encodeString(_key);
@@ -669,7 +669,7 @@ library Justlink {
      * @param _key The name of the key
      * @param _value The bytes value to add
      */
-    function addBytes(Request memory self, string _key, bytes _value)
+    function addBytes(Request memory self, string memory _key, bytes memory _value)
     internal pure
     {
         self.buf.encodeString(_key);
@@ -682,7 +682,7 @@ library Justlink {
      * @param _key The name of the key
      * @param _value The int256 value to add
      */
-    function addInt(Request memory self, string _key, int256 _value)
+    function addInt(Request memory self, string memory _key, int256 _value)
     internal pure
     {
         self.buf.encodeString(_key);
@@ -695,7 +695,7 @@ library Justlink {
      * @param _key The name of the key
      * @param _value The uint256 value to add
      */
-    function addUint(Request memory self, string _key, uint256 _value)
+    function addUint(Request memory self, string memory _key, uint256 _value)
     internal pure
     {
         self.buf.encodeString(_key);
@@ -708,7 +708,7 @@ library Justlink {
      * @param _key The name of the key
      * @param _values The array of string values to add
      */
-    function addStringArray(Request memory self, string _key, string[] memory _values)
+    function addStringArray(Request memory self, string memory _key, string[] memory _values)
     internal pure
     {
         self.buf.encodeString(_key);
@@ -724,7 +724,7 @@ contract JustMid {
 
     function setToken(address tokenAddress) public;
 
-    function transferAndCall(address from, address to, uint tokens, bytes _data) public returns (bool success);
+    function transferAndCall(address from, address to, uint tokens, bytes memory _data) public returns (bool success);
 
     function balanceOf(address guy) public view returns (uint);
 
@@ -763,7 +763,7 @@ contract JustlinkClient {
 
     uint256 constant internal LINK = 10 ** 18;
     uint256 constant private AMOUNT_OVERRIDE = 0;
-    address constant private SENDER_OVERRIDE = 0x0;
+    address constant private SENDER_OVERRIDE = address(0);
     uint256 constant private ARGS_VERSION = 1;
 
     JustMid internal justMid;
@@ -803,7 +803,7 @@ contract JustlinkClient {
     internal
     returns (bytes32)
     {
-        return sendJustlinkRequestTo(oracle, _req, _payment);
+        return sendJustlinkRequestTo(address(oracle), _req, _payment);
     }
 
     /**
@@ -1034,7 +1034,7 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
 
     address private vrfCoordinator;
     bytes32 private s_keyHash;
-    uint128 private s_fee;
+    uint256 private s_fee;
     mapping(bytes32 => address) private s_rollers;
     mapping(address => uint256) private s_results;
     uint256 private constant ROLL_IN_PROGRESS = 42;
@@ -1067,6 +1067,42 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
     }
 
     ///////////////// VRF begin /////////////////////
+    /**
+     * @notice Set the key hash for the oracle
+     *
+     * @param keyHash bytes32
+     */
+    function setKeyHash(bytes32 keyHash) public onlyOwner {
+        s_keyHash = keyHash;
+    }
+
+    /**
+     * @notice Get the current key hash
+     *
+     * @return bytes32
+     */
+    function keyHash() public view returns (bytes32) {
+        return s_keyHash;
+    }
+
+    /**
+     * @notice Set the oracle fee for requesting randomness
+     *
+     * @param fee uint256
+     */
+    function setFee(uint256 fee) public onlyOwner {
+        s_fee = fee;
+    }
+
+    /**
+     * @notice Get the current fee
+     *
+     * @return uint256
+     */
+    function fee() public view returns (uint256) {
+        return s_fee;
+    }
+
     // rawFulfillRandomness is called by VRFCoordinator when it receives a valid VRF
     // proof. rawFulfillRandomness then calls fulfillRandomness, after validating
     // the origin of the call
@@ -1124,19 +1160,19 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
      * @param _paymentAmount the amount of JST to be sent to the vrfCoordinator for each request
      * before an answer will be calculated
      * @param _vrfCoordinator The vrfCoordinator address
-     * @param _jobId Job ID
+     * @param _keyHash Justlink node's public key hash
      */
     function updateVRFRequestDetails(
         uint128 _paymentAmount,
         address _vrfCoordinator,
-        bytes32 _jobId
+        bytes32 _keyHash
     )
     public
     onlyOwner()
     {
         s_fee = _paymentAmount;
         vrfCoordinator = _vrfCoordinator;
-        s_keyHash = _jobId;
+        s_keyHash = _keyHash;
     }
 
     /**
@@ -1171,7 +1207,7 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
         emit NewVRFRound(nonces[_keyHash], msg.sender, blockhash(block.number - 1));
 
         Justlink.Request memory _req;
-        _req = buildJustlinkRequest(_keyHash, this, this.rawFulfillRandomness.selector);
+        _req = buildJustlinkRequest(_keyHash, address(this), this.rawFulfillRandomness.selector);
         _req.nonce = nonces[_keyHash];
         _req.buf.buf = abi.encode(_keyHash, _seed); //zyd.TODO
         token.approve(justMidAddress(), _fee);
@@ -1249,7 +1285,7 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
         uint256 oraclePayment = paymentAmount;
 
         for (uint i = 0; i < oracles.length; i++) {
-            request = buildJustlinkRequest(jobIds[i], this, this.justlinkCallback.selector);
+            request = buildJustlinkRequest(jobIds[i], address(this), this.justlinkCallback.selector);
             requestId = sendJustlinkRequestTo(oracles[i], request, oraclePayment);
             requestAnswers[requestId] = answerCounter;
         }
@@ -1297,8 +1333,8 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
     function updateRequestDetails(
         uint128 _paymentAmount,
         uint128 _minimumResponses,
-        address[] _oracles,
-        bytes32[] _jobIds
+        address[] memory _oracles,
+        bytes32[] memory _jobIds
     )
     public
     onlyOwner()
@@ -1586,8 +1622,8 @@ contract VRFConsumer is AggregatorInterface, JustlinkClient, Ownable {
      */
     modifier validateAnswerRequirements(
         uint256 _minimumResponses,
-        address[] _oracles,
-        bytes32[] _jobIds
+        address[] memory _oracles,
+        bytes32[] memory _jobIds
     ) {
         require(_oracles.length <= MAX_ORACLE_COUNT, "cannot have more than 45 oracles");
         require(_oracles.length >= _minimumResponses, "must have at least as many oracles as responses");
