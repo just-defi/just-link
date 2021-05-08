@@ -1,5 +1,6 @@
 pragma solidity ^0.5.0;
 
+import "./VRF.sol";
 
 /**
  * @title Ownable
@@ -170,7 +171,7 @@ contract TRC20Interface {
  * @title The Justlink Oracle contract
  * @notice Node operators can deploy this contract to fulfill requests sent to them
  */
-contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
+contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable, VRF {
     using SafeMath for uint256;
 
     uint256 constant public EXPIRY_TIME = 5 minutes;
@@ -185,7 +186,9 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     TRC20Interface internal token;
     mapping(bytes32 => bytes32) private commitments;
     mapping(address => bool) private authorizedNodes;
-    uint256 private withdrawableTokens = ONE_FOR_CONSISTENT_GAS_COST;
+    //uint256 private withdrawableTokens = ONE_FOR_CONSISTENT_GAS_COST;
+    mapping(address /* oracle */ => uint256 /* JST balance */)
+        public withdrawableTokens;
 
     event OracleRequest(
         bytes32 indexed specId,
@@ -236,7 +239,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     mapping(bytes32 /* (provingKey, seed) */ => Callback) public callbacks;
 
     event NewServiceAgreement(bytes32 keyHash, uint256 fee);
-    event ZydTestCallbackinfo(address callbackContract, uint96 randomnessFee, bytes32 seedAndBlockNum);
+    event ZydTestCallbackinfo(address callbackContract, uint96 randomnessFee, bytes32 seedAndBlockNum, bytes4 callbackFunctionId);
     event ZydTestKeySeed(bytes32 keyHash, uint256 seed, uint256 nonce);
 
     event RandomnessRequestFulfilled(bytes32 requestId, uint256 output);
@@ -420,6 +423,20 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         uint256 feePadi = _feePaid;
         uint256 preSeed = makeVRFInputSeed(keyHash, consumerSeed, sender, nonce);
         bytes32 requestId = makeRequestId(keyHash, preSeed);
+
+        require(commitments[requestId] == 0, "Must use a unique ID");
+        // solhint-disable-next-line not-rely-on-time
+        uint256 expiration = now.add(EXPIRY_TIME);
+
+        commitments[requestId] = keccak256(
+            abi.encodePacked(
+                _feePaid,
+                _callbackAddress,
+                _callbackFunctionId,
+                expiration
+            )
+        );
+
         // Cryptographically guaranteed by preSeed including an increasing nonce
         assert(callbacks[requestId].callbackContract == address(0));
         callbacks[requestId].callbackContract = sender;
@@ -431,32 +448,8 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
           sender, feePadi, requestId);
         nonces[keyHash][sender] = nonces[keyHash][sender].add(1);
 
-        emit ZydTestCallbackinfo(callbacks[requestId].callbackContract, callbacks[requestId].randomnessFee, callbacks[requestId].seedAndBlockNum);
-
-        /*bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
-        require(commitments[requestId] == 0, "Must use a unique ID");
-        // solhint-disable-next-line not-rely-on-time
-        uint256 expiration = now.add(EXPIRY_TIME);
-
-        commitments[requestId] = keccak256(
-            abi.encodePacked(
-                _payment,
-                _callbackAddress,
-                _callbackFunctionId,
-                expiration
-            )
-        );*/
-
-        /*emit VRFRequest(
-            _specId,
-            _sender,
-            requestId,
-            _payment,
-            _callbackAddress,
-            _callbackFunctionId,
-            expiration,
-            _dataVersion,
-            _data);*/
+        emit ZydTestCallbackinfo(callbacks[requestId].callbackContract, callbacks[requestId].randomnessFee,
+            callbacks[requestId].seedAndBlockNum, _callbackFunctionId);
     }
 
     /**
@@ -494,6 +487,14 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         return keccak256(abi.encodePacked(_keyHash, _vRFInputSeed));
     }
 
+    // Offsets into fulfillRandomnessRequest's _proof of various values
+    //
+    // Public key. Skips byte array's length prefix.
+    uint256 public constant PUBLIC_KEY_OFFSET = 0x20;
+    // Seed is 7th word in proof, plus word for length, (6+1)*0x20=0xe0
+    uint256 public constant PRESEED_OFFSET = 0xe0;
+
+
     /**
        * @notice Called by the justlink node to fulfill requests
        *
@@ -504,44 +505,116 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
        * @dev seed replaced by the preSeed, followed by the hash of the requesting
        * @dev block.
        */
-      //function fulfillRandomnessRequest(bytes memory _proof) public {
-    function fulfillRandomnessRequest(
+    function fulfillRandomnessRequest(bytes memory _proof, bytes4 _callbackFunctionId) public
+    /*function fulfillRandomnessRequest(
         bytes32 _requestId,
         uint256 _payment,
         address _callbackAddress,
         bytes4 _callbackFunctionId,
         bytes32 _data
     )
-    external
+    external*/
     onlyAuthorizedNode
-    isValidRequest(_requestId)
+    //isValidRequest(_requestId)
     returns (bool)
     {
-        // Forget request. Must precede callback (prevents reentrancy)
-        delete callbacks[_requestId];
+        (bytes32 currentKeyHash, Callback memory callback, bytes32 requestId,
+        uint256 randomness) = getRandomnessFromProof(_proof);
 
-        emit RandomnessRequestFulfilled(_data, _payment);
+        require(commitments[requestId] != 0, "Must have a valid requestId");
+
+        // Pay oracle
+        address oadd = serviceAgreements[currentKeyHash].vRFOracle;
+        withdrawableTokens[oadd] = withdrawableTokens[oadd].add(
+        callback.randomnessFee);
+
+        // Forget request. Must precede callback (prevents reentrancy)
+        delete callbacks[requestId];
+        bool status = callBackWithRandomness(requestId, randomness, callback.callbackContract, _callbackFunctionId);
+
+        emit RandomnessRequestFulfilled(requestId, randomness);
+
+        return status;
+
+
+        /*emit RandomnessRequestFulfilled(_data, _payment);
         // All updates to the oracle's fulfillment should come before calling the
         // callback(addr+functionId) as it is untrusted.
         // See: https://solidity.readthedocs.io/en/develop/security-considerations.html#use-the-checks-effects-interactions-pattern
         //return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
         (bool status, ) = _callbackAddress.call(abi.encodePacked(_callbackFunctionId, _requestId, _data));
-        return status;
+        return status;*/
+    }
 
-        /*(bytes32 currentKeyHash, Callback memory callback, bytes32 requestId,
-         uint256 randomness) = getRandomnessFromProof(_proof);
+    function callBackWithRandomness(bytes32 requestId, uint256 randomness,
+        address consumerContract, bytes4 _callbackFunctionId) internal returns (bool) {
+        /*// Dummy variable; allows access to method selector in next line. See
+        // https://github.com/ethereum/solidity/issues/3506#issuecomment-553727797
+        VRFConsumerBase v;
+        bytes memory resp = abi.encodeWithSelector(
+          v.rawFulfillRandomness.selector, requestId, randomness);
+        // The bound b here comes from https://eips.ethereum.org/EIPS/eip-150. The
+        // actual gas available to the consuming contract will be b-floor(b/64).
+        // This is chosen to leave the consuming contract ~200k gas, after the cost
+        // of the call itself.
+        uint256 b = 206000;
+        require(gasleft() >= b, "not enough gas for consumer");*/
+        // A low-level call is necessary, here, because we don't want the consuming
+        // contract to be able to revert this execution, and thus deny the oracle
+        // payment for a valid randomness response. This also necessitates the above
+        // check on the gasleft, as otherwise there would be no indication if the
+        // callback method ran out of gas.
+        //
+        // solhint-disable-next-line avoid-low-level-calls
+        //(bool success,) = consumerContract.call(resp);
+        (bool success,) = consumerContract.call(abi.encodePacked(_callbackFunctionId, requestId, randomness));
+        // Avoid unused-local-variable warning. (success is only present to prevent
+        // a warning that the return value of consumerContract.call is unused.)
+        return success;
+    }
 
-        // Pay oracle
-        address oadd = serviceAgreements[currentKeyHash].vRFOracle;
-        withdrawableTokens[oadd] = withdrawableTokens[oadd].add(
-          callback.randomnessFee);
+    function getRandomnessFromProof(bytes memory _proof)
+        internal view returns (bytes32 currentKeyHash, Callback memory callback,
+          bytes32 requestId, uint256 randomness) {
+        // blockNum follows proof, which follows length word (only direct-number
+        // constants are allowed in assembly, so have to compute this in code)
+        uint256 BLOCKNUM_OFFSET = 0x20 + PROOF_LENGTH;
+        // _proof.length skips the initial length word, so not including the
+        // blocknum in this length check balances out.
+        require(_proof.length == BLOCKNUM_OFFSET, "wrong proof length");
+        uint256[2] memory publicKey;
+        uint256 preSeed;
+        uint256 blockNum;
+        uint256 publicKeyOffset = PUBLIC_KEY_OFFSET;
+        uint256 preseedOffset = PRESEED_OFFSET;
+        uint256 blocknumOffset = BLOCKNUM_OFFSET;
+        assembly { // solhint-disable-line no-inline-assembly
+          publicKey := add(_proof, publicKeyOffset)
+          preSeed := mload(add(_proof, preseedOffset))
+          blockNum := mload(add(_proof, blocknumOffset))
+        }
+        currentKeyHash = hashOfKey(publicKey);
+        requestId = makeRequestId(currentKeyHash, preSeed);
+        callback = callbacks[requestId];
+        require(callback.callbackContract != address(0), "no corresponding request");
+        require(callback.seedAndBlockNum == keccak256(abi.encodePacked(preSeed,
+          blockNum)), "wrong preSeed or block num");
 
-        // Forget request. Must precede callback (prevents reentrancy)
-        delete callbacks[requestId];
-        callBackWithRandomness(requestId, randomness, callback.callbackContract);
-
-        emit RandomnessRequestFulfilled(requestId, randomness);*/
-      }
+        bytes32 blockHash = blockhash(blockNum);
+        if (blockHash == bytes32(0)) {
+          //blockHash = blockHashStore.getBlockhash(blockNum); //ZYD TODO
+          require(blockHash != bytes32(0), "please prove blockhash");
+        }
+        // The seed actually used by the VRF machinery, mixing in the blockhash
+        uint256 actualSeed = uint256(keccak256(abi.encodePacked(preSeed, blockHash)));
+        uint256 proofLength = PROOF_LENGTH;
+        // solhint-disable-next-line no-inline-assembly
+        assembly { // Construct the actual proof from the remains of _proof
+          mstore(add(_proof, preseedOffset), actualSeed)
+          mstore(_proof, proofLength)
+        }
+        randomness = VRF.randomValueFromVRFProof(_proof); // Reverts on failure
+    }
 
     /**
      * @notice Called by the Justlink node to fulfill requests
@@ -556,7 +629,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @param _data The data to return to the consuming contract
      * @return Status if the external call was successful
      */
-    function fulfillOracleRequest(
+    /*function fulfillOracleRequest(
         bytes32 _requestId,
         uint256 _payment,
         address _callbackAddress,
@@ -586,7 +659,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         //return _callbackAddress.call(_callbackFunctionId, _requestId, _data); // solhint-disable-line avoid-low-level-calls
         (bool status, ) = _callbackAddress.call(abi.encodePacked(_callbackFunctionId, _requestId, _data));
         return status;
-    }
+    }*/
 
     /**
      * @notice Use this to check if a node is authorized for fulfilling requests
@@ -617,7 +690,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     onlyOwner
     hasAvailableFunds(_amount)
     {
-        withdrawableTokens = withdrawableTokens.sub(_amount);
+        withdrawableTokens[msg.sender] = withdrawableTokens[msg.sender].sub(_amount);
         token.approve(justMidAddress(), _amount);
         assert(justMid.transferFrom(address(this), _recipient, _amount));
     }
@@ -628,7 +701,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @return The amount of withdrawable LINK on the contract
      */
     function withdrawable() external view onlyOwner returns (uint256) {
-        return withdrawableTokens.sub(ONE_FOR_CONSISTENT_GAS_COST);
+        return withdrawableTokens[msg.sender].sub(ONE_FOR_CONSISTENT_GAS_COST);
     }
 
     /**
@@ -671,7 +744,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @param _amount The given amount to compare to `withdrawableTokens`
      */
     modifier hasAvailableFunds(uint256 _amount) {
-        require(withdrawableTokens >= _amount.add(ONE_FOR_CONSISTENT_GAS_COST), "Amount requested is greater than withdrawable balance");
+        require(withdrawableTokens[msg.sender] >= _amount.add(ONE_FOR_CONSISTENT_GAS_COST), "Amount requested is greater than withdrawable balance");
         _;
     }
 
