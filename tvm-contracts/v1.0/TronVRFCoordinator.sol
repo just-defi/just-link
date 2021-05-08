@@ -199,29 +199,45 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes data
     );
 
+    // The Justlink node only needs the jobID to look up the VRF, but specifying public
+    // key as well prevents a malicious Justlink node from inducing VRF outputs from
+    // another Justlink node by reusing the jobID.
     event VRFRequest(
-        bytes32 indexed specId,
-        address requester,
-        bytes32 requestId,
-        uint256 payment,
-        address callbackAddr,
-        bytes4 callbackFunctionId,
-        uint256 cancelExpiration,
-        uint256 dataVersion,
-        bytes data
-    );
+        bytes32 keyHash,
+        uint256 seed,
+        bytes32 indexed jobID,
+        address sender,
+        uint256 fee,
+        bytes32 requestID);
 
     struct ServiceAgreement { // Tracks oracle commitments to VRF service
         address vRFOracle; // Oracle committing to respond with VRF service
         uint96 fee; // Minimum payment for oracle response. Total LINK=1e9*1e18<2^96
         bytes32 jobID; // ID of corresponding chainlink job in oracle's DB
     }
+
+    struct Callback { // Tracks an ongoing request
+        address callbackContract; // Requesting contract, which will receive response
+        // Amount of JST paid at request time. Total JST = 1e9 * 1e18 < 2^96, so
+        // this representation is adequate, and saves a word of storage when this
+        // field follows the 160-bit callbackContract address.
+        uint96 randomnessFee;
+        // Commitment to seed passed to oracle by this contract, and the number of
+        // the block in which the request appeared. This is the keccak256 of the
+        // concatenation of those values. Storing this commitment saves a word of
+        // storage.
+        bytes32 seedAndBlockNum;
+    }
+
     mapping(bytes32 /* provingKey */ => ServiceAgreement)
         public serviceAgreements;
+    mapping(bytes32 /* provingKey */ => mapping(address /* consumer */ => uint256))
+        private nonces;
+    mapping(bytes32 /* (provingKey, seed) */ => Callback) public callbacks;
 
     event NewServiceAgreement(bytes32 keyHash, uint256 fee);
-
-    event ZydTestKeySeed(bytes32 keyHash, uint256 seed);
+    event ZydTestCallbackinfo(address callbackContract, uint96 randomnessFee, bytes32 seedAndBlockNum);
+    event ZydTestKeySeed(bytes32 keyHash, uint256 seed, uint256 nonce);
 
     event RandomnessRequestFulfilled(bytes32 requestId, uint256 output);
 
@@ -367,7 +383,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @param _feePaid The payment for the request
      * @param _keyHash The key which the request is for
      */
-    function sufficientJST(uint256 _feePaid, bytes32 _keyHash) public {
+    function sufficientJST(uint256 _feePaid, bytes32 _keyHash) public view {
         require(_feePaid >= serviceAgreements[_keyHash].fee, "Below agreed payment");
     }
 
@@ -377,17 +393,14 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
      * @dev Stores the hash of the params as the on-chain commitment for the request.
      * Emits VRFRequest event for the Justlink node to detect.
      * @param _sender The sender of the request
-     * @param _payment The amount of payment given (specified in wei)
-     * @param _specId The Job Specification ID
+     * @param _feePaid The amount of payment given (specified in JST) //TODO wei?
      * @param _callbackAddress The callback address for the response
      * @param _callbackFunctionId The callback function ID for the response
-     * @param _nonce The nonce sent by the requester
-     * @param _dataVersion The specified data version
      * @param _data The CBOR payload of the request
      */
     function vrfRequest(
         address _sender,
-        uint256 _payment,
+        uint256 _feePaid,
         bytes32 _specId,
         address _callbackAddress,
         bytes4 _callbackFunctionId,
@@ -399,10 +412,28 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     onlyJustMid
     checkCallbackAddress(_callbackAddress)
     {
-        (bytes32 keyHash, uint256 seed) = abi.decode(_data, (bytes32, uint256));
-        emit ZydTestKeySeed(keyHash, seed);
-        sufficientJST(_payment, keyHash);
-        bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
+        (bytes32 keyHash, uint256 consumerSeed) = abi.decode(_data, (bytes32, uint256));
+        uint256 nonce = nonces[keyHash][_sender];
+        emit ZydTestKeySeed(keyHash, consumerSeed, nonce);
+        sufficientJST(_feePaid, keyHash);
+        address sender = _sender;
+        uint256 feePadi = _feePaid;
+        uint256 preSeed = makeVRFInputSeed(keyHash, consumerSeed, sender, nonce);
+        bytes32 requestId = makeRequestId(keyHash, preSeed);
+        // Cryptographically guaranteed by preSeed including an increasing nonce
+        assert(callbacks[requestId].callbackContract == address(0));
+        callbacks[requestId].callbackContract = sender;
+        assert(feePadi < 1e27); // Total JST fits in uint96 //ZYD TODO
+        callbacks[requestId].randomnessFee = uint96(feePadi);
+        callbacks[requestId].seedAndBlockNum = keccak256(abi.encodePacked(
+          preSeed, block.number));
+        emit VRFRequest(keyHash, preSeed, serviceAgreements[keyHash].jobID,
+          sender, feePadi, requestId);
+        nonces[keyHash][sender] = nonces[keyHash][sender].add(1);
+
+        emit ZydTestCallbackinfo(callbacks[requestId].callbackContract, callbacks[requestId].randomnessFee, callbacks[requestId].seedAndBlockNum);
+
+        /*bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
         require(commitments[requestId] == 0, "Must use a unique ID");
         // solhint-disable-next-line not-rely-on-time
         uint256 expiration = now.add(EXPIRY_TIME);
@@ -414,7 +445,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
                 _callbackFunctionId,
                 expiration
             )
-        );
+        );*/
 
         /*emit VRFRequest(
             _specId,
@@ -426,6 +457,41 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
             expiration,
             _dataVersion,
             _data);*/
+    }
+
+    /**
+    * @notice returns the seed which is actually input to the VRF coordinator
+    *
+    * @dev To prevent repetition of VRF output due to repetition of the
+    * @dev user-supplied seed, that seed is combined in a hash with the
+    * @dev user-specific nonce, and the address of the consuming contract. The
+    * @dev risk of repetition is mostly mitigated by inclusion of a blockhash in
+    * @dev the final seed, but the nonce does protect against repetition in
+    * @dev requests which are included in a single block.
+    *
+    * @param _userSeed VRF seed input provided by user
+    * @param _requester Address of the requesting contract
+    * @param _nonce User-specific nonce at the time of the request
+    */
+    function makeVRFInputSeed(bytes32 _keyHash, uint256 _userSeed,
+        address _requester, uint256 _nonce)
+        internal pure returns (uint256)
+    {
+        return  uint256(keccak256(abi.encode(_keyHash, _userSeed, _requester, _nonce)));
+    }
+
+    /**
+    * @notice Returns the id for this request
+    * @param _keyHash The serviceAgreement ID to be used for this request
+    * @param _vRFInputSeed The seed to be passed directly to the VRF
+    * @return The id for this request
+    *
+    * @dev Note that _vRFInputSeed is not the seed passed by the consuming
+    * @dev contract, but the one generated by makeVRFInputSeed
+    */
+    function makeRequestId(
+        bytes32 _keyHash, uint256 _vRFInputSeed) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(_keyHash, _vRFInputSeed));
     }
 
     /**
@@ -444,7 +510,6 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
         uint256 _payment,
         address _callbackAddress,
         bytes4 _callbackFunctionId,
-        uint256 _expiration,
         bytes32 _data
     )
     external
@@ -452,6 +517,9 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable {
     isValidRequest(_requestId)
     returns (bool)
     {
+        // Forget request. Must precede callback (prevents reentrancy)
+        delete callbacks[_requestId];
+
         emit RandomnessRequestFulfilled(_data, _payment);
         // All updates to the oracle's fulfillment should come before calling the
         // callback(addr+functionId) as it is untrusted.
