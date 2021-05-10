@@ -1,6 +1,7 @@
 package com.tron.job;
 
 import com.tron.client.EventRequest;
+import com.tron.client.VrfEventRequest;
 import com.tron.client.OracleClient;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
@@ -17,6 +18,7 @@ import org.springframework.stereotype.Service;
 @Component
 public class JobSubscriber {
   private static JobRunner jobRunner;
+  private static VrfJobRunner vrfJobRunner;
 
   private List<String> jobSubscriberList = new ArrayList<>();
 
@@ -53,6 +55,25 @@ public class JobSubscriber {
 
     log.info("event: " + event);
     jobRunner.addJobRun(event);
+  }
+
+  public static void receiveVrfRequest(VrfEventRequest event) {
+    // validate request
+    if (event.getJobId() == null || event.getJobId().isEmpty()) {
+      log.error("Job id in VRF event request is empty");
+      return;
+    }
+
+    if (event.getSeed() == null || event.getSeed().isEmpty() ||
+            event.getKeyHash() == null || event.getKeyHash().isEmpty() ||
+            event.getRequestId() == null || event.getRequestId().isEmpty() ||
+            event.getContractAddr() == null || event.getContractAddr().isEmpty()) {
+      log.error("Necessary parameters in  VRF event request is empty");
+      return;
+    }
+
+    log.info("VRF event: " + event);
+    vrfJobRunner.addJobRun(event);
   }
 
   public static void setup() {

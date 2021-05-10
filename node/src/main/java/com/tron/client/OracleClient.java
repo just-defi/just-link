@@ -8,12 +8,14 @@ import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 import static com.tron.common.Constant.ONE_HOUR;
 import static com.tron.common.Constant.ONE_MINUTE;
 
+import com.alibaba.fastjson.JSONObject;
 import com.beust.jcommander.internal.Sets;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
+import com.google.gson.JsonObject;
 import com.google.protobuf.ByteString;
 import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.EventData;
@@ -29,6 +31,7 @@ import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
+import java.nio.charset.Charset;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +45,7 @@ import org.apache.commons.codec.DecoderException;
 import org.apache.http.HttpEntity;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
+import org.apache.http.entity.StringEntity;
 import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
 import org.tron.common.crypto.ECKey;
@@ -150,6 +154,7 @@ public class OracleClient {
               for (EventData eventData: events) {
                 // update consumeIndexMap
                 updateConsumeMap(addr, eventData.getBlockTimestamp());
+
                 // filter the events
                 if (/*!EVENT_NAME.equals(eventData.getEventName()) && */!VRF_EVENT_NAME.equals(eventData.getEventName())) {
                   log.warn("this node does not support this event, event name: {}",
@@ -160,7 +165,7 @@ public class OracleClient {
                 try {
                   jobId = new String(
                           org.apache.commons.codec.binary.Hex.decodeHex(
-                                  ((String)eventData.getResult().get("specId"))));
+                                  ((String)eventData.getResult().get("jobID"))));
                 } catch (DecoderException e) {
                   log.warn("parse job failed, jobid: {}", jobId);
                   continue;
@@ -170,22 +175,27 @@ public class OracleClient {
                   log.warn("this node does not support this job, jobid: {}", jobId);
                   continue;
                 }
+
+                // Number/height of the block in which this request appeared
                 long blockNum = eventData.getBlockNumber();
-                String requester = Tool.convertHexToTronAddr((String)eventData.getResult().get("requester"));
-                String callbackAddr = Tool.convertHexToTronAddr((String)eventData.getResult().get("callbackAddr"));
-                String callbackFuncId = (String)eventData.getResult().get("callbackFunctionId");
-                long cancelExpiration = Long.parseLong((String)eventData.getResult().get("cancelExpiration"));
-                String data = (String)eventData.getResult().get("data");
-                long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
-                String requestId = (String)eventData.getResult().get("requestId");
-                BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
+                // Hash of the block in which this request appeared
+                String blockHash = getBlockHashByNum(blockNum);
+
+                String sender = Tool.convertHexToTronAddr((String)eventData.getResult().get("sender"));
+                String keyHash = Tool.convertHexToTronAddr((String)eventData.getResult().get("keyHash"));
+                String seed = (String)eventData.getResult().get("seed");
+                BigInteger fee = new BigInteger((String)eventData.getResult().get("fee"));
+                //String data = (String)eventData.getResult().get("data");
+                //long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
+                String requestId = (String)eventData.getResult().get("requestID");
+                //BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
                 if (requestIdsCache.getIfPresent(requestId) != null) {
                   log.info("this event has been handled, requestid:{}", requestId);
                   continue;
                 }
-                JobSubscriber.receiveLogRequest(
-                        new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
-                                cancelExpiration, data, dataVersion,requestId, payment, addr));
+                JobSubscriber.receiveVrfRequest(
+                        new VrfEventRequest(blockNum, blockHash, jobId, keyHash, seed, sender,
+                                requestId, fee, addr));
                 requestIdsCache.put(requestId, "");
               }
             }
@@ -218,6 +228,31 @@ public class OracleClient {
     }
     return response;
   }
+
+
+  /**
+   * constructor.
+   */
+  public static String getBlockHashByNum(long blockNum) {
+    try {
+      Map<String, Object> params = Maps.newHashMap();
+      params.put("num", blockNum);
+      params.put("visible",true);
+      HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+              "/wallet/getblockbynum", params);
+      HttpEntity responseEntity = response.getEntity();
+      TriggerResponse triggerResponse = null;
+      String responsrStr = EntityUtils.toString(responseEntity);
+
+      JSONObject responseContent = JSONObject.parseObject(responsrStr);
+
+      return responseContent.getString("blockID");
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
 
   private List<EventData> getEventData(String addr) {
     if ("event.nileex.io".equals(HTTP_EVENT_HOST)) {  // for test
