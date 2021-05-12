@@ -23,10 +23,15 @@ public class JobSubscriber {
   private List<String> jobSubscriberList = new ArrayList<>();
 
   @Autowired
-  public JobSubscriber(JobRunner jobRunner) {
+  public JobSubscriber(JobRunner jobRunner, VrfJobRunner vrfJobRunner) {
     JobSubscriber.jobRunner = jobRunner;
+    JobSubscriber.vrfJobRunner = vrfJobRunner;
   }
 
+  /*@Autowired
+  public JobSubscriber(VrfJobRunner vrfJobRunner) {
+    JobSubscriber.vrfJobRunner = vrfJobRunner;
+  }*/
 
   public boolean addJob(JobSpec jobSpec) {
 

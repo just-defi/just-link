@@ -3,7 +3,6 @@ package com.tron.job.adapters;
 import com.tron.common.Constant;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.entity.TaskParams;
-import com.tron.web.entity.TaskRun;
 import com.tron.web.entity.TaskSpec;
 
 public class AdapterManager {
@@ -41,6 +40,9 @@ public class AdapterManager {
         break;
       case Constant.TASK_TYPE_CACHE:
         adapter = new CacheAdapter();
+        break;
+      case Constant.TASK_TYPE_RANDOM:
+        adapter = new RandomAdapter(params.getPublicKey());
         break;
       default:
         break;

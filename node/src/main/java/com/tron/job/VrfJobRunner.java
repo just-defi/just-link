@@ -5,6 +5,7 @@ import com.tron.client.VrfEventRequest;
 import com.tron.common.Constant;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
+import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.*;
 import com.tron.web.service.JobRunsService;
@@ -151,7 +152,7 @@ public class VrfJobRunner {
   }
 
   private R executeTask(TaskRun taskRun, TaskSpec taskSpec, R input) {
-    System.out.println("zyd adapter 2222");
+    System.out.println("zyd adapter 32222");
     BaseAdapter adapter = AdapterManager.getAdapter(taskSpec);
     R result = adapter.perform(input);
 
@@ -159,7 +160,7 @@ public class VrfJobRunner {
     if (result.get("code").equals(0)) {
       String resultStr = String.valueOf(result.get("result"));
       jobRunsService.updateTaskResult(taskRun.getId(), 2, resultStr, null);
-      System.out.println("zyd adpater 2222 resultstr:" + resultStr);
+      System.out.println("zyd adpater 32222 resultstr:" + resultStr);
 
       if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX)) {
         tronTxService.insert((TronTx)result.get("tx"));

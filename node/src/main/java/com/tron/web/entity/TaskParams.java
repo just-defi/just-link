@@ -10,4 +10,5 @@ public class TaskParams {
   private String pair;
   private String pool;
   private String trc20;
+  private String publicKey;
 }

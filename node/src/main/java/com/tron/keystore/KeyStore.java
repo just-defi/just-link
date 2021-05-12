@@ -35,6 +35,8 @@ public class KeyStore {
     }
     ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privatekey));
 
+    System.out.println("zyd ecKey x:" + ecKey.getPubKeyPoint().getXCoord() + ", ecKey y:" + ecKey.getPubKeyPoint().getYCoord());
+
     System.out.println("zyd key.store public address: " + ByteArray.toHexString(ecKey.getAddress()));
   }
 

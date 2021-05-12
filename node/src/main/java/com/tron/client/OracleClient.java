@@ -1,17 +1,10 @@
 package com.tron.client;
 
-import static com.tron.common.Constant.FULFIL_METHOD_SIGN;
-import static com.tron.common.Constant.VRF_FULFIL_METHOD_SIGN;
-import static com.tron.common.Constant.FULLNODE_HOST;
-import static com.tron.common.Constant.HTTP_EVENT_HOST;
-import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
-import static com.tron.common.Constant.ONE_HOUR;
-import static com.tron.common.Constant.ONE_MINUTE;
-
 import com.alibaba.fastjson.JSONObject;
 import com.beust.jcommander.internal.Sets;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Maps;
@@ -32,11 +25,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.net.InetAddress;
 import java.nio.charset.Charset;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -55,6 +44,9 @@ import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.protos.Protocol;
+
+import static com.tron.common.Constant.*;
+import static com.tron.common.Constant.TRIGGET_CONSTANT_CONTRACT;
 
 /**
  * Subscribe the events of the oracle contracts and reply.
@@ -171,10 +163,10 @@ public class OracleClient {
                   continue;
                 }
                 // filter events
-                if (!listeningAddrs.get(addr).contains(jobId)) {
+                /*if (!listeningAddrs.get(addr).contains(jobId)) {
                   log.warn("this node does not support this job, jobid: {}", jobId);
                   continue;
-                }
+                }*///TODO DEBUG only
 
                 // Number/height of the block in which this request appeared
                 long blockNum = eventData.getBlockNumber();
