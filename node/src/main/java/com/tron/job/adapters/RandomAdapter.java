@@ -15,6 +15,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
+import org.spongycastle.math.ec.ECPoint;
 import org.spongycastle.util.encoders.Hex;
 
 import java.io.IOException;
@@ -26,11 +27,16 @@ import java.util.Optional;
 
 import static com.tron.common.Constant.*;
 import org.tron.common.crypto.Hash;
+import org.tron.common.crypto.ECKey;
+import org.tron.keystore.Wallet;
 
 @Slf4j
 public class RandomAdapter extends BaseAdapter {
   @Getter
   private String publicKey;
+
+  final BigInteger groupOrder = ECKey.CURVE_SPEC.getN();
+
 
   public RandomAdapter(String publicKey) {
     publicKey = publicKey;
@@ -119,20 +125,53 @@ public class RandomAdapter extends BaseAdapter {
   // GenerateProofResponse returns the marshaled proof of the VRF output given the
   // secretKey and the seed computed from the s.PreSeed and the s.BlockHash
   private String GenerateProofResponse(String priKey, String preSeed, long blockNum, String blockHash) {
-    String seed = FinalSeed(preSeed, blockHash);
-    return seed;
+    byte[] seed = FinalSeed(preSeed, blockHash);
+
+    return "";
   }
 
   // FinalSeed is the seed which is actually passed to the VRF proof generator,
   // given the pre-seed and the hash of the block in which the VRFCoordinator
   // emitted the log for the request this is responding to.
-  private String FinalSeed(String preSeed, String blockHash) {
-    String seedHashMsg = preSeed + blockHash;
-    return seedHashMsg;
+  private byte[] FinalSeed(String preSeed, String blockHash) {
+    String seedMsg = preSeed + blockHash;
+    byte[] seedHash = MustHash(seedMsg);
+
+    return seedHash;
   }
 
   // MustHash returns the keccak256 hash, or panics on failure.
   private byte[] MustHash(String in) {
     return Hash.sha3(in.getBytes());
+  }
+
+  // GenerateProof returns gamma, plus proof that gamma was constructed from seed
+  // as mandated from the given secretKey, with public key secretKey*Generator
+  //
+  // secretKey and seed must be less than secp256k1 group order. (Without this
+  // constraint on the seed, the samples and the possible public keys would
+  // deviate very slightly from uniform distribution.)
+  private String GenerateProof(String priKey, byte[] seed) {
+    //group order: "FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141"
+
+    BigInteger nonce = new BigInteger(Hex.toHexString(Wallet.generateRandomBytes(32)), 16).mod(groupOrder);
+    String proof = generateProofWithNonce(priKey, seed, nonce);
+    return "";
+  }
+
+  // generateProofWithNonce allows external nonce generation for testing purposes
+  //
+  // As with signatures, using nonces which are in any way predictable to an
+  // adversary will leak your secret key! Most people should use GenerateProof
+  // instead.
+  private String generateProofWithNonce(String priKey, byte[] seed, BigInteger nonce) {
+    BigInteger priVal = new BigInteger(priKey, 16);
+    BigInteger seedVal = new BigInteger(Hex.toHexString(seed),16);
+    if(!(priVal.compareTo(groupOrder) == -1 && seedVal.compareTo(groupOrder) == -1)){
+      log.error("badly-formatted key or seed");
+    }
+    ECPoint pubKey = ECKey.CURVE_SPEC.getG().multiply(priVal);
+    pubKey.isValid();
+    return "";
   }
 }
