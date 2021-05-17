@@ -259,11 +259,11 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable, V
     }
 
     /**
-     * @notice Called when LINK is sent to the contract via `transferAndCall`
+     * @notice Called when JST is sent to the contract via `transferAndCall`
      * @dev The data payload's first 2 words will be overwritten by the `_sender` and `_amount`
      * values to ensure correctness. Calls oracleRequest.
      * @param _sender Address of the sender
-     * @param _amount Amount of LINK sent (specified in wei)
+     * @param _amount Amount of JST sent (specified in sun)
      * @param _data Payload of the transaction
      */
     function onTokenTransfer(
@@ -420,7 +420,7 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable, V
         emit ZydTestKeySeed(keyHash, consumerSeed, nonce);
         sufficientJST(_feePaid, keyHash);
         address sender = _sender;
-        uint256 feePadi = _feePaid;
+        uint256 feePaid = _feePaid;
         uint256 preSeed = makeVRFInputSeed(keyHash, consumerSeed, sender, nonce);
         bytes32 requestId = makeRequestId(keyHash, preSeed);
 
@@ -440,8 +440,8 @@ contract VRFCoordinator is JustlinkRequestInterface, OracleInterface, Ownable, V
         // Cryptographically guaranteed by preSeed including an increasing nonce
         assert(callbacks[requestId].callbackContract == address(0));
         callbacks[requestId].callbackContract = sender;
-        assert(feePadi < 1e27); // Total JST fits in uint96 //ZYD TODO
-        callbacks[requestId].randomnessFee = uint96(feePadi);
+        assert(feePaid < 1e27); // Total JST fits in uint96 //ZYD TODO
+        callbacks[requestId].randomnessFee = uint96(feePaid);
         callbacks[requestId].seedAndBlockNum = keccak256(abi.encodePacked(
           preSeed, block.number));
         emit VRFRequest(keyHash, preSeed, serviceAgreements[keyHash].jobID,
