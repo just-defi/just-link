@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "./VRFConsumerBase.sol";
 import "./Owned.sol";
@@ -10,8 +10,6 @@ import "./Owned.sol";
  * @dev This is only an example implementation and not necessarily suitable for mainnet.
  */
 contract VRFD20 is VRFConsumerBase, Owned {
-    using SafeMathTron for uint256;
-
     uint256 private constant ROLL_IN_PROGRESS = 42;
 
     bytes32 private s_keyHash;
@@ -77,7 +75,7 @@ contract VRFD20 is VRFConsumerBase, Owned {
      * @param requestId bytes32
      * @param randomness The random result returned by the oracle
      */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal {
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override{
         uint256 d20Value = randomness.mod(20).add(1);
         s_results[s_rollers[requestId]] = d20Value;
         emit DiceLanded(requestId, d20Value);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "./SafeMathTron.sol";
 
@@ -111,17 +111,17 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
    * @param _sender The sender of the request
    * @param _feePaid The amount of payment given (specified in JST) //TODO wei?
    * @param _callbackAddress The callback address for the response
-   * @param _callbackFunctionId The callback function ID for the response
+   * param _callbackFunctionId The callback function ID for the response
    * @param _data The CBOR payload of the request
    */
   function vrfRequest(
     address _sender,
     uint256 _feePaid,
-    bytes32 _specId,
+    bytes32 /*_specId*/,
     address _callbackAddress,
-    bytes4 _callbackFunctionId,
-    uint256 _nonce,
-    uint256 _dataVersion,
+    bytes4 /*_callbackFunctionId*/,
+    uint256 /*_nonce*/,
+    uint256 /*_dataVersion*/,
     bytes calldata _data
   )
   external

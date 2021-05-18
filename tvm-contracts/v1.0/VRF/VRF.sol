@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 /** ****************************************************************************
   * @notice Verification of verifiable-random-function (VRF) proofs, following

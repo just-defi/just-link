@@ -1,36 +1,36 @@
-pragma solidity ^0.5.0;
+pragma solidity ^0.6.0;
 
 import "./SafeMathTron.sol";
 
-contract TRC20Interface {
+abstract contract TRC20Interface {
 
-    function totalSupply() public view returns (uint);
+    function totalSupply() public view virtual returns (uint);
 
-    function balanceOf(address guy) public view returns (uint);
+    function balanceOf(address guy) public view virtual returns (uint);
 
-    function allowance(address src, address guy) public view returns (uint);
+    function allowance(address src, address guy) public view virtual returns (uint);
 
-    function approve(address guy, uint wad) public returns (bool);
+    function approve(address guy, uint wad) public  virtual returns (bool);
 
-    function transfer(address dst, uint wad) public returns (bool);
+    function transfer(address dst, uint wad) public virtual returns (bool);
 
-    function transferFrom(address src, address dst, uint wad) public returns (bool);
+    function transferFrom(address src, address dst, uint wad) public virtual returns (bool);
 
     event Transfer(address indexed from, address indexed to, uint tokens);
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
-contract JustMid {
+abstract contract JustMid {
 
-    function setToken(address tokenAddress) public;
+    function setToken(address tokenAddress) public virtual;
 
-    function transferAndCall(address from, address to, uint tokens, bytes memory _data) public returns (bool success);
+    function transferAndCall(address from, address to, uint tokens, bytes memory _data) public virtual returns (bool success);
 
-    function balanceOf(address guy) public view returns (uint);
+    function balanceOf(address guy) public view virtual returns (uint);
 
-    function transferFrom(address src, address dst, uint wad) public returns (bool);
+    function transferFrom(address src, address dst, uint wad) public virtual returns (bool);
 
-    function allowance(address src, address guy) public view returns (uint);
+    function allowance(address src, address guy) public view virtual returns (uint);
 
 }
 
@@ -527,24 +527,6 @@ library Justlink {
 }
 
 interface JustlinkRequestInterface {
-    function oracleRequest(
-        address sender,
-        uint256 payment,
-        bytes32 id,
-        address callbackAddress,
-        bytes4 callbackFunctionId,
-        uint256 nonce,
-        uint256 version,
-        bytes calldata data
-    ) external;
-
-    function cancelOracleRequest(
-        bytes32 requestId,
-        uint256 payment,
-        bytes4 callbackFunctionId,
-        uint256 expiration
-    ) external;
-
     function vrfRequest(
         address sender,
         uint256 payment,
@@ -564,7 +546,7 @@ interface JustlinkRequestInterface {
  */
 contract JustlinkClient {
     using Justlink for Justlink.Request;
-    using SafeMath for uint256;
+    using SafeMathTron for uint256;
 
     uint256 constant internal LINK = 10 ** 18;
     uint256 constant private AMOUNT_OVERRIDE = 0;
@@ -574,12 +556,6 @@ contract JustlinkClient {
     JustMid internal justMid;
     TRC20Interface internal token;
     JustlinkRequestInterface private oracle;
-    uint256 private requests = 1;
-    mapping(bytes32 => address) private pendingRequests;
-
-    event JustlinkRequested(bytes32 indexed id);
-    event JustlinkFulfilled(bytes32 indexed id);
-    event JustlinkCancelled(bytes32 indexed id);
 
     /**
      * @notice Creates a request that can hold additional parameters
@@ -595,77 +571,6 @@ contract JustlinkClient {
     ) internal pure returns (Justlink.Request memory) {
         Justlink.Request memory req;
         return req.initialize(_specId, _callbackAddress, _callbackFunctionSignature);
-    }
-
-    /**
-     * @notice Creates a Justlink request to the stored oracle address
-     * @dev Calls `JustlinkRequestTo` with the stored oracle address
-     * @param _req The initialized Justlink Request
-     * @param _payment The amount of LINK to send for the request
-     * @return The request ID
-     */
-    function sendJustlinkRequest(Justlink.Request memory _req, uint256 _payment)
-    internal
-    returns (bytes32)
-    {
-        return sendJustlinkRequestTo(address(oracle), _req, _payment);
-    }
-
-    /**
-     * @notice Creates a Justlink request to the specified oracle address
-     * @dev Generates and stores a request ID, increments the local nonce, and uses `transferAndCall` to
-     * send LINK which creates a request on the target oracle contract.
-     * Emits JustlinkRequested event.
-     * @param _oracle The address of the oracle for the request
-     * @param _req The initialized Justlink Request
-     * @param _payment The amount of LINK to send for the request
-     * @return The request ID
-     */
-    function sendJustlinkRequestTo(address _oracle, Justlink.Request memory _req, uint256 _payment)
-    internal
-    returns (bytes32 requestId)
-    {
-        requestId = keccak256(abi.encodePacked(this, requests));
-        _req.nonce = requests;
-        pendingRequests[requestId] = _oracle;
-        emit JustlinkRequested(requestId);
-        token.approve(justMidAddress(), _payment);
-        require(justMid.transferAndCall(address(this), _oracle, _payment, encodeRequest(_req)), "unable to transferAndCall to oracle");
-        requests += 1;
-
-        return requestId;
-    }
-
-    /**
-     * @notice Allows a request to be cancelled if it has not been fulfilled
-     * @dev Requires keeping track of the expiration value emitted from the oracle contract.
-     * Deletes the request from the `pendingRequests` mapping.
-     * Emits JustlinkCancelled event.
-     * @param _requestId The request ID
-     * @param _payment The amount of LINK sent for the request
-     * @param _callbackFunc The callback function specified for the request
-     * @param _expiration The time of the expiration for the request
-     */
-    function cancelJustlinkRequest(
-        bytes32 _requestId,
-        uint256 _payment,
-        bytes4 _callbackFunc,
-        uint256 _expiration
-    )
-    internal
-    {
-        JustlinkRequestInterface requested = JustlinkRequestInterface(pendingRequests[_requestId]);
-        delete pendingRequests[_requestId];
-        emit JustlinkCancelled(_requestId);
-        requested.cancelOracleRequest(_requestId, _payment, _callbackFunc, _expiration);
-    }
-
-    /**
-     * @notice Sets the stored oracle address
-     * @param _oracle The address of the oracle contract
-     */
-    function setJustlinkOracle(address _oracle) internal {
-        oracle = JustlinkRequestInterface(_oracle);
     }
 
     /**
@@ -693,60 +598,9 @@ contract JustlinkClient {
     }
 
     /**
-     * @notice Retrieves the stored address of the oracle contract
-     * @return The address of the oracle contract
-     */
-    function JustlinkOracleAddress()
-    internal
-    view
-    returns (address)
-    {
-        return address(oracle);
-    }
-
-    /**
-     * @notice Allows for a request which was created on another contract to be fulfilled
-     * on this contract
-     * @param _oracle The address of the oracle contract that will fulfill the request
-     * @param _requestId The request ID used for the response
-     */
-    function addJustlinkExternalRequest(address _oracle, bytes32 _requestId)
-    internal
-    notPendingRequest(_requestId)
-    {
-        pendingRequests[_requestId] = _oracle;
-    }
-
-
-
-    /**
-     * @notice Encodes the request to be sent to the oracle contract
-     * @dev The Justlink node expects values to be in order for the request to be picked up. Order of types
-     * will be validated in the oracle contract.
-     * @param _req The initialized Justlink Request
-     * @return The bytes payload for the `transferAndCall` method
-     */
-    function encodeRequest(Justlink.Request memory _req)
-    private
-    view
-    returns (bytes memory)
-    {
-        return abi.encodeWithSelector(
-            oracle.oracleRequest.selector,
-            SENDER_OVERRIDE, // Sender value - overridden by onTokenTransfer by the requesting contract's address
-            AMOUNT_OVERRIDE, // Amount value - overridden by onTokenTransfer by the actual amount of LINK sent
-            _req.id,
-            _req.callbackAddress,
-            _req.callbackFunctionId,
-            _req.nonce,
-            ARGS_VERSION,
-            _req.buf.buf);
-    }
-
-    /**
      * @notice Encodes the request to be sent to the vrfCoordinator contract
      * @dev The Justlink node expects values to be in order for the request to be picked up. Order of types
-     * will be validated in the oracle contract.
+     * will be validated in the VRFCoordinator contract.
      * @param _req The initialized Justlink Request
      * @return The bytes payload for the `transferAndCall` method
      */
@@ -766,52 +620,6 @@ contract JustlinkClient {
             ARGS_VERSION,
             _req.buf.buf);
     }
-
-    /**
-     * @notice Ensures that the fulfillment is valid for this contract
-     * @dev Use if the contract developer prefers methods instead of modifiers for validation
-     * @param _requestId The request ID for fulfillment
-     */
-    function validateJustlinkCallback(bytes32 _requestId)
-    internal
-    recordJustlinkFulfillment(_requestId)
-        // solhint-disable-next-line no-empty-blocks
-    {}
-
-    /**
-     * @dev Reverts if the sender is not the oracle of the request.
-     * Emits JustlinkFulfilled event.
-     * @param _requestId The request ID for fulfillment
-     */
-    modifier recordJustlinkFulfillment(bytes32 _requestId) {
-        require(msg.sender == pendingRequests[_requestId], "Source must be the oracle of the request");
-        delete pendingRequests[_requestId];
-        emit JustlinkFulfilled(_requestId);
-        _;
-    }
-
-    /**
-     * @dev Reverts if the request is already pending
-     * @param _requestId The request ID for fulfillment
-     */
-    modifier notPendingRequest(bytes32 _requestId) {
-        require(pendingRequests[_requestId] == address(0), "Request is already pending");
-        _;
-    }
 }
 
 
-interface AggregatorInterface {
-    function latestAnswer() external view returns (int256);
-
-    function latestTimestamp() external view returns (uint256);
-
-    function latestRound() external view returns (uint256);
-
-    function getAnswer(uint256 roundId) external view returns (int256);
-
-    function getTimestamp(uint256 roundId) external view returns (uint256);
-
-    event AnswerUpdated(int256 indexed current, uint256 indexed roundId, uint256 timestamp);
-    event NewRound(uint256 indexed roundId, address indexed startedBy, uint256 startedAt);
-}
