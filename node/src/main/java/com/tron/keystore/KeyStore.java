@@ -2,6 +2,8 @@ package com.tron.keystore;
 
 import java.io.File;
 import java.io.FileNotFoundException;
+
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.logging.log4j.util.Strings;
 import org.springframework.stereotype.Component;
@@ -19,21 +21,22 @@ import org.tron.common.utils.StringUtil;
 public class KeyStore {
 
   private static ECKey ecKey;
+  @Getter
+  private static String privateKey;
 
   public static void initKeyStore(String filePath) throws FileNotFoundException {
     if (Strings.isEmpty(filePath)) {
       filePath = "classpath:key.store";
     }
-    String privatekey = "";
     if (!filePath.startsWith("classpath")) {
       log.info("init ECKey from {}", filePath);
-      privatekey = PropUtil.readProperty(filePath, "privatekey");
+      privateKey = PropUtil.readProperty(filePath, "privatekey");
     } else {
       log.info("init ECKey from classpath");
       File file =  ResourceUtils.getFile(filePath);
-      privatekey = PropUtil.readProperty(file.getPath(), "privatekey");
+      privateKey = PropUtil.readProperty(file.getPath(), "privatekey");
     }
-    ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privatekey));
+    ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privateKey));
 
     System.out.println("zyd ecKey x:" + ecKey.getPubKeyPoint().getXCoord() + ", ecKey y:" + ecKey.getPubKeyPoint().getYCoord());
 

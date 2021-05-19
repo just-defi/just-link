@@ -11,11 +11,8 @@ public class Constant {
 
   public static final String TRX_DECIMAL_STR = "1000000";
 
- // public static String HTTP_EVENT_HOST = "api.trongrid.io";
- // public static String FULLNODE_HOST = "api.trongrid.io";
-
-  public static String HTTP_EVENT_HOST = "event.nileex.io"; // for test
-  public static String FULLNODE_HOST = "api.nileex.io"; // for test
+  public static String HTTP_EVENT_HOST = "api.trongrid.io";
+  public static String FULLNODE_HOST = "api.trongrid.io";
 
   public static void initEnv(String env) {
     if ("dev".equals(env)) {
