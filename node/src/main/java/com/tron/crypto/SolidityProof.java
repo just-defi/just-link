@@ -29,7 +29,7 @@ public class SolidityProof {
         CGammaWitness.getRawXCoord().toBigInteger(),
         CGammaWitness.getRawYCoord().toBigInteger(),
         SHashWitness.getRawXCoord().toBigInteger(),
-        SHashWitness.getRawXCoord().toBigInteger(),
+        SHashWitness.getRawYCoord().toBigInteger(),
         ZInv
     );
   }

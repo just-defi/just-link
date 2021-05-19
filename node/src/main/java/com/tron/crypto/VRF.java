@@ -698,7 +698,7 @@ public class VRF {
 
     byte[] merged = new byte[32 + 64];
     System.arraycopy(vrfRandomOutputHashPrefix, 0, merged, 0, 32);
-    System.arraycopy(rawGamma, 0, merged, 0, 64);
+    System.arraycopy(rawGamma, 0, merged, 32, 64);
     BigInteger output = new BigInteger(1, MustHash(merged));
 
     Proof proof = new Proof(PublicKey, Gamma, c, s, seed, output);

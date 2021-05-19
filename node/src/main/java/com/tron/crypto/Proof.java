@@ -25,7 +25,7 @@ public class Proof {
         PublicKey.getRawXCoord().toBigInteger(),
         PublicKey.getRawYCoord().toBigInteger(),
         Gamma.getRawXCoord().toBigInteger(),
-        Gamma.getRawXCoord().toBigInteger(),
+        Gamma.getRawYCoord().toBigInteger(),
         C,
         S,
         Seed,
