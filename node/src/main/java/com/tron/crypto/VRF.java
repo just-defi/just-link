@@ -14,23 +14,26 @@ import org.tron.common.utils.ByteArray;
 @Slf4j
 public class VRF {
 
-  // Secp256k1 用到的椭圆曲线：y²=x³+7
-  // p = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
-  // N = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+  // Secp256k1 curve：y²=x³+7
   private static ECKey ecKey;
   public static final ECPoint generator = ECKey.CURVE_SPEC.getG();
+  // p = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F
+  // field num on Fp
   public static final BigInteger fieldSize =
-      ECKey.CURVE_SPEC.getCurve().getField().getCharacteristic(); //基域上元素的个数p
-  public static final BigInteger groupOrder = ECKey.CURVE_SPEC.getN(); //椭圆曲线上点的个数N
+      ECKey.CURVE_SPEC.getCurve().getField().getCharacteristic();
+  // N = FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141
+  // point num on Eclipse Curve
+  public static final BigInteger groupOrder = ECKey.CURVE_SPEC.getN();
 
-  //一些预定义的标量
+  //some predefine constant
   public final static int HashLength = 32;
   private final BigInteger zero, one, two, three, four, seven, eulerCriterionPower, sqrtPower;
+  // some prefix, byte[32]
   private final byte[] hashToCurveHashPrefix; //1
   private final byte[] scalarFromCurveHashPrefix; //2
   private final byte[] vrfRandomOutputHashPrefix; //3
 
-  //SolidityProof的长度为416
+  //SolidityProof = 416
   private static final int ProofLength = 64 + // PublicKey
       64 + // Gamma
       32 + // C
@@ -44,12 +47,12 @@ public class VRF {
   @AllArgsConstructor
   class MarshaledProof {
 
-    //长度为 ProofLength 的 byte 数组
+    // byte array length is ProofLength
     public byte[] value;
   }
 
   /**
-   * 节点的私钥初始化一个 VRF node
+   * construct VRF node with privateKey
    */
   public VRF(String privateKey) {
     ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privateKey));
@@ -64,15 +67,16 @@ public class VRF {
     eulerCriterionPower = fieldSize.subtract(one).divide(two); //  (p-1)/2
     sqrtPower = fieldSize.add(one).divide(four); // (p+1)/4
 
-    hashToCurveHashPrefix = BytesToHash(one.toByteArray());
-    scalarFromCurveHashPrefix = BytesToHash(two.toByteArray());
-    vrfRandomOutputHashPrefix = BytesToHash(three.toByteArray());
+    hashToCurveHashPrefix = bytesToHash(one.toByteArray());
+    scalarFromCurveHashPrefix = bytesToHash(two.toByteArray());
+    vrfRandomOutputHashPrefix = bytesToHash(three.toByteArray());
   }
 
   /**
-   * 截取 b 的后 HashLength 个byte；不足前补0；结果长度为 HashLength。BytesToHash 等价于go中的 BigToHash
+   * get last HashLength byte of b; if len(b) < HashLength, padding with 0 before.
+   * equal to function BigToHash in go module.
    */
-  public byte[] BytesToHash(byte[] b) {
+  public byte[] bytesToHash(byte[] b) {
     byte[] hash = new byte[HashLength];
     if (b.length > HashLength) {
       hash = Arrays.copyOfRange(b, b.length - HashLength, b.length);
@@ -83,26 +87,20 @@ public class VRF {
   }
 
   /**
-   * 标量与点的线性组合
+   * linearCombination of scalar and EcPoint, [c]·p1 + [s]·p2
    */
   public ECPoint linearCombination(BigInteger c, ECPoint p1, BigInteger s, ECPoint p2) {
     ECPoint p11 = p1.multiply(c.mod(groupOrder)).normalize();
     ECPoint p22 = p2.multiply(s.mod(groupOrder)).normalize();
-//    System.out.println(String.format("add_1_x:%s\nadd_1_y:%s\nadd_2_x:%s\nadd_2_y:%s\n",
-//        ByteArray.toHexString(p11.getRawXCoord().toBigInteger().toByteArray()),
-//        ByteArray.toHexString(p11.getRawYCoord().toBigInteger().toByteArray()),
-//        ByteArray.toHexString(p22.getRawXCoord().toBigInteger().toByteArray()),
-//        ByteArray.toHexString(p22.getRawYCoord().toBigInteger().toByteArray())
-//        ));
     return p11.add(p22).normalize();
   }
 
   /**
-   * 点表示为 byte 数组。p1已经经过normalize
+   * represent one ECPoint with byte array. ECPoint must be normalized already.
    */
-  public static byte[] LongMarshal(ECPoint p1) {
-    byte[] x = BigIntegers.asUnsignedByteArray(32, p1.getRawXCoord().toBigInteger()); //固定长度，前面补0
-    byte[] y = BigIntegers.asUnsignedByteArray(32, p1.getRawYCoord().toBigInteger()); //固定长度，前面补0
+  public static byte[] longMarshal(ECPoint p1) {
+    byte[] x = BigIntegers.asUnsignedByteArray(32, p1.getRawXCoord().toBigInteger());
+    byte[] y = BigIntegers.asUnsignedByteArray(32, p1.getRawYCoord().toBigInteger());
     byte[] merged = new byte[x.length + y.length];
     System.arraycopy(x, 0, merged, 0, x.length);
     System.arraycopy(y, 0, merged, x.length, y.length);
@@ -110,9 +108,9 @@ public class VRF {
   }
 
   /**
-   * 从合并的 byte 数组中反解出点
+   * construct one ECPoint from byte array.
    */
-  public ECPoint LongUnmarshal(byte[] m) throws VRFException {
+  public ECPoint longUnmarshal(byte[] m) throws VRFException {
     if (m == null || m.length != 64) {
       throw new VRFException(String.format(
           "0x%s does not represent an uncompressed secp256k1Point. Should be length 64, but is length %d",
@@ -131,16 +129,16 @@ public class VRF {
   }
 
   /**
-   * sha3操作，结果长度为256bit，32byte。MustHash returns the keccak256 hash, or panics on failure.
+   * MustHash returns the keccak256 hash, or panics on failure, 32 byte
    */
-  private static byte[] MustHash(byte[] in) {
+  private static byte[] mustHash(byte[] in) {
     return Hash.sha3(in);
   }
 
   /**
-   * 把第1、2、3、5个点参数的 p.x||p.y 串一起，链接uWitness，sha3得到点c
+   * concat the 1,2,3,5th point which has the form of p.x||p.y, join uWitness, at last sha3 the result
    */
-  public BigInteger ScalarFromCurvePoints(ECPoint hash, ECPoint pk, ECPoint gamma, byte[] uWitness,
+  public BigInteger scalarFromCurvePoints(ECPoint hash, ECPoint pk, ECPoint gamma, byte[] uWitness,
       ECPoint v) throws VRFException {
     if (!(hash.isValid() && pk.isValid() && gamma.isValid() && v.isValid())) {
       throw new VRFException("bad arguments to vrf.ScalarFromCurvePoints");
@@ -155,37 +153,37 @@ public class VRF {
 
     byte[] merged = new byte[32 + 64 + 64 + 64 + 64 + 20];
     System.arraycopy(scalarFromCurveHashPrefix, 0, merged, 0, 32);
-    System.arraycopy(LongMarshal(hash), 0, merged, 32, 64);
-    System.arraycopy(LongMarshal(pk), 0, merged, 96, 64);
-    System.arraycopy(LongMarshal(gamma), 0, merged, 160, 64);
-    System.arraycopy(LongMarshal(v), 0, merged, 224, 64);
+    System.arraycopy(longMarshal(hash), 0, merged, 32, 64);
+    System.arraycopy(longMarshal(pk), 0, merged, 96, 64);
+    System.arraycopy(longMarshal(gamma), 0, merged, 160, 64);
+    System.arraycopy(longMarshal(v), 0, merged, 224, 64);
     System.arraycopy(uWitness, 0, merged, 288, 20);
-    byte[] mustHash = MustHash(merged);
+    byte[] mustHash = mustHash(merged);
 
     return new BigInteger(1, mustHash);
   }
 
   /**
-   * 把 message 做 sha3 操作，转换为曲线上的标量域，作为x坐标
+   * convert sha3(message) to the field element on Fp
    */
-  public BigInteger FieldHash(byte[] message) {
+  public BigInteger fieldHash(byte[] message) {
 //    System.out.println("message:" + ByteArray.toHexString(message));
-    byte[] hashResult = MustHash(message);
+    byte[] hashResult = mustHash(message);
 //    System.out.println("hashResult:" + ByteArray.toHexString(hashResult));
-    BigInteger rv = new BigInteger(1, BytesToHash(hashResult));
+    BigInteger rv = new BigInteger(1, bytesToHash(hashResult));
 //    System.out.println("FieldHash1:" + rv);
 
-    if (rv.compareTo(fieldSize) >= 0) {
-      byte[] shortRV = BytesToHash(BigIntegers.asUnsignedByteArray(rv));
-      rv = new BigInteger(1, MustHash(shortRV));
+    while (rv.compareTo(fieldSize) >= 0) {
+      byte[] shortRV = bytesToHash(BigIntegers.asUnsignedByteArray(rv));
+      rv = new BigInteger(1, mustHash(shortRV));
     }
     return rv;
   }
 
   /**
-   * 若slice长度小于l,左填充0为长度l；否则直接返回
+   * left pad byte 0 of slice to length l
    */
-  public byte[] LeftPadBytes(byte[] slice, int l) {
+  public byte[] leftPadBytes(byte[] slice, int l) {
     if (slice.length >= l) {
       return slice;
     }
@@ -196,40 +194,40 @@ public class VRF {
   }
 
   /**
-   * 把整数转化为 32 字节的 byte 数组
+   * convert uint256 to byte array, without sign byte
    */
   public byte[] uint256ToBytes32(BigInteger uint256) throws VRFException {
     if (BigIntegers.asUnsignedByteArray(uint256).length > HashLength) { //256=HashLength*8
       throw new VRFException("vrf.uint256ToBytes32: too big to marshal to uint256");
     }
-    return LeftPadBytes(BigIntegers.asUnsignedByteArray(uint256), HashLength);
+    return leftPadBytes(BigIntegers.asUnsignedByteArray(uint256), HashLength);
   }
 
   /**
-   * x => x^3 + 7，即 y^2
+   * x => x^3 + 7，
    */
   public BigInteger ySquare(BigInteger x) {
     return x.modPow(three, fieldSize).add(seven).mod(fieldSize);
   }
 
   /**
-   * 判断一个数 x 是不是域上一个数的平方
+   * check whether a BigInteger is the square of some element on Fp.
    */
   public boolean isSquare(BigInteger x) {
     return x.modPow(eulerCriterionPower, fieldSize).compareTo(one) == 0;
   }
 
   /**
-   * 判断 x 是否可以作为曲线上的横坐标
+   * check whether one BigInteger can be the x coordinate of Curve
    */
-  public boolean IsCurveXOrdinate(BigInteger x) {
+  public boolean isCurveXOrdinate(BigInteger x) {
     return isSquare(ySquare(x));
   }
 
   /**
    * SquareRoot returns a s.t. a^2=x, as long as x is a square
    */
-  public BigInteger SquareRoot(BigInteger x) {
+  public BigInteger squareRoot(BigInteger x) {
     return x.modPow(sqrtPower, fieldSize);
   }
 
@@ -250,7 +248,7 @@ public class VRF {
   }
 
   /**
-   * 把2个点转换为投影坐标系，相加后，得到第三个点
+   * add two affine point, get the projective point
    */
   public BigInteger[] ProjectiveECAdd(ECPoint p, ECPoint q) {
     BigInteger px = p.normalize().getRawXCoord().toBigInteger();
@@ -296,9 +294,9 @@ public class VRF {
   }
 
   /**
-   * 构造一个 CURVE 上的点
+   * create an uncompressed ECPoint with coordinate x,y on Curve
    */
-  public ECPoint SetCoordinates(BigInteger x, BigInteger y) throws VRFException {
+  public ECPoint setCoordinates(BigInteger x, BigInteger y) throws VRFException {
     ECPoint rv = ECKey.CURVE_SPEC.getCurve().createPoint(x, y);
     if (!rv.isValid()) {
       throw new VRFException("point requested from invalid coordinates");
@@ -307,9 +305,9 @@ public class VRF {
   }
 
   /**
-   * 吧hash值映射为曲线上的一个点
+   * get a ECPoint whose coordinate x = hash(p.x||p.y||seed)
    */
-  public ECPoint HashToCurve(ECPoint p, BigInteger seed) throws VRFException {
+  public ECPoint hashToCurve(ECPoint p, BigInteger seed) throws VRFException {
     if (!(p.isValid() && seed.toByteArray().length <= 256 && seed.compareTo(zero) >= 0)) {
       throw new VRFException("bad input to vrf.HashToCurve");
     }
@@ -317,26 +315,19 @@ public class VRF {
 
     byte[] merged = new byte[32 + 64 + 32];
     System.arraycopy(hashToCurveHashPrefix, 0, merged, 0, 32);
-    System.arraycopy(LongMarshal(p), 0, merged, 32, 64);
+    System.arraycopy(longMarshal(p), 0, merged, 32, 64);
     System.arraycopy(inputTo32Byte, 0, merged, 96, 32);
-//    System.out.println(ByteArray.toHexString(merged));
-    BigInteger x = FieldHash(merged);
-//    System.out.println("x_1:" + x);
 
-    while (!IsCurveXOrdinate(x)) { // Hash recursively until x^3+7 is a square
-      x = FieldHash(BytesToHash(BigIntegers.asUnsignedByteArray(x)));
+    BigInteger x = fieldHash(merged);
+
+    while (!isCurveXOrdinate(x)) { // Hash recursively until x^3+7 is a square
+      x = fieldHash(bytesToHash(BigIntegers.asUnsignedByteArray(x)));
     }
     BigInteger y_2 = ySquare(x);
-//    System.out.println("y_2:" + y_2);
-    BigInteger y = SquareRoot(y_2);
-//    System.out.println("y:" + y);
-    ECPoint rv = SetCoordinates(x, y);
-//    System.out.println("rv_x:" +
-//        ByteArray.toHexString(rv.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("rv_y:" +
-//        ByteArray.toHexString(rv.getRawYCoord().toBigInteger().toByteArray()));
+    BigInteger y = squareRoot(y_2);
+    ECPoint rv = setCoordinates(x, y);
 
-    // Negate response if y odd. 如果y为奇数，取负点
+    // Negate response if y odd
     if (y.mod(two).compareTo(one) == 0) {
       rv = rv.negate();
     }
@@ -344,7 +335,9 @@ public class VRF {
   }
 
   /**
-   * 验证组合是否不相等。不等返回true，相等返回false
+   * check if [c]·gamma ≠ [s]·hash as required by solidity verifier
+   *
+   * @return false if [c]·gamma ≠ [s]·hash else true
    */
   public boolean checkCGammaNotEqualToSHash(BigInteger c, ECPoint gamma, BigInteger s,
       ECPoint hash) {
@@ -354,11 +347,11 @@ public class VRF {
   }
 
   /**
-   * sha3(p.x||p.y)，取最低160个bit。等价于函数 EthereumAddress
+   * get last 160 bit of sha3(p.x||p.y)，equal to function EthereumAddress in go module
    */
   public byte[] getLast160BitOfPoint(ECPoint point) {
 //    System.out.println("getLast160BitOfPoint:" + ByteArray.toHexString(LongMarshal(point)));
-    byte[] sha3Result = MustHash(LongMarshal(point)); //32字节
+    byte[] sha3Result = mustHash(longMarshal(point));
 //    System.out.println("sha3Result:" + ByteArray.toHexString(sha3Result));
 
     byte[] cv = new byte[20];
@@ -367,13 +360,14 @@ public class VRF {
   }
 
   /**
-   * 通过公钥、用户提供的种子验证刚才生成的 proof 是否成立。
+   * VerifyVRFProof is true iff gamma was generated in the mandated way from the
+   * given publicKey and seed, and no error was encountered
    */
-  public boolean VerifyVRFProof(Proof proof) throws ErrCGammaEqualsSHash, VRFException {
-    if (!proof.WellFormed()) {
+  public boolean verifyVRFProof(Proof proof) throws ErrCGammaEqualsSHash, VRFException {
+    if (!proof.wellFormed()) {
       throw new VRFException("badly-formatted proof");
     }
-    ECPoint h = HashToCurve(proof.PublicKey, proof.Seed).normalize();
+    ECPoint h = hashToCurve(proof.PublicKey, proof.Seed).normalize();
 //    System.out.println("verify_h_x:" +
 //        ByteArray.toHexString(h.getRawXCoord().toBigInteger().toByteArray()));
 //    System.out.println("verify_h_y:" +
@@ -410,9 +404,9 @@ public class VRF {
     //点u转换为以太坊地址
     byte[] uWitness = getLast160BitOfPoint(uPrime);
     //把1、2、3、5的x、y串一起，链接uWitness，得到点c
-    BigInteger cPrime = ScalarFromCurvePoints(h, proof.PublicKey, proof.getGamma(), uWitness,
+    BigInteger cPrime = scalarFromCurvePoints(h, proof.PublicKey, proof.getGamma(), uWitness,
         vPrime);
-    byte[] gammaRepresent = LongMarshal(proof.getGamma());
+    byte[] gammaRepresent = longMarshal(proof.getGamma());
 
     //随机数β的x、y坐标连在一起，加前缀
     byte[] prefixAndGamma = new byte[vrfRandomOutputHashPrefix.length + gammaRepresent.length];
@@ -420,24 +414,28 @@ public class VRF {
         vrfRandomOutputHashPrefix.length);
     System.arraycopy(gammaRepresent, 0, prefixAndGamma, vrfRandomOutputHashPrefix.length,
         gammaRepresent.length);
-    byte[] output = MustHash(prefixAndGamma);
+    byte[] output = mustHash(prefixAndGamma);
 
-    // 验证是否满足 点β = 点c 且随机数 output 一致
+    // check if point proof.β == point cPrime
     if (!(proof.C.compareTo(cPrime) == 0)) {
-//      System.out.println("ddddddd");
       return false;
     }
+    // check if proof.Output == output
     if (!(proof.Output.compareTo(new BigInteger(1, output)) == 0)) {
-//      System.out.println("eeeeeeee");
       return false;
     }
     return true;
   }
 
   /**
-   * @param secretKey 节点的私钥，相当于k，
-   * @param seed 用户给的种子，相当于message，
-   * @param nonce 是一个0~q之间的随机数，标量，相当于t。不是vrf的随机数，vrf输出的随机数是一个点
+   * generateProofWithNonce allows external nonce generation for testing purposes
+   *
+   * As with signatures, using nonces which are in any way predictable to an
+   * adversary will leak your secret key! Most people should use GenerateProof instead.
+   *
+   * @param secretKey private key of node, same as k in pseudocode，
+   * @param seed seed provided by use, same as message in pseudocode，
+   * @param nonce one scalar between 0 and p, same as t in pseudocode, not equal with Output Point of VRF
    * @return proof
    */
   public Proof generateProofWithNonce(BigInteger secretKey, BigInteger seed, BigInteger nonce)
@@ -451,53 +449,26 @@ public class VRF {
     BigInteger skAsScalar = secretKey.mod(groupOrder);
     //伪代码的公钥Q = [secretKey]·G
     ECPoint publicKey = generator.multiply(skAsScalar).normalize();
-//    System.out.println("base_x1:" +
-//        ByteArray.toHexString(generator.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("base_y1:" +
-//        ByteArray.toHexString(generator.getRawYCoord().toBigInteger().toByteArray()));
-//
-//    System.out.println("publicKey_x:" +
-//        ByteArray.toHexString(publicKey.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("publicKey_y:" +
-//        ByteArray.toHexString(publicKey.getRawYCoord().toBigInteger().toByteArray()));
 
-    ECPoint h = HashToCurve(publicKey, seed).normalize(); // 点 h = HashToCurve(Q,message)
-//    System.out.println("h_x1:" +
-//        ByteArray.toHexString(h.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("h_y1:" +
-//        ByteArray.toHexString(h.getRawYCoord().toBigInteger().toByteArray()));
+    // 点 h = HashToCurve(Q,message)
+    ECPoint h = hashToCurve(publicKey, seed).normalize();
 
-    ECPoint gamma = h.multiply(skAsScalar).normalize(); // 点 β = [secretKey]·h
-//    System.out.println("gamma_x1:" +
-//        ByteArray.toHexString(gamma.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("gamma_y1:" +
-//        ByteArray.toHexString(gamma.getRawYCoord().toBigInteger().toByteArray()));
+    // 点 β = [secretKey]·h
+    ECPoint gamma = h.multiply(skAsScalar).normalize();
 
     BigInteger sm = nonce.mod(groupOrder); //t
 //    System.out.println(sm);
     ECPoint u = generator.multiply(sm).normalize();//normalize操作使 z=1
-//    System.out.println("u_x1:" +
-//        ByteArray.toHexString(u.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("u_y1:" +
-//        ByteArray.toHexString(u.getRawYCoord().toBigInteger().toByteArray()));
 
     byte[] uWitness = getLast160BitOfPoint(u);
 //    System.out.println("uWitness:" + ByteArray.toHexString(uWitness));
     ECPoint v = h.multiply(sm).normalize();
-//    System.out.println("v_x1:" +
-//        ByteArray.toHexString(v.getRawXCoord().toBigInteger().toByteArray()));
-//    System.out.println("v_y1:" +
-//        ByteArray.toHexString(v.getRawYCoord().toBigInteger().toByteArray()));
 
     //把1、2、3、5的x、y串一起，链接uWitness，得到c
-    BigInteger c = ScalarFromCurvePoints(h, publicKey, gamma, uWitness, v);
+    BigInteger c = scalarFromCurvePoints(h, publicKey, gamma, uWitness, v);
 //    System.out.println("c:" + c);
 
     //s = (nonce - c·k) mod q
-//    System.out.println("c.multiply(skAsScalar):" + c.multiply(skAsScalar));
-//    System.out.println(
-//        "nonce.subtract(c.multiply(skAsScalar)):" + nonce.subtract(c.multiply(skAsScalar)));
-//    System.out.println("groupOrder:" + groupOrder);
     BigInteger s = nonce.subtract(c.multiply(skAsScalar)).mod(groupOrder);
 //    System.out.println("s:" + s);
     if (!checkCGammaNotEqualToSHash(c, gamma, s, h)) {
@@ -505,20 +476,18 @@ public class VRF {
       return null;
     }
 
-    byte[] gammaRepresent = LongMarshal(gamma);
+    byte[] gammaRepresent = longMarshal(gamma);
 //    System.out.println("gammaRepresent:" + ByteArray.toHexString(gammaRepresent));
 
-    //随机数β的x、y坐标连在一起，加前缀
+    //prefix||β.x||β.y
     byte[] prefixAndGamma = new byte[vrfRandomOutputHashPrefix.length + gammaRepresent.length];
     System.arraycopy(vrfRandomOutputHashPrefix, 0, prefixAndGamma, 0,
         vrfRandomOutputHashPrefix.length);
     System.arraycopy(gammaRepresent, 0, prefixAndGamma, vrfRandomOutputHashPrefix.length,
         gammaRepresent.length);
-//    System.out.println("prefixAndGamma:" + ByteArray.toHexString(prefixAndGamma));
 
-    //输出随机数，是点β的x、y坐标的hash
-    byte[] output = MustHash(prefixAndGamma);
-//    System.out.println("output:" + ByteArray.toHexString(output));
+    //sha3(prefix||β.x||β.y)
+    byte[] output = mustHash(prefixAndGamma);
 
     Proof rv = new Proof(
         publicKey,
@@ -529,14 +498,14 @@ public class VRF {
         new BigInteger(1, output));
 
 //    System.out.println("\nVerifyVRFProof...");
-    if (!VerifyVRFProof(rv)) {
+    if (!verifyVRFProof(rv)) {
       throw new VRFException("constructed invalid proof");
     }
     return rv;
   }
 
   /**
-   * 生成一个小于 n 的随机大正数
+   * generate a biginteger between 0 and n as seed
    */
   public BigInteger getRandomBigInteger() {
     SecureRandom random = new SecureRandom();
@@ -558,21 +527,19 @@ public class VRF {
    * constraint on the seed, the samples and the possible public keys would
    * deviate very slightly from uniform distribution.)
    *
-   * @param seed HashLength长度的byte数组
+   * @param seed byte[HashLength] that user inputs
    */
-  public Proof GenerateProof(byte[] seed) {
+  public Proof generateProof(byte[] seed) {
     Proof proof = null;
     while (true) {
       BigInteger nonce = getRandomBigInteger();
       try {
         proof = generateProofWithNonce(ecKey.getPrivKey(), new BigInteger(1, seed), nonce);
       } catch (ErrCGammaEqualsSHash errCGammaEqualsSHash) {
-//        System.out.println("aaaaaa");
         log.error("", errCGammaEqualsSHash);
         continue;
       } catch (VRFException vrfException) {
-//        System.out.println("bbbbbb");
-        vrfException.printStackTrace();
+        log.error("", vrfException);
         break;
       }
       break;
@@ -586,7 +553,7 @@ public class VRF {
   }
 
   public void testSquareRoot() {
-    assert SquareRoot(four).compareTo(two) == 0;
+    assert squareRoot(four).compareTo(two) == 0;
   }
 
   public void testYSquare() {
@@ -594,8 +561,8 @@ public class VRF {
   }
 
   public void testIsCurveXOrdinate() {
-    assert IsCurveXOrdinate(one) == true;
-    assert IsCurveXOrdinate(BigInteger.valueOf(5)) == true;
+    assert isCurveXOrdinate(one) == true;
+    assert isCurveXOrdinate(BigInteger.valueOf(5)) == true;
   }
 
   public void testVerifyProof() {
@@ -615,7 +582,7 @@ public class VRF {
     //如果seed不一样，proof无法验证通过
     proof.setSeed(seed.add(BigInteger.valueOf(1)));
     try {
-      boolean valid = VerifyVRFProof(proof);
+      boolean valid = verifyVRFProof(proof);
       assert valid == false;
     } catch (ErrCGammaEqualsSHash errCGammaEqualsSHash) {
       errCGammaEqualsSHash.printStackTrace();
@@ -625,17 +592,16 @@ public class VRF {
   }
 
   /**
-   * 根据 Proof 预计算生成一个 SolidityProof
    * returns the precomputed values needed by the solidity verifier, or an error on failure.
    */
-  public SolidityProof SolidityPrecalculations(Proof proof) {
+  public SolidityProof solidityPrecalculations(Proof proof) {
     ECPoint uPrime = linearCombination(proof.C, proof.PublicKey, proof.S, generator);
     byte[] uWitness = getLast160BitOfPoint(uPrime); //1
     ECPoint CGammaWitness = proof.Gamma.multiply(proof.C.mod(groupOrder)).normalize(); //2
 
     ECPoint hash;
     try {
-      hash = HashToCurve(proof.PublicKey, proof.Seed);
+      hash = hashToCurve(proof.PublicKey, proof.Seed);
     } catch (VRFException vrfException) {
       vrfException.printStackTrace();
       return null;
@@ -651,41 +617,41 @@ public class VRF {
   }
 
   /**
-   * 把 SolidityProof 序列化为二进制的 marshaled proof
+   * serialize SolidityProof as binary marshaled proof
    */
-  public byte[] MarshalForSolidityVerifier(SolidityProof solidityProof)
+  public byte[] marshalForSolidityVerifier(SolidityProof solidityProof)
       throws VRFException {
     byte[] cursor = new byte[ProofLength];
-    System.arraycopy(LongMarshal(solidityProof.getProof().PublicKey), 0, cursor, 0, 64);
-    System.arraycopy(LongMarshal(solidityProof.getProof().getGamma()), 0, cursor, 64, 64);
+    System.arraycopy(longMarshal(solidityProof.getProof().PublicKey), 0, cursor, 0, 64);
+    System.arraycopy(longMarshal(solidityProof.getProof().getGamma()), 0, cursor, 64, 64);
     System.arraycopy(uint256ToBytes32(solidityProof.getProof().C), 0, cursor, 128, 32);
     System.arraycopy(uint256ToBytes32(solidityProof.getProof().S), 0, cursor, 160, 32);
     System.arraycopy(uint256ToBytes32(solidityProof.getProof().Seed), 0, cursor, 192, 32);
     byte[] padding = new byte[12];
     System.arraycopy(padding, 0, cursor, 224, 12);
     System.arraycopy(solidityProof.getUWitness(), 0, cursor, 236, 20);
-    System.arraycopy(LongMarshal(solidityProof.getCGammaWitness()), 0, cursor, 256, 64);
-    System.arraycopy(LongMarshal(solidityProof.getSHashWitness()), 0, cursor, 320, 64);
+    System.arraycopy(longMarshal(solidityProof.getCGammaWitness()), 0, cursor, 256, 64);
+    System.arraycopy(longMarshal(solidityProof.getSHashWitness()), 0, cursor, 320, 64);
     System.arraycopy(uint256ToBytes32(solidityProof.getZInv()), 0, cursor, 384, 32);
 
     return cursor;
   }
 
   /**
-   * 把二进制的 marshaled proof 反序列化为 Proof
+   * deserialize binary marshaled proof to Proof
    */
-  public Proof UnmarshalSolidityProof(byte[] marshaledProof) throws VRFException {
+  public Proof unmarshalSolidityProof(byte[] marshaledProof) throws VRFException {
     if (marshaledProof == null || marshaledProof.length != ProofLength) {
       throw new VRFException(String.format("VRF proof is %d bytes long, should be %d: %s",
           marshaledProof.length, ProofLength, ByteArray.toHexString(marshaledProof)));
     }
     byte[] byte1 = new byte[64];
     System.arraycopy(marshaledProof, 0, byte1, 0, 64);
-    ECPoint PublicKey = LongUnmarshal(byte1);
+    ECPoint PublicKey = longUnmarshal(byte1);
 
     byte[] rawGamma = new byte[64];
     System.arraycopy(marshaledProof, 64, rawGamma, 0, 64);
-    ECPoint Gamma = LongUnmarshal(rawGamma);
+    ECPoint Gamma = longUnmarshal(rawGamma);
 
     byte[] byte3 = new byte[32];
     System.arraycopy(marshaledProof, 128, byte3, 0, 32);
@@ -702,7 +668,7 @@ public class VRF {
     byte[] merged = new byte[32 + 64];
     System.arraycopy(vrfRandomOutputHashPrefix, 0, merged, 0, 32);
     System.arraycopy(rawGamma, 0, merged, 32, 64);
-    BigInteger output = new BigInteger(1, MustHash(merged));
+    BigInteger output = new BigInteger(1, mustHash(merged));
 
     Proof proof = new Proof(PublicKey, Gamma, c, s, seed, output);
     return proof;
@@ -716,19 +682,19 @@ public class VRF {
 //    vrf.testIsCurveXOrdinate();
 //    vrf.testVerifyProof();
 
-    //seed不能超过uint256范围，即32字节
-    Proof proof = vrf.GenerateProof(ByteArray.fromHexString(
+    //secretKey and seed must be less than secp256k1 group order
+    Proof proof = vrf.generateProof(ByteArray.fromHexString(
         "91b10c5c56c46097870d96c7f5d8fddb0c1fea25f6d176e43700dd8b11af7d19"));
     System.out.println(proof.toString());
 
     //2
-    SolidityProof solidityProof = vrf.SolidityPrecalculations(proof);
+    SolidityProof solidityProof = vrf.solidityPrecalculations(proof);
     System.out.println(solidityProof.toString());
 
     //3
     byte[] marshaledProof;
     try {
-      marshaledProof = vrf.MarshalForSolidityVerifier(solidityProof);
+      marshaledProof = vrf.marshalForSolidityVerifier(solidityProof);
     } catch (VRFException vrfException) {
       vrfException.printStackTrace();
       return;
@@ -738,7 +704,7 @@ public class VRF {
     //4
     Proof unmarshalProof;
     try {
-      unmarshalProof = vrf.UnmarshalSolidityProof(marshaledProof);
+      unmarshalProof = vrf.unmarshalSolidityProof(marshaledProof);
     } catch (VRFException vrfException) {
       vrfException.printStackTrace();
       return;

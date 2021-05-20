@@ -6,6 +6,10 @@ import lombok.Data;
 import org.spongycastle.math.ec.ECPoint;
 import org.spongycastle.util.BigIntegers;
 
+/**
+ * Proof represents a proof that Gamma was constructed from the Seed
+ * according to the process mandated by the PublicKey.
+ */
 @Data
 @AllArgsConstructor
 public class Proof {
@@ -31,7 +35,8 @@ public class Proof {
         Output);
   }
 
-  public boolean WellFormed() {
+  //WellFormed is true if proof's attributes satisfy basic domain checks
+  public boolean wellFormed() {
     BigInteger groupOrder = VRF.groupOrder;
     if (!PublicKey.isValid()) {
       return false;
