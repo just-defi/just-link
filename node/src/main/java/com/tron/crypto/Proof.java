@@ -5,7 +5,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.spongycastle.math.ec.ECPoint;
 import org.spongycastle.util.BigIntegers;
-import org.tron.common.crypto.ECKey;
 
 @Data
 @AllArgsConstructor
@@ -33,7 +32,7 @@ public class Proof {
   }
 
   public boolean WellFormed() {
-    BigInteger groupOrder = ECKey.CURVE_SPEC.getCurve().getField().getCharacteristic();
+    BigInteger groupOrder = VRF.groupOrder;
     if (!PublicKey.isValid()) {
       return false;
     }

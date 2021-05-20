@@ -20,7 +20,7 @@ public class VRF {
   private static ECKey ecKey;
   public static final ECPoint generator = ECKey.CURVE_SPEC.getG();
   public static final BigInteger fieldSize =
-      ECKey.CURVE_SPEC.getCurve().getField().getCharacteristic(); //基域上点的个数p
+      ECKey.CURVE_SPEC.getCurve().getField().getCharacteristic(); //基域上元素的个数p
   public static final BigInteger groupOrder = ECKey.CURVE_SPEC.getN(); //椭圆曲线上点的个数N
 
   //一些预定义的标量
@@ -30,7 +30,7 @@ public class VRF {
   private final byte[] scalarFromCurveHashPrefix; //2
   private final byte[] vrfRandomOutputHashPrefix; //3
 
-  //SolidityProof的长度
+  //SolidityProof的长度为416
   private static final int ProofLength = 64 + // PublicKey
       64 + // Gamma
       32 + // C
@@ -115,7 +115,7 @@ public class VRF {
   public ECPoint LongUnmarshal(byte[] m) throws VRFException {
     if (m == null || m.length != 64) {
       throw new VRFException(String.format(
-          "0x%x does not represent an uncompressed secp256k1Point. Should be length 64, but is length %d",
+          "0x%s does not represent an uncompressed secp256k1Point. Should be length 64, but is length %d",
           ByteArray.toHexString(m), m.length));
     }
     byte[] xByte = new byte[32], yByte = new byte[32];
@@ -206,7 +206,7 @@ public class VRF {
   }
 
   /**
-   * 得到 y^2 = x^3 + 7
+   * x => x^3 + 7，即 y^2
    */
   public BigInteger ySquare(BigInteger x) {
     return x.modPow(three, fieldSize).add(seven).mod(fieldSize);
@@ -249,6 +249,9 @@ public class VRF {
     return new BigInteger[] {x1.multiply(x2), z1.multiply(z2)};
   }
 
+  /**
+   * 把2个点转换为投影坐标系，相加后，得到第三个点
+   */
   public BigInteger[] ProjectiveECAdd(ECPoint p, ECPoint q) {
     BigInteger px = p.normalize().getRawXCoord().toBigInteger();
     BigInteger py = p.normalize().getRawYCoord().toBigInteger();
