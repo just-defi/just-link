@@ -9,6 +9,10 @@ import com.tron.client.VrfEventRequest;
 import com.tron.common.Constant;
 import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
+import com.tron.crypto.Proof;
+import com.tron.crypto.SolidityProof;
+import com.tron.crypto.VRF;
+import com.tron.crypto.VRFException;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import lombok.Getter;
@@ -28,6 +32,8 @@ import java.util.Optional;
 import static com.tron.common.Constant.*;
 import org.tron.common.crypto.Hash;
 import org.tron.common.crypto.ECKey;
+import org.tron.common.utils.ByteArray;
+import org.tron.common.utils.ByteUtil;
 import org.tron.keystore.Wallet;
 
 @Slf4j
@@ -67,6 +73,13 @@ public class RandomAdapter extends BaseAdapter {
       // ChainLink save the public key & private both in memory and db.
       // TODO
       String privateKey = "0356d03a31277ee385cd6c27d3f26d4f9c4df70caca42577a94d0c1642fda1f1";
+
+      byte[] responseProof = GenerateProofResponse(privateKey, preSeed, blockNum, blockHash);
+
+      if (responseProof == null) {
+        throw new RuntimeException("generate vrf proof error!");
+      }
+      result.put("result", ByteArray.toHexString(responseProof));
 
     } catch (Exception e) {
       result.replace("code", 1);
@@ -112,37 +125,60 @@ public class RandomAdapter extends BaseAdapter {
   //
   // Key must have already been unlocked in ks, as constructing the VRF proof
   // requires the secret key.
-  private String GenerateProof(String priKey, String preSeed, long blockNum, String blockHash) {
+  private byte[] GenerateProof(String priKey, String preSeed, long blockNum, String blockHash) {
     return MarshaledProof(priKey, preSeed, blockNum, blockHash);
   }
 
   // MarshaledProof is a VRF proof of randomness using i.Key and seed, in the form
   // required by VRFCoordinator.sol's fulfillRandomnessRequest
-  private String MarshaledProof(String priKey, String preSeed, long blockNum, String blockHash) {
+  private byte[] MarshaledProof(String priKey, String preSeed, long blockNum, String blockHash) {
     return GenerateProofResponse(priKey, preSeed, blockNum, blockHash);
   }
 
   // GenerateProofResponse returns the marshaled proof of the VRF output given the
   // secretKey and the seed computed from the s.PreSeed and the s.BlockHash
-  private String GenerateProofResponse(String priKey, String preSeed, long blockNum, String blockHash) {
-    byte[] seed = FinalSeed(preSeed, blockHash);
+  private byte[] GenerateProofResponse(String priKey, String preSeed, long blockNum, String blockHash) {
+    VRF vrf = new VRF(priKey);
+    byte[] finalSeed = vrf.mustHash(ByteUtil.merge(ByteArray.fromHexString(preSeed), ByteArray.fromHexString(blockHash)));
+    Proof proof = vrf.generateProof(finalSeed);
+    System.out.println("preSeed:" + preSeed + ", finalSeed:" + ByteArray.toHexString(finalSeed) + ", zyd 1:" + proof.toString());
 
-    return "";
-  }
+    //2
+    SolidityProof solidityProof = vrf.solidityPrecalculations(proof);
+    System.out.println("zyd 3:" + solidityProof.toString());
 
-  // FinalSeed is the seed which is actually passed to the VRF proof generator,
-  // given the pre-seed and the hash of the block in which the VRFCoordinator
-  // emitted the log for the request this is responding to.
-  private byte[] FinalSeed(String preSeed, String blockHash) {
-    String seedMsg = preSeed + blockHash;
-    byte[] seedHash = MustHash(seedMsg);
+    // Overwrite seed input to the VRF proof generator with the seed the
+    // VRFCoordinator originally requested, so that it can identify the request
+    // corresponding to this response, and compute the final seed itself using the
+    // blockhash it infers from the block number.
 
-    return seedHash;
-  }
+    //3
+    byte[] marshaledProof;
+    try {
+      marshaledProof = vrf.marshalForSolidityVerifier(solidityProof);
+    } catch (VRFException vrfException) {
+      vrfException.printStackTrace();
+      return null;
+    }
+    System.out.println("marshaledProof 2:" + ByteArray.toHexString(marshaledProof));
 
-  // MustHash returns the keccak256 hash, or panics on failure.
-  private byte[] MustHash(String in) {
-    return Hash.sha3(in.getBytes());
+    //4 add prefix and append blocknum, and replace finalSeed with preSeed
+    byte[] beforeSeed = new byte[192];
+    byte[] afterSeed = new byte[192];
+    byte[] preSeedBytes = ByteArray.fromHexString(preSeed);
+
+    System.arraycopy(marshaledProof, 0, beforeSeed, 0, 192);
+    System.arraycopy(marshaledProof, 224, afterSeed, 0, 192);
+    byte[] solidityProofResponse = ByteUtil.merge(
+            beforeSeed, preSeedBytes, afterSeed, ByteUtil.longTo32Bytes(blockNum));
+
+    System.out.println("zyd 4:" + ByteArray.toHexString(solidityProofResponse));
+
+    if (solidityProofResponse.length != vrf.ProofLength+32) {
+      return null;
+    }
+
+    return solidityProofResponse;
   }
 
   // GenerateProof returns gamma, plus proof that gamma was constructed from seed

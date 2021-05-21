@@ -93,10 +93,8 @@ public class OracleClient {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address",request.getContractAddr());
-    /*params.put("function_selector",FULFIL_METHOD_SIGN);
-    params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));*/
-    params.put("function_selector",VRF_FULFIL_METHOD_SIGN);
-    params.put("parameter", AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, request.toList()));
+    params.put("function_selector",FULFIL_METHOD_SIGN);
+    params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
     params.put("call_value",0);
     params.put("visible",true);
@@ -132,6 +130,56 @@ public class OracleClient {
     tx.setHash(ByteArray.toHexString(hash));
     //tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
+    return tx;
+  }
+
+  /**
+   *
+   * @param request
+   * @return transactionid
+   */
+  public static TronTx vrfFulfil(FulfillRequest request) throws IOException, BadItemException {
+    List<Object> parameters = Arrays.asList(request.getData());
+    Map<String, Object> params = Maps.newHashMap();
+    params.put("owner_address", KeyStore.getAddr());
+    params.put("contract_address",request.getContractAddr());
+    params.put("function_selector",VRF_FULFIL_METHOD_SIGN);
+    params.put("parameter", AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, parameters));
+    params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
+    params.put("call_value",0);
+    params.put("visible",true);
+    HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+            "/wallet/triggersmartcontract", params);
+    HttpEntity responseEntity = response.getEntity();
+    TriggerResponse triggerResponse = null;
+    String responsrStr = EntityUtils.toString(responseEntity);
+    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+
+    // sign
+    ECKey key = KeyStore.getKey();
+    String rawDataHex = triggerResponse.getTransaction().getRawDataHex();
+    Protocol.Transaction.raw raw = Protocol.Transaction.raw.parseFrom(ByteArray.fromHexString(rawDataHex));
+    byte[] hash = Sha256Hash.hash(true, raw.toByteArray());
+    ECKey.ECDSASignature signature = key.sign(hash);
+    ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
+    TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
+
+    // broadcast
+    params.clear();
+    params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));
+    response = HttpUtil.post("https", FULLNODE_HOST,
+            "/wallet/broadcasthex", params);
+    BroadCastResponse broadCastResponse =
+            JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+
+    TronTx tx = new TronTx();
+    tx.setFrom(KeyStore.getAddr());
+    tx.setTo(request.getContractAddr());
+    tx.setSurrogateId(broadCastResponse.getTxid());
+    tx.setSignedRawTx(bsSign.toString());
+    tx.setHash(ByteArray.toHexString(hash));
+    //tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
+    tx.setData(AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, parameters));
     return tx;
   }
 

@@ -31,10 +31,10 @@ public class VRF {
   // some prefix, byte[32]
   private final byte[] hashToCurveHashPrefix; //1
   private final byte[] scalarFromCurveHashPrefix; //2
-  private final byte[] vrfRandomOutputHashPrefix; //3
+  public final byte[] vrfRandomOutputHashPrefix; //3
 
   //SolidityProof = 416
-  private static final int ProofLength = 64 + // PublicKey
+  public static final int ProofLength = 64 + // PublicKey
       64 + // Gamma
       32 + // C
       32 + // S
@@ -44,7 +44,8 @@ public class VRF {
       64 + // sHashWitness
       32; // zInv  (Leave Output out, because that can be efficiently calculated)
 
-  @AllArgsConstructor
+
+ @AllArgsConstructor
   class MarshaledProof {
 
     // byte array length is ProofLength
@@ -131,7 +132,7 @@ public class VRF {
   /**
    * MustHash returns the keccak256 hash, or panics on failure, 32 byte
    */
-  private static byte[] mustHash(byte[] in) {
+  public static byte[] mustHash(byte[] in) {
     return Hash.sha3(in);
   }
 

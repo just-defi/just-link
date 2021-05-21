@@ -55,10 +55,10 @@ contract VRFD20 is VRFConsumerBase, Owned {
      */
     function rollDice(uint256 userProvidedSeed, address roller) public onlyOwner returns (bytes32 requestId) {
         require(justMid.balanceOf(address(this)) >= s_fee, "Not enough JST to pay fee");
-        require(s_results[roller] == 0, "Already rolled");
+        //require(s_results[roller] == 0, "Already rolled"); //DEBUG TODO
         requestId = requestRandomness(s_keyHash, s_fee, userProvidedSeed);
-        s_rollers[requestId] = roller;
-        s_results[roller] = ROLL_IN_PROGRESS;
+        //s_rollers[requestId] = roller; //DEBUG TODO
+        //s_results[roller] = ROLL_IN_PROGRESS; //DEBUG TODO
         emit DiceRolled(requestId, roller);
     }
 
@@ -77,7 +77,7 @@ contract VRFD20 is VRFConsumerBase, Owned {
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override{
         uint256 d20Value = randomness.mod(20).add(1);
-        s_results[s_rollers[requestId]] = d20Value;
+        //s_results[s_rollers[requestId]] = d20Value; //DEBUG TODO
         emit DiceLanded(requestId, d20Value);
     }
 

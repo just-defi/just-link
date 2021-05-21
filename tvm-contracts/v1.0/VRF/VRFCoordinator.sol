@@ -66,12 +66,13 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
   // another oracle by reusing the jobID.
   event VRFRequest(
     bytes32 keyHash,
-    uint256 seed,
+    bytes32 seed,
     bytes32 indexed jobID,
     address sender,
     uint256 fee,
     bytes32 requestID);
 
+  event ZydTestRequestBlocknum(bytes32 keyHash, uint256 seed, uint256 blockNum);
   event ZydTestKeyhashSeed(bytes32 keyHash, uint256 seed);
 
   event NewServiceAgreement(bytes32 keyHash, uint256 fee);
@@ -86,12 +87,15 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
    * @param _jobID ID of the corresponding chainlink job in the oracle's db
    */
   function registerProvingKey(
-    uint256 _fee, address _oracle, uint256[2] calldata _publicProvingKey, bytes32 _jobID
+    uint256 _fee, address _oracle, /*uint256[2] calldata _publicProvingKey,*/
+    bytes calldata _publicProvingKey, bytes32 _jobID
   )
     external
     onlyOwner()
   {
-    bytes32 keyHash = hashOfKey(_publicProvingKey);
+    //bytes32 keyHash = hashOfKey(_publicProvingKey);
+    require(_publicProvingKey.length == 64, "_publicProvingKey.length should be 64 bytes");
+    bytes32 keyHash = ZYDhashOfKey(_publicProvingKey);
     address oldVRFOracle = serviceAgreements[keyHash].vRFOracle;
     require(oldVRFOracle == address(0), "please register a new key");
     require(_oracle != address(0), "_oracle must not be 0x0");
@@ -197,8 +201,9 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
     callbacks[requestId].randomnessFee = uint96(_feePaid);
     callbacks[requestId].seedAndBlockNum = keccak256(abi.encodePacked(
       preSeed, block.number));
-    emit VRFRequest(_keyHash, preSeed, serviceAgreements[_keyHash].jobID,
+    emit VRFRequest(_keyHash, bytes32(preSeed), serviceAgreements[_keyHash].jobID,
       _sender, _feePaid, requestId);
+    emit ZydTestRequestBlocknum(_keyHash, preSeed, block.number);
     nonces[_keyHash][_sender] = nonces[_keyHash][_sender].add(1);
   }
 
@@ -236,7 +241,8 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
   }
 
   function callBackWithRandomness(bytes32 requestId, uint256 randomness,
-    address consumerContract) internal {
+    /*address consumerContract) internal {*/
+    address consumerContract) public { //DEBUG ZYD
     // Dummy variable; allows access to method selector in next line. See
     // https://github.com/ethereum/solidity/issues/3506#issuecomment-553727797
     VRFConsumerBase v;
@@ -297,7 +303,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
       mstore(add(_proof, PRESEED_OFFSET), actualSeed)
       mstore(_proof, PROOF_LENGTH)
     }
-    randomness = VRF.randomValueFromVRFProof(_proof); // Reverts on failure
+    (randomness, ) = VRF.randomValueFromVRFProof(_proof); // Reverts on failure
   }
 
   /**
@@ -319,6 +325,58 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
    */
   function hashOfKey(uint256[2] memory _publicKey) public pure returns (bytes32) {
     return keccak256(abi.encodePacked(_publicKey));
+  }
+  function ZYDhashOfKey(bytes memory _publicKey) public pure returns (bytes32) {
+    return keccak256(_publicKey);
+  }
+
+  function ZYDTESTgetRandomnessFromProof(bytes memory _proof)
+  public view returns (bytes32 currentKeyHash, /*Callback memory callback,*/
+    address callbackContract,
+    uint96 randomnessFee,
+    bytes32 seedAndBlockNum,
+    bytes32 requestId, /*uint256 randomness,*/ uint256[2] memory publicKey,
+    uint256 preSeed, uint256 blockNum, bytes memory actualProof, uint256 actualSeed,
+    bytes32 blockHash) {
+    // blockNum follows proof, which follows length word (only direct-number
+    // constants are allowed in assembly, so have to compute this in code)
+    uint256 BLOCKNUM_OFFSET = 0x20 + PROOF_LENGTH;
+    // _proof.length skips the initial length word, so not including the
+    // blocknum in this length check balances out.
+    require(_proof.length == BLOCKNUM_OFFSET, "wrong proof length");
+    //uint256[2] memory publicKey;
+    //uint256 preSeed;
+    //uint256 blockNum;
+    assembly { // solhint-disable-line no-inline-assembly
+      publicKey := add(_proof, PUBLIC_KEY_OFFSET)
+      preSeed := mload(add(_proof, PRESEED_OFFSET))
+      blockNum := mload(add(_proof, BLOCKNUM_OFFSET))
+    }
+    currentKeyHash = hashOfKey(publicKey);
+    requestId = makeRequestId(currentKeyHash, preSeed);
+    Callback memory callback;
+    callback = callbacks[requestId];
+    callbackContract = callback.callbackContract;
+    randomnessFee = callback.randomnessFee;
+    seedAndBlockNum = callback.seedAndBlockNum;
+    require(callback.callbackContract != address(0), "no corresponding request");
+    require(callback.seedAndBlockNum == keccak256(abi.encodePacked(preSeed,
+      blockNum)), "wrong preSeed or block num");
+
+    blockHash = blockhash(blockNum);
+    if (blockHash == bytes32(0)) {
+      blockHash = blockHashStore.getBlockhash(blockNum);
+      require(blockHash != bytes32(0), "please prove blockhash");
+    }
+    // The seed actually used by the VRF machinery, mixing in the blockhash
+    actualSeed = uint256(keccak256(abi.encodePacked(preSeed, blockHash)));
+    // solhint-disable-next-line no-inline-assembly
+    assembly { // Construct the actual proof from the remains of _proof
+      mstore(add(_proof, PRESEED_OFFSET), actualSeed)
+      mstore(_proof, PROOF_LENGTH)
+    }
+    actualProof = _proof;
+   // (randomness, ) = VRF.randomValueFromVRFProof(_proof); // Reverts on failure
   }
 
   /**
@@ -379,4 +437,15 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
     _;
   }
 
+  // debuginfo 
+  function gasleftZYD() external view returns (uint256) {
+    return gasleft();
+  }
+
+  function gasTrxTest() external view returns (uint256, uint256) {
+    uint256 _fee = 1e9 trx;
+    return (gasleft(), _fee);
+  }
+
 }
+

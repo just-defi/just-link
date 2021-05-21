@@ -1,15 +1,29 @@
 package com.tron.job.adapters;
 
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import com.tron.client.EventRequest;
+import com.tron.client.VrfEventRequest;
 import com.tron.client.FulfillRequest;
 import com.tron.client.OracleClient;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.TronTx;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.http.util.EntityUtils;
+
+import java.math.BigInteger;
 
 @Slf4j
 public class TronTxAdapter extends BaseAdapter {
+
+  @Getter
+  private String linkType;
+
+  public TronTxAdapter(String _linkType) {
+    linkType = _linkType;
+  }
 
   @Override
   public String taskType() {
@@ -20,24 +34,56 @@ public class TronTxAdapter extends BaseAdapter {
   public R perform(R input) {
     // send tx
     try {
-      EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
-      FulfillRequest fulfillRequest = new FulfillRequest(
-          event.getContractAddr(),
-          event.getRequestId(),
-          event.getPayment(),
-          event.getCallbackAddr(),
-          event.getCallbackFunctionId(),
-          event.getCancelExpiration(),
-          codecData((long)input.get("result")));
+      int iLinkType = 0; // oracle:0, vrf:1,
+      try {
+        if ("TronVRF".equals(linkType)){
+          iLinkType = 1;
+        }
+      } catch (Exception ex){
+        log.error("no type info for trontx :" + ex.getMessage());
+      }
+      switch (iLinkType) {
+        case 0:
+          EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
+          FulfillRequest fulfillRequest = new FulfillRequest(
+                  event.getContractAddr(),
+                  event.getRequestId(),
+                  event.getPayment(),
+                  event.getCallbackAddr(),
+                  event.getCallbackFunctionId(),
+                  event.getCancelExpiration(),
+                  codecData((long)input.get("result")));
           //Long.toString((long)input.get("result")));
           //(Long) input.get("result"));
 
-      TronTx tx = OracleClient.fulfil(fulfillRequest);
-      tx.setValue((long)input.get("result"));
-      tx.setSentAt(1L);
-      log.info("tx id : " + tx.getSurrogateId());
+          TronTx tx = OracleClient.fulfil(fulfillRequest);
+          tx.setValue((long)input.get("result"));
+          tx.setSentAt(1L);
+          log.info("tx id : " + tx.getSurrogateId());
 
-      return R.ok().put("result", tx.getSurrogateId()).put("tx", tx);
+          return R.ok().put("result", tx.getSurrogateId()).put("tx", tx);
+        case 1:
+          String proof = (String)input.get("result");
+          VrfEventRequest vrfEvent = JsonUtil.fromJson((String)input.get("params"), VrfEventRequest.class);
+          FulfillRequest vrfFulfillRequest = new FulfillRequest(
+                  vrfEvent.getContractAddr(),
+                  vrfEvent.getRequestId(),
+                  new BigInteger("0"),
+                  "",
+                  "",
+                  0,
+                  proof);
+          TronTx vrfTx = OracleClient.vrfFulfil(vrfFulfillRequest);
+          vrfTx.setValue(0L);
+          vrfTx.setSentAt(1L);
+          log.info("vrfTx id : " + vrfTx.getSurrogateId());
+
+          return R.ok().put("result", vrfTx.getSurrogateId()).put("tx", vrfTx);
+        default:
+          log.error("unsupported linkType neither oracle nor vrf: " + linkType);
+          return R.error(1, "fulfillRequest failed");
+      }
+
     } catch (Exception e) {
       log.error("fulfil failed :" + e.getMessage());
       return R.error(1, "fulfillRequest failed");
