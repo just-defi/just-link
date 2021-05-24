@@ -196,47 +196,83 @@ public class OracleClient {
                 updateConsumeMap(addr, eventData.getBlockTimestamp());
 
                 // filter the events
-                if (/*!EVENT_NAME.equals(eventData.getEventName()) && */!VRF_EVENT_NAME.equals(eventData.getEventName())) {
+                String eventName = eventData.getEventName();
+                if (!EVENT_NAME.equals(eventName) && !VRF_EVENT_NAME.equals(eventName)) {
                   log.warn("this node does not support this event, event name: {}",
                           eventData.getEventName());
                   continue;
                 }
                 String jobId = null;
                 try {
-                  jobId = new String(
-                          org.apache.commons.codec.binary.Hex.decodeHex(
-                                  ((String)eventData.getResult().get("jobID"))));
+                  switch (eventName) {
+                    case EVENT_NAME:
+                      jobId = new String(
+                              org.apache.commons.codec.binary.Hex.decodeHex(
+                                      ((String)eventData.getResult().get("specId"))));
+                      break;
+                    case VRF_EVENT_NAME:
+                      jobId = new String(
+                              org.apache.commons.codec.binary.Hex.decodeHex(
+                                      ((String)eventData.getResult().get("jobID"))));
+                      break;
+                    default:
+                      break;
+                  }
+
                 } catch (DecoderException e) {
                   log.warn("parse job failed, jobid: {}", jobId);
                   continue;
                 }
                 // filter events
-                /*if (!listeningAddrs.get(addr).contains(jobId)) {
+                if (!listeningAddrs.get(addr).contains(jobId)) {
                   log.warn("this node does not support this job, jobid: {}", jobId);
                   continue;
-                }*///TODO DEBUG only
-
+                }
                 // Number/height of the block in which this request appeared
                 long blockNum = eventData.getBlockNumber();
-                // Hash of the block in which this request appeared
-                String blockHash = getBlockHashByNum(blockNum);
+                String requestId;
+                switch (eventName) {
+                  case EVENT_NAME:
+                    String requester = Tool.convertHexToTronAddr((String)eventData.getResult().get("requester"));
+                    String callbackAddr = Tool.convertHexToTronAddr((String)eventData.getResult().get("callbackAddr"));
+                    String callbackFuncId = (String)eventData.getResult().get("callbackFunctionId");
+                    long cancelExpiration = Long.parseLong((String)eventData.getResult().get("cancelExpiration"));
+                    String data = (String)eventData.getResult().get("data");
+                    long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
+                    requestId = (String)eventData.getResult().get("requestId");
+                    BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
+                    if (requestIdsCache.getIfPresent(requestId) != null) {
+                      log.info("this event has been handled, requestid:{}", requestId);
+                      continue;
+                    }
+                    JobSubscriber.receiveLogRequest(
+                            new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
+                                    cancelExpiration, data, dataVersion,requestId, payment, addr));
+                    requestIdsCache.put(requestId, "");
+                    break;
+                  case VRF_EVENT_NAME:
+                    // Hash of the block in which this request appeared
+                    String blockHash = getBlockHashByNum(blockNum);
 
-                String sender = Tool.convertHexToTronAddr((String)eventData.getResult().get("sender"));
-                String keyHash = Tool.convertHexToTronAddr((String)eventData.getResult().get("keyHash"));
-                String seed = (String)eventData.getResult().get("seed");
-                BigInteger fee = new BigInteger((String)eventData.getResult().get("fee"));
-                //String data = (String)eventData.getResult().get("data");
-                //long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
-                String requestId = (String)eventData.getResult().get("requestID");
-                //BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
-                if (requestIdsCache.getIfPresent(requestId) != null) {
-                  log.info("this event has been handled, requestid:{}", requestId);
-                  continue;
+                    String sender = Tool.convertHexToTronAddr((String)eventData.getResult().get("sender"));
+                    String keyHash = Tool.convertHexToTronAddr((String)eventData.getResult().get("keyHash"));
+                    String seed = (String)eventData.getResult().get("seed");
+                    BigInteger fee = new BigInteger((String)eventData.getResult().get("fee"));
+                    requestId = (String)eventData.getResult().get("requestID");
+                    if (requestIdsCache.getIfPresent(requestId) != null) {
+                      log.info("this event has been handled, requestid:{}", requestId);
+                      continue;
+                    }
+                    JobSubscriber.receiveVrfRequest(
+                            new VrfEventRequest(blockNum, blockHash, jobId, keyHash, seed, sender,
+                                    requestId, fee, addr));
+                    requestIdsCache.put(requestId, "");
+                    break;
+                  default:
+                    log.warn("unexpected event:{}", eventName);
+                    break;
                 }
-                JobSubscriber.receiveVrfRequest(
-                        new VrfEventRequest(blockNum, blockHash, jobId, keyHash, seed, sender,
-                                requestId, fee, addr));
-                requestIdsCache.put(requestId, "");
+
               }
             }
     );
