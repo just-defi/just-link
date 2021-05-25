@@ -13,6 +13,7 @@ import com.tron.crypto.Proof;
 import com.tron.crypto.SolidityProof;
 import com.tron.crypto.VRF;
 import com.tron.crypto.VRFException;
+import com.tron.keystore.VrfKeyStore;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import lombok.Getter;
@@ -72,7 +73,7 @@ public class RandomAdapter extends BaseAdapter {
 
       // ChainLink save the public key & private both in memory and db.
       // TODO
-      String privateKey = "0356d03a31277ee385cd6c27d3f26d4f9c4df70caca42577a94d0c1642fda1f1";
+      String privateKey = VrfKeyStore.getPriKey();
 
       byte[] responseProof = GenerateProofResponse(privateKey, preSeed, blockNum, blockHash);
 

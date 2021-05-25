@@ -75,7 +75,7 @@ contract VRFD20 is VRFConsumerBase, Owned {
      * @param requestId bytes32
      * @param randomness The random result returned by the oracle
      */
-    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override{
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
         uint256 d20Value = randomness.mod(20).add(1);
         //s_results[s_rollers[requestId]] = d20Value; //DEBUG TODO
         emit DiceLanded(requestId, d20Value);
@@ -101,6 +101,7 @@ contract VRFD20 is VRFConsumerBase, Owned {
      * @param value the amount of JST to withdraw
      */
     function withdrawJST(address to, uint256 value) public onlyOwner {
+        token.approve(justMidAddress(), value);
         require(justMid.transferFrom(address(this), to, value), "Not enough JST");
     }
 

@@ -503,8 +503,7 @@ contract VRF {
    * @dev See the calculation of PROOF_LENGTH for the binary layout of proof.
    */
   function randomValueFromVRFProof(bytes memory proof)
-    public view returns (uint256 output, uint256[2] memory randomZYD) {
-    /*internal view returns (uint256 output) {*/ //TODO. DEBUG NOW
+    internal view returns (uint256 output) {
       require(proof.length == PROOF_LENGTH, "wrong proof length");
 
       uint256[2] memory pk; // parse proof contents into these variables
@@ -529,7 +528,6 @@ contract VRF {
         sHashWitness,
         zInv
       );
-      randomZYD = gamma;
       output = uint256(keccak256(abi.encode(VRF_RANDOM_OUTPUT_HASH_PREFIX, gamma)));
     }
 }

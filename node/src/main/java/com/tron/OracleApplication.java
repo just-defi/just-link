@@ -10,6 +10,7 @@ import com.tron.common.Constant;
 import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.keystore.KeyStore;
+import com.tron.keystore.VrfKeyStore;
 import java.io.FileNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
@@ -40,6 +41,13 @@ public class OracleApplication {
 			System.exit(-1);
 		}
 		System.out.println("zyd keystore address: " + KeyStore.getAddr());
+		try {
+			VrfKeyStore.initKeyStore(argv.vrfKey);
+		} catch (FileNotFoundException e) {
+			log.error("init VRF ECKey failed, err: {}", e.getMessage());
+			System.exit(-1);
+		}
+		System.out.println("zyd vrf keystore address: " + VrfKeyStore.getAddr());
 
 		Constant.initEnv(argv.env);
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
@@ -69,6 +77,12 @@ public class OracleApplication {
 						help = true,
 						order = 3)
 		private boolean help;
+		@Parameter(
+				names = {"--vrfKey", "-vrfK"},
+				help = true,
+				description = "specify the VRF privatekey",
+				order = 4)
+		private String vrfKey;
 	}
 }
 

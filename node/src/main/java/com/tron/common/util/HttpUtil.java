@@ -42,6 +42,9 @@ public class HttpUtil {
 
     HttpGet httpGet = new HttpGet(uri);
     try {
+      if (client == null) {
+        client = HttpClients.createDefault();
+      }
       return client.execute(httpGet);
     } catch (IOException e) {
       e.printStackTrace();

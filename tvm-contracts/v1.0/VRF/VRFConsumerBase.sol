@@ -101,7 +101,6 @@ import "./Owned.sol";
 abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
     using SignedSafeMath for int256;
 
-    event NewVRFRound(uint256 indexed roundId, address indexed startedBy, bytes32 indexed blockHash);
     event VRFRequested(bytes32 indexed id);
 
     address private vrfCoordinator;
@@ -156,12 +155,10 @@ abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
     function requestRandomness(bytes32 _keyHash, uint256 _fee, uint256 _seed)
       internal returns (bytes32 requestId)
     {
-        emit NewVRFRound(nonces[_keyHash], msg.sender, blockhash(block.number - 1));
-
         Justlink.Request memory _req;
         _req = buildJustlinkRequest(_keyHash, address(this), this.rawFulfillRandomness.selector);
         _req.nonce = nonces[_keyHash];
-        _req.buf.buf = abi.encode(_keyHash, _seed); //zyd.TODO
+        _req.buf.buf = abi.encode(_keyHash, _seed);
         token.approve(justMidAddress(), _fee);
         require(justMid.transferAndCall(address(this), vrfCoordinator, _fee, encodeVRFRequest(_req)), "unable to transferAndCall to vrfCoordinator");
 
