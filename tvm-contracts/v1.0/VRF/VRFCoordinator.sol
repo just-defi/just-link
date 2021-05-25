@@ -236,8 +236,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
   }
 
   function callBackWithRandomness(bytes32 requestId, uint256 randomness,
-    /*address consumerContract) internal {*/
-    address consumerContract) public { //DEBUG ZYD
+    address consumerContract) internal {
     // Dummy variable; allows access to method selector in next line. See
     // https://github.com/ethereum/solidity/issues/3506#issuecomment-553727797
     VRFConsumerBase v;

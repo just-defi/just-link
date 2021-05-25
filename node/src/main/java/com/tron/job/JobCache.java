@@ -124,7 +124,6 @@ public class JobCache {
 
   public R getJobResultById(String jobId) {
     JobSpec job = jobSpecsService.getById(jobId);
-    System.out.println("zyd adapter 1111");
 
     R preTaskResult = new R();
     preTaskResult.put("result", null);

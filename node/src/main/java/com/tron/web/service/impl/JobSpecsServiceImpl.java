@@ -160,7 +160,6 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   }
 
   private void checkTaskSpec(TaskSpec taskSpec) throws TronException {
-    System.out.println("zyd adapter 3333");
     BaseAdapter adapter = AdapterManager.getAdapter(taskSpec);
     if (adapter == null) {
       throw new TronException("Type " + taskSpec.getType() + " dose dot support");

@@ -40,14 +40,12 @@ public class OracleApplication {
 			log.error("init ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
-		System.out.println("zyd keystore address: " + KeyStore.getAddr());
 		try {
 			VrfKeyStore.initKeyStore(argv.vrfKey);
 		} catch (FileNotFoundException e) {
 			log.error("init VRF ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
-		System.out.println("zyd vrf keystore address: " + VrfKeyStore.getAddr());
 
 		Constant.initEnv(argv.env);
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
