@@ -152,7 +152,6 @@ public class VrfJobRunner {
   }
 
   private R executeTask(TaskRun taskRun, TaskSpec taskSpec, R input) {
-    System.out.println("zyd adapter 32222");
     BaseAdapter adapter = AdapterManager.getAdapter(taskSpec);
     R result = adapter.perform(input);
 
@@ -160,7 +159,6 @@ public class VrfJobRunner {
     if (result.get("code").equals(0)) {
       String resultStr = String.valueOf(result.get("result"));
       jobRunsService.updateTaskResult(taskRun.getId(), 2, resultStr, null);
-      System.out.println("zyd adpater 32222 resultstr:" + resultStr);
 
       if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX)) {
         tronTxService.insert((TronTx)result.get("tx"));

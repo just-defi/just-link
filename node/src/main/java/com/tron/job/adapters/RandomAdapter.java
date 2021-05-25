@@ -58,8 +58,6 @@ public class RandomAdapter extends BaseAdapter {
   public R perform(R input) {
     R result = new R();
     try {
-      //result.put("result", Math.round((double)input.get("result")));
-      System.out.println("zyd random");
       VrfEventRequest event = JsonUtil.fromJson((String)input.get("params"), VrfEventRequest.class);
       String coordinatorAddress = event.getContractAddr();
       boolean shouldFulfill = checkFulfillment(coordinatorAddress, event.getRequestId());
@@ -142,11 +140,9 @@ public class RandomAdapter extends BaseAdapter {
     VRF vrf = new VRF(priKey);
     byte[] finalSeed = vrf.mustHash(ByteUtil.merge(ByteArray.fromHexString(preSeed), ByteArray.fromHexString(blockHash)));
     Proof proof = vrf.generateProof(finalSeed);
-    System.out.println("preSeed:" + preSeed + ", finalSeed:" + ByteArray.toHexString(finalSeed) + ", zyd 1:" + proof.toString());
 
     //2
     SolidityProof solidityProof = vrf.solidityPrecalculations(proof);
-    System.out.println("zyd 3:" + solidityProof.toString());
 
     // Overwrite seed input to the VRF proof generator with the seed the
     // VRFCoordinator originally requested, so that it can identify the request
@@ -161,7 +157,6 @@ public class RandomAdapter extends BaseAdapter {
       vrfException.printStackTrace();
       return null;
     }
-    System.out.println("marshaledProof 2:" + ByteArray.toHexString(marshaledProof));
 
     //4 add prefix and append blocknum, and replace finalSeed with preSeed
     byte[] beforeSeed = new byte[192];
@@ -172,8 +167,6 @@ public class RandomAdapter extends BaseAdapter {
     System.arraycopy(marshaledProof, 224, afterSeed, 0, 192);
     byte[] solidityProofResponse = ByteUtil.merge(
             beforeSeed, preSeedBytes, afterSeed, ByteUtil.longTo32Bytes(blockNum));
-
-    System.out.println("zyd 4:" + ByteArray.toHexString(solidityProofResponse));
 
     if (solidityProofResponse.length != vrf.ProofLength+32) {
       return null;

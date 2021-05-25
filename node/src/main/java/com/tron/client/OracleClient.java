@@ -178,7 +178,6 @@ public class OracleClient {
     tx.setSurrogateId(broadCastResponse.getTxid());
     tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
-    //tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     tx.setData(AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, parameters));
     return tx;
   }

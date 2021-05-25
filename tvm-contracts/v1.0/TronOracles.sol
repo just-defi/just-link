@@ -279,7 +279,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     checkCallbackAddress(_callbackAddress)
     {
         bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
-        require(commitments[requestId] == 0, "Must use a unique ID")c;
+        require(commitments[requestId] == 0, "Must use a unique ID");
         // solhint-disable-next-line not-rely-on-time
         uint256 expiration = now.add(EXPIRY_TIME);
 

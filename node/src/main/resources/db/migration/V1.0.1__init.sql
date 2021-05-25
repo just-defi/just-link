@@ -74,7 +74,7 @@ DROP TABLE IF EXISTS `job_runs`;
 CREATE TABLE `job_runs`  (
   `id` varchar(36) NOT NULL,
   `job_spec_id` varchar(36) NOT NULL,
-  `result` varchar(255),
+  `result` text,
   `error` varchar(255),
   `request_id` varchar(127),
   `params` text,
@@ -102,7 +102,7 @@ DROP TABLE IF EXISTS `task_runs`;
 CREATE TABLE `task_runs`  (
   `id` varchar(36) NOT NULL,
   `job_run_id` varchar(36) NOT NULL,
-  `result` varchar(255),
+  `result` text,
   `error` varchar(255),
   `task_spec_id` bigint NOT NULL,
   `status` tinyint NOT NULL DEFAULT 0 COMMENT '0:init 1:processing 2:complete 3:error',
