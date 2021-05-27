@@ -16,7 +16,7 @@ public class Constant {
 
   public static void initEnv(String env) {
     if ("dev".equals(env)) {
-      HTTP_EVENT_HOST = "event.nileex.io";
+      HTTP_EVENT_HOST = "nile.trongrid.io";
       FULLNODE_HOST = "api.nileex.io";
     }
   }

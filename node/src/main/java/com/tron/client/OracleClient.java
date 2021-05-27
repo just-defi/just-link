@@ -128,7 +128,6 @@ public class OracleClient {
     tx.setSurrogateId(broadCastResponse.getTxid());
     tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
-    //tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     return tx;
   }
@@ -280,6 +279,9 @@ public class OracleClient {
   public HttpResponse requestEvent(String urlPath, Map<String, String> params) {
     HttpResponse response = HttpUtil.get("https", HTTP_EVENT_HOST,
             urlPath, params);
+    if (response == null) {
+      return null;
+    }
     int status = response.getStatusLine().getStatusCode();
     if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
       int retry = 1;
@@ -294,6 +296,34 @@ public class OracleClient {
         }
         response = HttpUtil.get("https", HTTP_EVENT_HOST,
                 urlPath, params);
+        retry++;
+        status = response.getStatusLine().getStatusCode();
+        if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
+          break;
+        }
+      }
+    }
+    return response;
+  }
+
+  public HttpResponse requestNextPage(String urlNext) {
+    HttpResponse response = HttpUtil.getByUri(urlNext);
+    if (response == null) {
+      return null;
+    }
+    int status = response.getStatusLine().getStatusCode();
+    if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+      int retry = 1;
+      for (;;) {
+        if(retry > HTTP_MAX_RETRY_TIME) {
+          break;
+        }
+        try {
+          Thread.sleep(100 * retry);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        response = HttpUtil.getByUri(urlNext);
         retry++;
         status = response.getStatusLine().getStatusCode();
         if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
@@ -330,26 +360,19 @@ public class OracleClient {
 
 
   private List<EventData> getEventData(String addr) {
-    if ("event.nileex.io".equals(HTTP_EVENT_HOST)) {  // for test
-      Map<String, String> params = Maps.newHashMap();
+    List<EventData> data = new ArrayList<>();
+    HttpResponse httpResponse = null;
+    String urlPath;
+    Map<String, String> params = Maps.newHashMap();
+    if ("nile.trongrid.io".equals(HTTP_EVENT_HOST)) {  // for test
+      params.put("order_by", "block_timestamp,asc");
       if (consumeIndexMap.containsKey(addr)) {
-        params.put("since", Long.toString(consumeIndexMap.get(addr) +1));
+        params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
       } else {
-        params.put("since", "1600234218000");
-        //params.put("since", Long.toString(System.currentTimeMillis() - ONE_HOUR));
+        params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
       }
-      String urlPath = String.format("/event/contract/%s", addr);
-      HttpResponse httpResponse = requestEvent(urlPath, params);
-      HttpEntity responseEntity = httpResponse.getEntity();
-      try {
-        String responseStr = EntityUtils.toString(responseEntity);
-        ObjectMapper om = new ObjectMapper();
-        return om.readValue(responseStr, new TypeReference<List<EventData>>() {});
-      } catch (IOException e) {
-        log.error("parse response failed, err: {}", e.getMessage());
-      }
+      urlPath = String.format("/v1/contracts/%s/events", addr);
     } else {  // for production
-      Map<String, String> params = Maps.newHashMap();
       params.put("order_by", "block_timestamp,asc");
       //params.put("only_confirmed", "true");
       if (consumeIndexMap.containsKey(addr)) {
@@ -357,19 +380,58 @@ public class OracleClient {
       } else {
         params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
       }
-      String urlPath = String.format("/v1/contracts/%s/events", addr);
-      HttpResponse httpResponse = requestEvent(urlPath, params);
-      HttpEntity responseEntity = httpResponse.getEntity();
-      EventResponse response = null;
+      urlPath = String.format("/v1/contracts/%s/events", addr);
+    }
+    httpResponse = requestEvent(urlPath, params);
+    if (httpResponse == null) {
+      return null;
+    }
+    HttpEntity responseEntity = httpResponse.getEntity();
+    EventResponse response = null;
+    try {
+      String responseStr = EntityUtils.toString(responseEntity);
+      response = JsonUtil.json2Obj(responseStr, EventResponse.class);
+    } catch (IOException e) {
+      log.error("parse response failed, err: {}", e.getMessage());
+    }
+    data.addAll(response.getData());
+
+    boolean isNext = false;
+    Map<String, String> links = response.getMeta().getLinks();
+    if (links == null) {
+      return data;
+    }
+    String urlNext = links.get("next");
+    if(!Strings.isNullOrEmpty(urlNext)) {
+      isNext = true;
+    }
+    while(isNext) {
+      isNext = false;
+      HttpResponse responseNext = requestNextPage(urlNext);
+      if (responseNext == null) {
+        return data;
+      }
+      responseEntity = responseNext.getEntity();
+      response = null;
       try {
         String responseStr = EntityUtils.toString(responseEntity);
         response = JsonUtil.json2Obj(responseStr, EventResponse.class);
       } catch (IOException e) {
         log.error("parse response failed, err: {}", e.getMessage());
       }
-      return response.getData();
+      data.addAll(response.getData());
+
+      links = response.getMeta().getLinks();
+      if (links == null) {
+        return data;
+      }
+      urlNext = links.get("next");
+      if(!Strings.isNullOrEmpty(urlNext)) {
+        isNext = true;
+      }
     }
-    return null;
+
+    return data;
   }
 
   private void updateConsumeMap(String addr, long timestamp) {

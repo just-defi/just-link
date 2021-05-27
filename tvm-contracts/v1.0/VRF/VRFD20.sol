@@ -53,7 +53,11 @@ contract VRFD20 is VRFConsumerBase, Owned {
      * @param userProvidedSeed uint256 unpredictable seed
      * @param roller address of the roller
      */
-    function rollDice(uint256 userProvidedSeed, address roller) public onlyOwner returns (bytes32 requestId) {
+    function rollDice(uint256 userProvidedSeed, address roller)
+        public
+        /*onlyOwner*/ //DEBUG TODO
+        returns (bytes32 requestId)
+    {
         require(justMid.balanceOf(address(this)) >= s_fee, "Not enough JST to pay fee");
         //require(s_results[roller] == 0, "Already rolled"); //DEBUG TODO
         requestId = requestRandomness(s_keyHash, s_fee, userProvidedSeed);

@@ -13,10 +13,12 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.StringEntity;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.impl.client.HttpClients;
 import org.apache.http.message.BasicNameValuePair;
 
@@ -42,9 +44,12 @@ public class HttpUtil {
 
     HttpGet httpGet = new HttpGet(uri);
     try {
-      if (client == null) {
-        client = HttpClients.createDefault();
-      }
+      int timeout = 5; //second
+      RequestConfig config = RequestConfig.custom()
+              .setConnectTimeout(timeout * 1000)
+              .setConnectionRequestTimeout(timeout * 1000)
+              .setSocketTimeout(timeout * 1000).build();
+      client = HttpClientBuilder.create().setDefaultRequestConfig(config).build();
       return client.execute(httpGet);
     } catch (IOException e) {
       e.printStackTrace();

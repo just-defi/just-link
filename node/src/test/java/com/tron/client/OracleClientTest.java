@@ -37,7 +37,7 @@ public class OracleClientTest {
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);
     FulfillRequest request = null;
-    Constant.HTTP_EVENT_HOST = "event.nileex.io";
+    Constant.HTTP_EVENT_HOST = "nile.trongrid.io";
     Constant.FULLNODE_HOST = "api.nileex.io";
     if ("api.nileex.io".equals(Constant.FULLNODE_HOST)) {
       request = new FulfillRequest(
