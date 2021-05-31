@@ -36,17 +36,19 @@ import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.ByteUtil;
 import org.tron.keystore.Wallet;
+import java.util.HashMap;
+
 
 @Slf4j
 public class RandomAdapter extends BaseAdapter {
   @Getter
-  private String publicKey;
+  private String strPublicKey;
 
   final BigInteger groupOrder = ECKey.CURVE_SPEC.getN();
 
 
-  public RandomAdapter(String publicKey) {
-    publicKey = publicKey;
+  public RandomAdapter(String _strPublicKey) {
+    strPublicKey = _strPublicKey.replaceFirst("0x", "");
   }
 
   @Override
@@ -60,26 +62,44 @@ public class RandomAdapter extends BaseAdapter {
     try {
       VrfEventRequest event = JsonUtil.fromJson((String)input.get("params"), VrfEventRequest.class);
       String coordinatorAddress = event.getContractAddr();
+
+      // 1. checkFulfillment
       boolean shouldFulfill = checkFulfillment(coordinatorAddress, event.getRequestId());
       if (!shouldFulfill) {
         log.error("randomness request already fulfilled");
+        throw new RuntimeException("randomness request already fulfilled");
       }
-      String publicKey = event.getKeyHash();
+
+      // 2. getInputs and checkKeyHash
+      String inputKeyHash = event.getKeyHash();
+      ECKey ecKey = ECKey.fromPublicOnly(ByteArray.fromHexString(strPublicKey));
+      ECPoint taskPublicKey = ecKey.getPubKeyPoint();
+      if (!taskPublicKey.isValid()) {
+        log.error("invalid public key from task key: {}", strPublicKey);
+        throw new RuntimeException("invalid public key from task key: " + strPublicKey);
+      }
+      String taskKeyHash = ByteArray.toHexString(VRF.mustHash(VRF.longMarshal(taskPublicKey)));
+      if (Strings.isNullOrEmpty(inputKeyHash) || !inputKeyHash.equals(taskKeyHash)) {
+        log.error("this task's keyHas:{} does not match the input hash:{}", taskKeyHash, inputKeyHash);
+        throw new RuntimeException("this task's keyHas:" + taskKeyHash + " does not match the input hash:" + inputKeyHash);
+      }
       String preSeed = event.getSeed();
       long blockNum = event.getBlockNum();
       String blockHash = event.getBlockHash();
-
       // ChainLink save the public key & private both in memory and db.
-      // TODO
-      String privateKey = VrfKeyStore.getPriKey();
+      HashMap<String, String> vrkKeyMap = VrfKeyStore.getVrfKeyMap();
+      String privateKey = vrkKeyMap.get(strPublicKey);
+      if(Strings.isNullOrEmpty(privateKey)) {
+        log.error("cannot find the private key for:{}", strPublicKey);
+        throw new RuntimeException("cannot find the private key for " + strPublicKey);
+      }
 
+      // 3. generateProof
       byte[] responseProof = GenerateProofResponse(privateKey, preSeed, blockNum, blockHash);
-
       if (responseProof == null) {
         throw new RuntimeException("generate vrf proof error!");
       }
       result.put("result", ByteArray.toHexString(responseProof));
-
     } catch (Exception e) {
       result.replace("code", 1);
       result.replace("msg", "generate VRF failed");
@@ -138,18 +158,18 @@ public class RandomAdapter extends BaseAdapter {
   // secretKey and the seed computed from the s.PreSeed and the s.BlockHash
   private byte[] GenerateProofResponse(String priKey, String preSeed, long blockNum, String blockHash) {
     VRF vrf = new VRF(priKey);
+    // 1. FinalSeed
     byte[] finalSeed = vrf.mustHash(ByteUtil.merge(ByteArray.fromHexString(preSeed), ByteArray.fromHexString(blockHash)));
+    // 2. GenerateProof
     Proof proof = vrf.generateProof(finalSeed);
-
-    //2
+    // 3. Precalculation
     SolidityProof solidityProof = vrf.solidityPrecalculations(proof);
 
     // Overwrite seed input to the VRF proof generator with the seed the
     // VRFCoordinator originally requested, so that it can identify the request
     // corresponding to this response, and compute the final seed itself using the
     // blockhash it infers from the block number.
-
-    //3
+    // 4.1 Marshal
     byte[] marshaledProof;
     try {
       marshaledProof = vrf.marshalForSolidityVerifier(solidityProof);
@@ -158,7 +178,7 @@ public class RandomAdapter extends BaseAdapter {
       return null;
     }
 
-    //4 add prefix and append blocknum, and replace finalSeed with preSeed
+    //4.2 add prefix and append blocknum, and replace finalSeed with preSeed
     byte[] beforeSeed = new byte[192];
     byte[] afterSeed = new byte[192];
     byte[] preSeedBytes = ByteArray.fromHexString(preSeed);

@@ -253,7 +253,7 @@ public class OracleClient {
                     String blockHash = getBlockHashByNum(blockNum);
 
                     String sender = Tool.convertHexToTronAddr((String)eventData.getResult().get("sender"));
-                    String keyHash = Tool.convertHexToTronAddr((String)eventData.getResult().get("keyHash"));
+                    String keyHash = (String)eventData.getResult().get("keyHash");
                     String seed = (String)eventData.getResult().get("seed");
                     BigInteger fee = new BigInteger((String)eventData.getResult().get("fee"));
                     requestId = (String)eventData.getResult().get("requestID");

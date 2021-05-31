@@ -68,7 +68,9 @@ curl --location --request POST 'http://localhost:8080/job/specs' \
     }'
 ```
 
-- For VRF job creation: (replace the address with the actual VRFCoordinator contract address)
+- For VRF job creation:
+  (replace the address with the actual VRFCoordinator contract address
+  and replace the publicKey with the actual VRF compressed publicKey)
 ```
 curl --location --request POST 'http://localhost:8080/job/specs' \
   --header 'Content-Type: application/json' \
