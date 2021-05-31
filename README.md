@@ -33,7 +33,7 @@ java -jar node-v1.0.jar --server.port=8081 --spring.profiles.active=dev --key ke
 
 Note:
 - The `key.store` file contain the private key that this node use. The format refer to: `node/src/main/resouces/key.store.template`.
-- The `vrf.key.store` file contain the private key for VRF that this node use. The format refer to: `node/src/main/resouces/vrf.key.store.template`.
+- The `vrfKeyStore.yml` file contain the private keys for VRF that this node use. The format refer to: `node/src/main/resouces/vrfKeyStore-template.yml`.
 - You can just put a new `application.yml` or `application-{ENV}.yml` in the working dir to replace the default spring config file.
 - There is a set of demo contracts deployed on `nile` network, the node will listen on `nile` when starting node with the command: `--env dev`
 

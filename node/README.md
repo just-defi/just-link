@@ -24,7 +24,7 @@ java -jar node-${version}.jar -k ${key.store}
 
 - For VRF
 ```
-java -jar node-${version}.jar -k ${key.store} -vrfK ${vrf.key.store}
+java -jar node-${version}.jar -k ${key.store} -vrfK ${vrfKeyStore.yml}
 ```
 
 parameter explain:

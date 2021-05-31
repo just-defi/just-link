@@ -12,7 +12,7 @@ node/build/
 node/logs/
 node/src/main/resources/static
 node/src/main/resources/key.store
-node/src/main/resources/vrf.key.store
+node/src/main/resources/vrfKeyStore.yml
 !node/gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
