@@ -3,7 +3,7 @@
 build/
 logs/
 key.store
-vrf.key.store
+vrfKeyStore.yml
 deviation.yml
 
 node/HELP.md
