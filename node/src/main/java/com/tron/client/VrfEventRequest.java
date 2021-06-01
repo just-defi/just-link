@@ -15,6 +15,6 @@ public class VrfEventRequest {
   private String seed;
   private String sender;
   private String requestId;
-  private BigInteger fee;
+  private BigInteger payment; // VRFRequest: fee；OracleRequest：payment
   private String contractAddr;
 }

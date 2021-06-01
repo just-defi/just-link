@@ -17,6 +17,7 @@ import com.tron.web.service.TronTxService;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -51,28 +52,27 @@ public class JobRunner {
     return initiators;
   }
 
-  public void addJobRun(EventRequest event) {
+  public void addJobRun(String eventParams) {
 
     try {
-      JobSpec job = jobSpecsService.getById(event.getJobId());
+      Map<String, Object> eventMap = com.tron.web.common.util.JsonUtil.json2Map(eventParams);
+      JobSpec job = jobSpecsService.getById(eventMap.get("jobId").toString());
 
       // check run
-      boolean checkResult = validateRun(job, event);
+      boolean checkResult = validateRun(job, eventParams);
 
       if (checkResult) {
         JobRun jobRun = new JobRun();
         String jobRunId = UUID.randomUUID().toString();
         jobRunId = jobRunId.replaceAll("-", "");
         jobRun.setId(jobRunId);
-        jobRun.setJobSpecID(event.getJobId());
-        jobRun.setRequestId(event.getRequestId());
+        jobRun.setJobSpecID(eventMap.get("jobId").toString());
+        jobRun.setRequestId(eventMap.get("requestId").toString());
         jobRun.setStatus(1);
-        jobRun.setCreationHeight(event.getBlockNum());
+        jobRun.setCreationHeight(new Long(eventMap.get("blockNum").toString()));
         jobRun.setPayment(0L);  // todo
         jobRun.setInitiatorId(job.getInitiators().get(0).getId());
-        String params = com.tron.web.common.util.JsonUtil.obj2String(event);
-        jobRun.setParams(params);
-        jobRun.setRequestId(event.getRequestId());
+        jobRun.setParams(eventParams);
 
         jobRunsService.insert(jobRun);
 
@@ -87,7 +87,7 @@ public class JobRunner {
           jobRunsService.insertTaskRun(taskRun);
         }
 
-        run(jobRun, params);
+        run(jobRun, eventParams);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -172,9 +172,11 @@ public class JobRunner {
     return result;
   }
 
-  private boolean validateRun(JobSpec jobSpec, EventRequest event) {
+  private boolean validateRun(JobSpec jobSpec, String eventParams) {
+    Map<String, Object> eventMap = com.tron.web.common.util.JsonUtil.json2Map(eventParams);
+    String jobId = eventMap.get("jobId").toString();
     if (jobSpec == null) {
-      log.warn("failed to find job spec, ID: " + event.getJobId());
+      log.warn("failed to find job spec, ID: " + jobId);
       return false;
     }
 
@@ -182,10 +184,10 @@ public class JobRunner {
       log.warn("Trying to run archived job " + jobSpec.getId());
       return false;
     }
-
-    if (!event.getContractAddr().equals(jobSpec.getInitiators().get(0).getAddress())) {
+    String contractAddr = eventMap.get("contractAddr").toString();
+    if (!contractAddr.equals(jobSpec.getInitiators().get(0).getAddress())) {
       log.error("Contract address({}) in event do not match the log subscriber address({})",
-          event.getContractAddr(), jobSpec.getInitiators().get(0).getAddress());
+              contractAddr, jobSpec.getInitiators().get(0).getAddress());
       return false;
     }
 
@@ -197,15 +199,18 @@ public class JobRunner {
 //    }
     minPayment = new BigInteger(nodeMinPayment);
 
-    if (event.getPayment().compareTo(new BigInteger("0")) > 0 && minPayment.compareTo(event.getPayment()) > 0) {
-      log.warn("rejecting job {} with payment {} below minimum threshold ({})", event.getJobId(), event.getPayment(), minPayment);
+    BigInteger fee = new BigInteger(eventMap.get("payment").toString());
+
+    if (fee.compareTo(new BigInteger("0")) > 0 && minPayment.compareTo(fee) > 0) {
+      log.warn("rejecting job {} with payment {} below minimum threshold ({})", jobId, fee, minPayment);
       return false;
     }
 
+    String requestId = eventMap.get("requestId").toString();
     // repeated requestId check
-    String runId = jobRunsService.getByRequestId(event.getRequestId());
+    String runId = jobRunsService.getByRequestId(requestId);
     if (runId != null) {
-      log.warn("event repeated request id {}", event.getRequestId());
+      log.warn("event repeated request id {}", requestId);
       return false;
     }
 

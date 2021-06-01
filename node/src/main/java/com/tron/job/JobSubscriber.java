@@ -18,20 +18,12 @@ import org.springframework.stereotype.Service;
 @Component
 public class JobSubscriber {
   private static JobRunner jobRunner;
-  private static VrfJobRunner vrfJobRunner;
-
   private List<String> jobSubscriberList = new ArrayList<>();
 
   @Autowired
-  public JobSubscriber(JobRunner jobRunner, VrfJobRunner vrfJobRunner) {
+  public JobSubscriber(JobRunner jobRunner) {
     JobSubscriber.jobRunner = jobRunner;
-    JobSubscriber.vrfJobRunner = vrfJobRunner;
   }
-
-  /*@Autowired
-  public JobSubscriber(VrfJobRunner vrfJobRunner) {
-    JobSubscriber.vrfJobRunner = vrfJobRunner;
-  }*/
 
   public boolean addJob(JobSpec jobSpec) {
 
@@ -59,7 +51,7 @@ public class JobSubscriber {
     }
 
     log.info("event: " + event);
-    jobRunner.addJobRun(event);
+    jobRunner.addJobRun(com.tron.web.common.util.JsonUtil.obj2String(event));
   }
 
   public static void receiveVrfRequest(VrfEventRequest event) {
@@ -78,7 +70,7 @@ public class JobSubscriber {
     }
 
     log.info("VRF event: " + event);
-    vrfJobRunner.addJobRun(event);
+    jobRunner.addJobRun(com.tron.web.common.util.JsonUtil.obj2String(event));
   }
 
   public static void setup() {
