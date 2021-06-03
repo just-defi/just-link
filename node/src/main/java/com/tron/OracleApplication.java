@@ -5,6 +5,7 @@ import static com.tron.common.Constant.HTTP_EVENT_HOST;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.common.base.Strings;
 import com.tron.client.OracleClient;
 import com.tron.common.Constant;
 import com.tron.job.JobCache;
@@ -40,11 +41,13 @@ public class OracleApplication {
 			log.error("init ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
-		try {
-			VrfKeyStore.initKeyStore(argv.vrfKey);
-		} catch (FileNotFoundException e) {
-			log.error("init VRF ECKey failed, err: {}", e.getMessage());
-			System.exit(-1);
+		if(!Strings.isNullOrEmpty(argv.vrfKey)) { // optional
+			try {
+				VrfKeyStore.initKeyStore(argv.vrfKey);
+			} catch (FileNotFoundException e) {
+				log.error("init VRF ECKey failed, err: {}", e.getMessage());
+				System.exit(-1);
+			}
 		}
 
 		Constant.initEnv(argv.env);
