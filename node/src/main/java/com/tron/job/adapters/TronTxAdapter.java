@@ -58,7 +58,8 @@ public class TronTxAdapter extends BaseAdapter {
 
           TronTx tx = OracleClient.fulfil(fulfillRequest);
           tx.setValue((long)input.get("result"));
-          tx.setSentAt(1L);
+          tx.setSentAt(System.currentTimeMillis());
+          tx.setTaskRunId((String)input.get("taskRunId"));
           log.info("tx id : " + tx.getSurrogateId());
 
           return R.ok().put("result", tx.getSurrogateId()).put("tx", tx);
@@ -75,7 +76,8 @@ public class TronTxAdapter extends BaseAdapter {
                   proof);
           TronTx vrfTx = OracleClient.vrfFulfil(vrfFulfillRequest);
           vrfTx.setValue(0L);
-          vrfTx.setSentAt(1L);
+          vrfTx.setSentAt(System.currentTimeMillis());
+          vrfTx.setTaskRunId((String)input.get("taskRunId"));
           log.info("vrfTx id : " + vrfTx.getSurrogateId());
 
           return R.ok().put("result", vrfTx.getSurrogateId()).put("tx", vrfTx);

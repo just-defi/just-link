@@ -77,7 +77,7 @@ curl --location --request POST 'http://localhost:8080/job/specs' \
     --data-raw '{
     "initiators": [
         {
-        "type": "runlog",
+        "type": "randomnesslog",
         "params": {
             "address": "TYmwSFuFuiDZCtYsRFKCNr25byeqHH7Esb"
         }

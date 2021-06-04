@@ -43,6 +43,7 @@ public class Constant {
 
   // initiator type
   public static final String INITIATOR_TYPE_RUN_LOG = "runlog";
+  public static final String INITIATOR_TYPE_RANDOMNESS_LOG = "randomnesslog";
 
   // pairs
   public static final String PAIR_TYPE_JUST_TRX = "jst-trx";

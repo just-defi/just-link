@@ -7,6 +7,7 @@
     <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
     <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
     <result column="surrogate_id" property="surrogateId" jdbcType="VARCHAR"/>
+	  <result column="task_run_id" property="taskRunId" jdbcType="VARCHAR"/>
     <result column="from" property="from" jdbcType="VARCHAR"/>
     <result column="to" property="to" jdbcType="VARCHAR"/>
     <result column="data" property="data" jdbcType="LONGVARCHAR"/>
@@ -19,6 +20,7 @@
 		insert into txes
 		(
 		`id`,
+	  `task_run_id`,
   	`surrogate_id`,
   	`from`,
   	`to`,
@@ -31,6 +33,7 @@
 		values
 		(
 		#{id},
+	    #{taskRunId},
 		#{surrogateId},
 		#{from},
 		#{to},
@@ -43,13 +46,13 @@
 	</insert>
 
   <select id="getById" parameterType="java.lang.Long" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
-		select id, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, created_at, updated_at
+		select id, `task_run_id`, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, `sent_at`, created_at, updated_at
 		from txes
 		where `id` = #{id}
 	</select>
 
   <select id="getByTxId" parameterType="java.lang.String" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
-		select id, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, created_at, updated_at
+		select id, `task_run_id`, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, `sent_at`, created_at, updated_at
 		from txes
 		where `surrogate_id` = #{txId}
 	</select>

@@ -6,6 +6,7 @@ import lombok.Data;
 @Data
 public class TronTx {
   private Long id;
+  private String taskRunId;
   private String surrogateId;
   private String from;
   private String to;

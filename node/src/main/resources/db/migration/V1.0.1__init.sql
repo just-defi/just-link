@@ -122,6 +122,7 @@ CREATE TABLE `task_runs`  (
 DROP TABLE IF EXISTS `txes`;
 CREATE TABLE `txes`  (
   `id` INT UNSIGNED AUTO_INCREMENT,
+  `task_run_id` varchar(36),
   `surrogate_id` varchar(255) ,
   `from` varchar(127) NOT NULL,
   `to` varchar(127) NOT NULL,
@@ -139,7 +140,23 @@ CREATE TABLE `txes`  (
   PRIMARY KEY (`id`),
   index `idx_txes_created_at` (`created_at`),
   unique index `txes_surrogate_id_key` (`surrogate_id`),
+  index `idx_txes_task_run_id_key` (`task_run_id`)
   index `idx_txes_from` (`from`),
   index `idx_txes_hash` (`hash`),
   index `idx_txes_updated_at` (`updated_at`)
+) ENGINE = InnoDB default charset=utf8;
+
+DROP TABLE IF EXISTS `heads`;
+CREATE TABLE `heads`  (
+  `id` INT UNSIGNED AUTO_INCREMENT,
+  `hash` varchar(255) NOT NULL ,
+  `number` BIGINT NOT NULL,
+  `parent_hash` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  index `idx_heads_created_at` (`created_at`),
+  unique index `heads_number_key` (`number`),
+  index `idx_heads_number` (`number`),
+  index `idx_heads_time` (`time`)
 ) ENGINE = InnoDB default charset=utf8;

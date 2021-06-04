@@ -150,6 +150,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   private void checkInitiator(Initiator initiator) throws TronException {
     switch (initiator.getType()) {
       case Constant.INITIATOR_TYPE_RUN_LOG:
+      case Constant.INITIATOR_TYPE_RANDOMNESS_LOG:
         if (initiator.getAddress() == null || initiator.getAddress().isEmpty()) {
           throw new TronException("Initiator's address parameter is required");
         }
