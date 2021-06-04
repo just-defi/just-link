@@ -29,7 +29,7 @@ public class JobSubscriber {
 
     for (Initiator initiator : jobSpec.getInitiators()) {
       // register job subscription
-      OracleClient.registerJob(initiator.getAddress(), jobSpec.getId());
+      OracleClient.registerJob(initiator.getAddress(), jobSpec.getId(), initiator.getType());
     }
     jobSubscriberList.add(jobSpec.getId());
     return true;
@@ -76,7 +76,7 @@ public class JobSubscriber {
   public static void setup() {
     List<Initiator> initiators = jobRunner.getAllJobInitiatorList();
     for (Initiator initiator : initiators) {
-      OracleClient.registerJob(initiator.getAddress(), initiator.getJobSpecID());
+      OracleClient.registerJob(initiator.getAddress(), initiator.getJobSpecID(), initiator.getType());
     }
   }
 
