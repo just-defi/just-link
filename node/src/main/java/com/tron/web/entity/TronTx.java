@@ -13,6 +13,7 @@ public class TronTx {
   private String data;
   private Long value;
   private String hash;
+  private Long confirmed;
   private Long sentAt;
   private String signedRawTx;
   private Date createdAt;

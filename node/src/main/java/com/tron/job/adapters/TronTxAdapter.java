@@ -6,6 +6,7 @@ import com.tron.client.EventRequest;
 import com.tron.client.VrfEventRequest;
 import com.tron.client.FulfillRequest;
 import com.tron.client.OracleClient;
+import com.tron.common.Constant;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.TronTx;
@@ -60,6 +61,7 @@ public class TronTxAdapter extends BaseAdapter {
           tx.setValue((long)input.get("result"));
           tx.setSentAt(System.currentTimeMillis());
           tx.setTaskRunId((String)input.get("taskRunId"));
+          tx.setConfirmed(Constant.TronTxInProgress);
           log.info("tx id : " + tx.getSurrogateId());
 
           return R.ok().put("result", tx.getSurrogateId()).put("tx", tx);
@@ -78,6 +80,7 @@ public class TronTxAdapter extends BaseAdapter {
           vrfTx.setValue(0L);
           vrfTx.setSentAt(System.currentTimeMillis());
           vrfTx.setTaskRunId((String)input.get("taskRunId"));
+          vrfTx.setConfirmed(Constant.TronTxInProgress);
           log.info("vrfTx id : " + vrfTx.getSurrogateId());
 
           return R.ok().put("result", vrfTx.getSurrogateId()).put("tx", vrfTx);

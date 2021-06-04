@@ -53,4 +53,12 @@ public class Constant {
   public static final String PAIR_TYPE_BTC_TRX = "btc-trx";
   public static final String PAIR_TYPE_USDJ_TRX = "usdj-trx";
   public static final String PAIR_TYPE_USDT_TRX = "usdt-trx";
+
+
+  public static final long TronTxUnstarted = 101L;
+  public static final long TronTxInProgress = 102L;
+  public static final long TronTxFatalError = 103L;
+  public static final long TronTxUnconfirmed = 104L;
+  public static final long TronTxConfirmed = 105L;
+
 }
