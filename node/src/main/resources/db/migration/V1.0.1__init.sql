@@ -150,14 +150,14 @@ CREATE TABLE `txes`  (
 DROP TABLE IF EXISTS `heads`;
 CREATE TABLE `heads`  (
   `id` INT UNSIGNED AUTO_INCREMENT,
+  `address` varchar(128) NOT NULL,
   `hash` varchar(255) NOT NULL ,
   `number` BIGINT NOT NULL,
   `parent_hash` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  `time` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `block_timestamp` BIGINT NOT NULL,
   PRIMARY KEY (`id`),
   index `idx_heads_created_at` (`created_at`),
-  unique index `heads_number_key` (`number`),
-  index `idx_heads_number` (`number`),
-  index `idx_heads_time` (`time`)
+  unique index `heads_address_key` (`address`),
+  index `idx_heads_address` (`address`)
 ) ENGINE = InnoDB default charset=utf8;

@@ -17,6 +17,7 @@ import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;
 import com.tron.keystore.KeyStore;
+import com.tron.web.entity.Head;
 import com.tron.web.entity.TronTx;
 
 import java.io.IOException;
@@ -26,6 +27,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
+import com.tron.web.service.HeadService;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
 import org.apache.http.HttpEntity;
@@ -33,6 +36,9 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
@@ -46,6 +52,15 @@ import static com.tron.common.Constant.*;
 /** Subscribe the events of the oracle contracts and reply. */
 @Slf4j
 public class OracleClient {
+
+  @Autowired
+  private HeadService headService;
+  public OracleClient(HeadService _headService) {
+    headService = _headService;
+  }
+
+  public OracleClient() {
+  }
 
   private static final String EVENT_NAME = "OracleRequest";
   private static final String VRF_EVENT_NAME = "VRFRequest";
@@ -255,18 +270,39 @@ public class OracleClient {
             requestIdsCache.put(requestId, "");
             break;
           case VRF_EVENT_NAME:
+            requestId = (String) eventData.getResult().get("requestID");
+            if (requestIdsCache.getIfPresent(requestId) != null) {
+              log.info("this vrf event has been handled, requestid:{}", requestId);
+              continue;
+            }
             // Hash of the block in which this request appeared
-            String blockHash = getBlockHashByNum(blockNum);
+            String responsrStr = getBlockByNum(blockNum);
+            JSONObject responseContent = JSONObject.parseObject(responsrStr);
+            String blockHash = responseContent.getString("blockID");
+            JSONObject rawHead = JSONObject.parseObject(JSONObject.parseObject(responseContent.getString("block_header"))
+                .getString("raw_data"));
+            String parentHash = rawHead.getString("parentHash");
+            Long blockTimestamp = Long.valueOf(rawHead.getString("timestamp"));
+            List<Head> hisHead = headService.getByAddress(addr);
+            Head head = new Head();
+            head.setAddress(addr);
+            head.setNumber(blockNum);
+            head.setHash(blockHash);
+            head.setParentHash(parentHash);
+            head.setBlockTimestamp(blockTimestamp);
+            if (hisHead == null || hisHead.size() == 0) {
+              headService.insert(head);
+            } else if (!hisHead.get(0).getNumber().equals(blockNum)) { //Only update unequal blockNum.
+              head.setId(hisHead.get(0).getId());
+              headService.update(head);
+            } else {
+
+            }
 
             String sender = Tool.convertHexToTronAddr((String) eventData.getResult().get("sender"));
             String keyHash = (String) eventData.getResult().get("keyHash");
             String seed = (String) eventData.getResult().get("seed");
             BigInteger fee = new BigInteger((String) eventData.getResult().get("fee"));
-            requestId = (String) eventData.getResult().get("requestID");
-            if (requestIdsCache.getIfPresent(requestId) != null) {
-              log.info("this event has been handled, requestid:{}", requestId);
-              continue;
-            }
             JobSubscriber.receiveVrfRequest(
                 new VrfEventRequest(
                     blockNum, blockHash, jobId, keyHash, seed, sender, requestId, fee, addr));
@@ -337,7 +373,7 @@ public class OracleClient {
   }
 
   /** constructor. */
-  public static String getBlockHashByNum(long blockNum) {
+  public static String getBlockByNum(long blockNum) {
     try {
       Map<String, Object> params = Maps.newHashMap();
       params.put("num", blockNum);
@@ -348,9 +384,7 @@ public class OracleClient {
       TriggerResponse triggerResponse = null;
       String responsrStr = EntityUtils.toString(responseEntity);
 
-      JSONObject responseContent = JSONObject.parseObject(responsrStr);
-
-      return responseContent.getString("blockID");
+      return responsrStr;
     } catch (Exception e) {
       e.printStackTrace();
       return null;

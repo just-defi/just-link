@@ -54,9 +54,9 @@ public class OracleApplication {
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
 		JobCache jobCache = context.getBean(JobCache.class);
 		jobCache.run();
-		OracleClient oracleClient = new OracleClient();
-		oracleClient.run();
 		JobSubscriber.setup();
+		OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService);
+		oracleClient.run();
 		log.info("==================Just Link start success================");
 	}
 

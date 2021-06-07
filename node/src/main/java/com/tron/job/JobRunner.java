@@ -10,6 +10,7 @@ import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.TaskRun;
 import com.tron.web.entity.TaskSpec;
 import com.tron.web.entity.TronTx;
+import com.tron.web.service.HeadService;
 import com.tron.web.service.JobRunsService;
 import com.tron.web.service.JobSpecsService;
 import com.tron.client.EventRequest;
@@ -35,6 +36,8 @@ public class JobRunner {
   TronTxService tronTxService;
   @Autowired
   private JobCache jobCache;
+  @Autowired
+  public HeadService headService;
 
   @Value("${node.minPayment:#{'100000'}}")
   private String nodeMinPayment;

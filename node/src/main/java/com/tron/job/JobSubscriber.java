@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Component
 public class JobSubscriber {
-  private static JobRunner jobRunner;
+  public static JobRunner jobRunner;
   private List<String> jobSubscriberList = new ArrayList<>();
 
   @Autowired
