@@ -55,7 +55,7 @@ public class OracleApplication {
 		JobCache jobCache = context.getBean(JobCache.class);
 		jobCache.run();
 		JobSubscriber.setup();
-		OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService);
+		OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService, JobSubscriber.jobRunner.jobRunsService);
 		oracleClient.run();
 		log.info("==================Just Link start success================");
 	}

@@ -12,6 +12,7 @@ public class Head implements Serializable {
   private Long number;
   private String parentHash;
   private Date createdAt;
+  private Date updatedAt;
   private Long blockTimestamp;
 
 }

@@ -28,6 +28,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 import com.tron.web.service.HeadService;
+import com.tron.web.service.JobRunsService;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
@@ -55,8 +56,12 @@ public class OracleClient {
 
   @Autowired
   private HeadService headService;
-  public OracleClient(HeadService _headService) {
+  @Autowired
+  private JobRunsService jobRunsService;
+
+  public OracleClient(HeadService _headService, JobRunsService _jobRunsService) {
     headService = _headService;
+    jobRunsService = _jobRunsService;
   }
 
   public OracleClient() {
@@ -275,6 +280,10 @@ public class OracleClient {
               log.info("this vrf event has been handled, requestid:{}", requestId);
               continue;
             }
+            if(!Strings.isNullOrEmpty(jobRunsService.getByRequestId(requestId))) { // for reboot
+              log.info("from DB, this vrf event has been handled, requestid:{}", requestId);
+              continue;
+            }
             // Hash of the block in which this request appeared
             String responsrStr = getBlockByNum(blockNum);
             JSONObject responseContent = JSONObject.parseObject(responsrStr);
@@ -294,6 +303,7 @@ public class OracleClient {
               headService.insert(head);
             } else if (!hisHead.get(0).getNumber().equals(blockNum)) { //Only update unequal blockNum.
               head.setId(hisHead.get(0).getId());
+              head.setUpdatedAt(new Date());
               headService.update(head);
             } else {
 

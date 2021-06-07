@@ -31,7 +31,7 @@ public class JobRunner {
   @Autowired
   JobSpecsService jobSpecsService;
   @Autowired
-  JobRunsService jobRunsService;
+  public JobRunsService jobRunsService;
   @Autowired
   TronTxService tronTxService;
   @Autowired
