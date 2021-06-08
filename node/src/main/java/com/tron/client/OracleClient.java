@@ -1,7 +1,6 @@
 package com.tron.client;
 
 import com.alibaba.fastjson.JSONObject;
-import com.beust.jcommander.internal.Sets;
 import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -12,7 +11,6 @@ import com.tron.client.message.EventData;
 import com.tron.client.message.EventResponse;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
-import com.tron.common.Constant;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;
@@ -29,7 +27,6 @@ import java.util.concurrent.TimeUnit;
 
 import com.tron.web.service.HeadService;
 import com.tron.web.service.JobRunsService;
-import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
 import org.apache.http.HttpEntity;
@@ -37,9 +34,6 @@ import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Component;
-import org.springframework.web.bind.annotation.CrossOrigin;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
@@ -47,6 +41,7 @@ import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.core.exception.BadItemException;
 import org.tron.protos.Protocol;
+import org.springframework.beans.factory.annotation.Autowired;
 
 import static com.tron.common.Constant.*;
 
@@ -128,7 +123,7 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params, FULFIL_METHOD_SIGN);
+    return triggerSignAndResponse(params);
   }
 
   /**
@@ -146,10 +141,19 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params, VRF_FULFIL_METHOD_SIGN);
+    return triggerSignAndResponse(params);
   }
 
-  private static TronTx triggerSignAndResponse(Map<String, Object> params, String method)
+  public static String convertWithIteration(Map<String, Object> map) {
+    StringBuilder mapAsString = new StringBuilder("");
+    for (String key : map.keySet()) {
+      mapAsString.append(key + "=" + map.get(key) + ",");
+    }
+    mapAsString.delete(mapAsString.length()-1, mapAsString.length()).append("");
+    return mapAsString.toString();
+  }
+
+  public static TronTx resendTriggerSignAndResponse(Map<String, Object> params)
       throws IOException {
     HttpResponse response =
         HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
@@ -169,7 +173,7 @@ public class OracleClient {
     TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
 
     String contractAddress = params.get("contract_address").toString();
-    String data = params.get("parameter").toString();
+    String data = convertWithIteration(params);
 
     // broadcast
     params.clear();
@@ -182,7 +186,50 @@ public class OracleClient {
     tx.setFrom(KeyStore.getAddr());
     tx.setTo(contractAddress);
     tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString());
+    tx.setSignedRawTx(bsSign.toString()); // for resend
+    tx.setHash(ByteArray.toHexString(hash));
+    tx.setData(data);
+    return tx;
+  }
+  public static TronTx triggerSignAndResponse(Map<String, Object> params)
+      throws IOException {
+    HttpResponse response =
+        HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
+    HttpEntity responseEntity = response.getEntity();
+    TriggerResponse triggerResponse = null;
+    String responsrStr = EntityUtils.toString(responseEntity);
+    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+
+    // sign
+    ECKey key = KeyStore.getKey();
+    String rawDataHex = triggerResponse.getTransaction().getRawDataHex();
+    Protocol.Transaction.raw raw =
+        Protocol.Transaction.raw.parseFrom(ByteArray.fromHexString(rawDataHex));
+    byte[] hash = Sha256Hash.hash(true, raw.toByteArray());
+    ECKey.ECDSASignature signature = key.sign(hash);
+    ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
+    TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
+
+    String contractAddress = params.get("contract_address").toString();
+    String data = convertWithIteration(params);
+
+    try {
+      TimeUnit.MINUTES.sleep(1); //TODO DEBUG
+    } catch (Exception ex) {
+
+    }
+    // broadcast
+    params.clear();
+    params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));
+    response = HttpUtil.post("https", FULLNODE_HOST, "/wallet/broadcasthex", params);
+    BroadCastResponse broadCastResponse =
+        JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+
+    TronTx tx = new TronTx();
+    tx.setFrom(KeyStore.getAddr());
+    tx.setTo(contractAddress);
+    tx.setSurrogateId(broadCastResponse.getTxid());
+    tx.setSignedRawTx(bsSign.toString()); // for resend
     tx.setHash(ByteArray.toHexString(hash));
     tx.setData(data);
     return tx;
@@ -285,8 +332,8 @@ public class OracleClient {
               continue;
             }
             // Hash of the block in which this request appeared
-            String responsrStr = getBlockByNum(blockNum);
-            JSONObject responseContent = JSONObject.parseObject(responsrStr);
+            String responseStr = getBlockByNum(blockNum);
+            JSONObject responseContent = JSONObject.parseObject(responseStr);
             String blockHash = responseContent.getString("blockID");
             JSONObject rawHead = JSONObject.parseObject(JSONObject.parseObject(responseContent.getString("block_header"))
                 .getString("raw_data"));
@@ -392,9 +439,9 @@ public class OracleClient {
           HttpUtil.post("https", FULLNODE_HOST, "/wallet/getblockbynum", params);
       HttpEntity responseEntity = response.getEntity();
       TriggerResponse triggerResponse = null;
-      String responsrStr = EntityUtils.toString(responseEntity);
+      String responseStr = EntityUtils.toString(responseEntity);
 
-      return responsrStr;
+      return responseStr;
     } catch (Exception e) {
       e.printStackTrace();
       return null;

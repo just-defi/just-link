@@ -19,5 +19,6 @@ ALTER TABLE `txes` ADD `task_run_id` varchar(36) AFTER `id`;
 ALTER TABLE `job_runs` MODIFY `result` text;
 ALTER TABLE `task_runs` MODIFY `result` text;
 ALTER TABLE `txes` MODIFY `confirmed` tinyint DEFAULT 0
-COMMENT '0:init 101:unstarted 102:inprogress 103:fatalerror 104:unconfirmed 105:confirmed';
+COMMENT '0:init 101:unstarted 102:inprogress 103:fatalerror 104:outofenergy 105:confirmed';
 ALTER TABLE `txes` ADD INDEX `idx_confirmed` (`confirmed`);
+ALTER TABLE `txes` ADD INDEX `idx_sent_at` (`sent_at`);

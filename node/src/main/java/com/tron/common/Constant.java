@@ -58,7 +58,7 @@ public class Constant {
   public static final long TronTxUnstarted = 101L;
   public static final long TronTxInProgress = 102L;
   public static final long TronTxFatalError = 103L;
-  public static final long TronTxUnconfirmed = 104L;
+  public static final long TronTxOutOfEnergy = 104L;
   public static final long TronTxConfirmed = 105L;
 
 }

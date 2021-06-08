@@ -14,7 +14,7 @@
 		<result column="hash" property="hash" jdbcType="VARCHAR"/>
     <result column="value" property="value" jdbcType="BIGINT"/>
 	  <result column="confirmed" property="confirmed" jdbcType="TINYINT"/>
-	  <result column="sent_at" property="sent_at" jdbcType="BIGINT"/>
+	  <result column="sent_at" property="sentAt" jdbcType="BIGINT"/>
     <result column="signed_raw_tx" property="signedRawTx" jdbcType="VARCHAR"/>
   </resultMap>
 
@@ -47,18 +47,32 @@
 	    #{confirmed},
 		#{signedRawTx}
 		)
-	</insert>
+  </insert>
 
-  <select id="getById" parameterType="java.lang.Long" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
+	<select id="getById" parameterType="java.lang.Long" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
 		select id, `task_run_id`, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, `sent_at`, `confirmed`, created_at, updated_at
 		from txes
 		where `id` = #{id}
-	</select>
+  	</select>
 
-  <select id="getByTxId" parameterType="java.lang.String" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
+  	<select id="getByTxId" parameterType="java.lang.String" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
 		select id, `task_run_id`, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, `sent_at`, `confirmed`, created_at, updated_at
 		from txes
 		where `surrogate_id` = #{txId}
+  	</select>
+
+	<update id="update">
+		update txes
+		set id = #{id}, surrogate_id = #{surrogateId}, hash = #{hash}, confirmed=#{confirmed}, signed_raw_tx=#{signedRawTx}, sent_at=#{sentAt}, updated_at=#{updatedAt}
+		where id = #{id}
+	</update>
+
+	<select id="getByConfirmedAndDate" parameterType="java.util.Map" resultType="com.tron.web.entity.TronTx" resultMap="TxResultMap">
+		select id, `task_run_id`, `surrogate_id`, `hash`, `signed_raw_tx`, `from`, `to`, `value`, `data`, `sent_at`, `confirmed`, created_at, updated_at
+		from txes
+		where `confirmed` = #{confirmed}
+		and `sent_at` &lt; #{sentAt}
+		order by `sent_at` asc
 	</select>
 
 </mapper>

@@ -7,6 +7,7 @@ import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.google.common.base.Strings;
 import com.tron.client.OracleClient;
+import com.tron.client.ReSender;
 import com.tron.common.Constant;
 import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
@@ -57,6 +58,9 @@ public class OracleApplication {
 		JobSubscriber.setup();
 		OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService, JobSubscriber.jobRunner.jobRunsService);
 		oracleClient.run();
+
+		ReSender reSender = new ReSender(JobSubscriber.jobRunner.tronTxService);
+		reSender.run();
 		log.info("==================Just Link start success================");
 	}
 

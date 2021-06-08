@@ -132,7 +132,7 @@ CREATE TABLE `txes`  (
   `gas_limit` bigint,
   `hash` varchar(127) NOT NULL,
   `gas_price` bigint,
-  `confirmed` tinyint DEFAULT 0 COMMENT '0:init 101:unstarted 102:inprogress 103:fatalerror 104:unconfirmed 105:confirmed',
+  `confirmed` tinyint DEFAULT 0 COMMENT '0:init 101:unstarted 102:inprogress 103:fatalerror 104:outofenergy 105:confirmed',
   `sent_at` bigint NOT NULL,
   `signed_raw_tx` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -144,6 +144,7 @@ CREATE TABLE `txes`  (
   index `idx_txes_from` (`from`),
   index `idx_txes_hash` (`hash`),
   index `idx_confirmed` (`confirmed`),
+  index `idx_sent_at` (`sent_at`),
   index `idx_txes_updated_at` (`updated_at`)
 ) ENGINE = InnoDB default charset=utf8;
 
