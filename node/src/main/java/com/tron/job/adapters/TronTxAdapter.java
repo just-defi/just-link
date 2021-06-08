@@ -61,7 +61,7 @@ public class TronTxAdapter extends BaseAdapter {
           tx.setValue((long)input.get("result"));
           tx.setSentAt(System.currentTimeMillis());
           tx.setTaskRunId((String)input.get("taskRunId"));
-          tx.setConfirmed(Constant.TronTxInProgress);
+          //tx.setConfirmed(Constant.TronTxInProgress); // do not resend for oracle request
           log.info("tx id : " + tx.getSurrogateId());
 
           return R.ok().put("result", tx.getSurrogateId()).put("tx", tx);
