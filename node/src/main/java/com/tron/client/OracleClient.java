@@ -153,44 +153,6 @@ public class OracleClient {
     return mapAsString.toString();
   }
 
-  public static TronTx resendTriggerSignAndResponse(Map<String, Object> params)
-      throws IOException {
-    HttpResponse response =
-        HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
-    HttpEntity responseEntity = response.getEntity();
-    TriggerResponse triggerResponse = null;
-    String responsrStr = EntityUtils.toString(responseEntity);
-    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
-
-    // sign
-    ECKey key = KeyStore.getKey();
-    String rawDataHex = triggerResponse.getTransaction().getRawDataHex();
-    Protocol.Transaction.raw raw =
-        Protocol.Transaction.raw.parseFrom(ByteArray.fromHexString(rawDataHex));
-    byte[] hash = Sha256Hash.hash(true, raw.toByteArray());
-    ECKey.ECDSASignature signature = key.sign(hash);
-    ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
-    TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
-
-    String contractAddress = params.get("contract_address").toString();
-    String data = convertWithIteration(params);
-
-    // broadcast
-    params.clear();
-    params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));
-    response = HttpUtil.post("https", FULLNODE_HOST, "/wallet/broadcasthex", params);
-    BroadCastResponse broadCastResponse =
-        JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
-
-    TronTx tx = new TronTx();
-    tx.setFrom(KeyStore.getAddr());
-    tx.setTo(contractAddress);
-    tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString()); // for resend
-    tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(data);
-    return tx;
-  }
   public static TronTx triggerSignAndResponse(Map<String, Object> params)
       throws IOException {
     HttpResponse response =
@@ -213,11 +175,6 @@ public class OracleClient {
     String contractAddress = params.get("contract_address").toString();
     String data = convertWithIteration(params);
 
-    try {
-      TimeUnit.MINUTES.sleep(1); //TODO DEBUG
-    } catch (Exception ex) {
-
-    }
     // broadcast
     params.clear();
     params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));

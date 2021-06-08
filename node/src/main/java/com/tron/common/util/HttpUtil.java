@@ -49,11 +49,17 @@ public class HttpUtil {
               .setConnectTimeout(timeout * 1000)
               .setConnectionRequestTimeout(timeout * 1000)
               .setSocketTimeout(timeout * 1000).build();
-      client = HttpClientBuilder.create().setDefaultRequestConfig(config).build();
-      return client.execute(httpGet);
+      client = HttpClientBuilder.create()
+          .setDefaultRequestConfig(config)
+          .setMaxConnTotal(800)
+          .setMaxConnPerRoute(400)
+          .build();
+      HttpResponse response = client.execute(httpGet);
+      return response;
     } catch (IOException e) {
       e.printStackTrace();
     }
+    httpGet.abort(); // close the connection actively
     return null;
   }
 
@@ -75,10 +81,22 @@ public class HttpUtil {
     httpPost.setEntity(entity);
     httpPost.setHeader("Content-Type", "application/json;charset=utf8");
     try {
-      return client.execute(httpPost);
+      int timeout = 5; //second
+      RequestConfig config = RequestConfig.custom()
+          .setConnectTimeout(timeout * 1000)
+          .setConnectionRequestTimeout(timeout * 1000)
+          .setSocketTimeout(timeout * 1000).build();
+      client = HttpClientBuilder.create()
+          .setDefaultRequestConfig(config)
+          .setMaxConnTotal(800)
+          .setMaxConnPerRoute(400)
+          .build();
+      HttpResponse response = client.execute(httpPost);
+      return response;
     } catch (IOException e) {
       e.printStackTrace();
     }
+    httpPost.abort(); // close the connection actively
     return null;
   }
 
@@ -92,10 +110,22 @@ public class HttpUtil {
 
     HttpGet httpGet = new HttpGet(uri);
     try {
-      return client.execute(httpGet);
+      int timeout = 5; //second
+      RequestConfig config = RequestConfig.custom()
+          .setConnectTimeout(timeout * 1000)
+          .setConnectionRequestTimeout(timeout * 1000)
+          .setSocketTimeout(timeout * 1000).build();
+      client = HttpClientBuilder.create()
+          .setDefaultRequestConfig(config)
+          .setMaxConnTotal(800)
+          .setMaxConnPerRoute(400)
+          .build();
+      HttpResponse response = client.execute(httpGet);
+      return response;
     } catch (IOException e) {
       e.printStackTrace();
     }
+    httpGet.abort(); // close the connection actively
     return null;
   }
 

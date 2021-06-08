@@ -1,9 +1,11 @@
 package com.tron.job.adapters;
 
+import static com.tron.common.Constant.HTTP_EVENT_HOST;
 import static com.tron.common.Constant.TRX_DECIMAL_STR;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
+import com.tron.common.Constant;
 import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import java.io.IOException;
@@ -37,7 +39,7 @@ public class ContractAdapter {
     params.put("address", addr);
     params.put("visible", visible);
     HttpResponse response = HttpUtil.post(
-            "https", TRONGRID_HOST, GET_ACCOUNT, params);
+            "https", Constant.FULLNODE_HOST, GET_ACCOUNT, params);
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
     Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
