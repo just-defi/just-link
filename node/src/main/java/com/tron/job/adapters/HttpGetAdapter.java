@@ -1,6 +1,8 @@
 package com.tron.job.adapters;
 
 import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
+
+import com.google.common.base.Strings;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 import com.tron.common.Constant;
@@ -35,11 +37,16 @@ public class HttpGetAdapter extends BaseAdapter {
   @Override
   public R perform(R input) {
     R result  = new R();
-    HttpResponse response = HttpUtil.requestWithRetry(url);
-    if (response != null) {
-      HttpEntity responseEntity = response.getEntity();
+    String response = null;
+    try {
+      response = HttpUtil.requestWithRetry(url);
+    } catch (IOException e) {
+      log.info("parse response failed, err:" + e.getMessage());
+    }
+
+    if (!Strings.isNullOrEmpty(response)) {
       try {
-        JsonElement data = JsonParser.parseString(EntityUtils.toString(responseEntity));
+        JsonElement data = JsonParser.parseString(response);
 
         String[] paths = path.split("\\.");
         for (String key : paths) {

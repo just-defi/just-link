@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.tron.client.message.BroadCastResponse;
@@ -11,6 +12,7 @@ import com.tron.client.message.EventData;
 import com.tron.client.message.EventResponse;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
+import com.tron.common.Config;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import com.tron.job.JobSubscriber;
@@ -21,6 +23,15 @@ import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
+import java.net.InetAddress;
+import java.net.URISyntaxException;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -63,6 +74,7 @@ public class OracleClient {
   }
 
   private static final String EVENT_NAME = "OracleRequest";
+  private static final String EVENT_NEW_ROUND = "NewRound";
   private static final String VRF_EVENT_NAME = "VRFRequest";
   private static final long MIN_FEE_LIMIT = 100_000_000L; // 100 trx
 
@@ -74,6 +86,7 @@ public class OracleClient {
         }
       };
 
+  private static ConcurrentHashMap<String, Set<String>> listeningAddrs = new ConcurrentHashMap<>();
   private static Cache<String, String> requestIdsCache =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
@@ -155,12 +168,10 @@ public class OracleClient {
 
   public static TronTx triggerSignAndResponse(Map<String, Object> params)
       throws IOException {
-    HttpResponse response =
+    String response =
         HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
-    HttpEntity responseEntity = response.getEntity();
     TriggerResponse triggerResponse = null;
-    String responsrStr = EntityUtils.toString(responseEntity);
-    triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+    triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
 
     // sign
     ECKey key = KeyStore.getKey();
@@ -178,17 +189,18 @@ public class OracleClient {
     // broadcast
     params.clear();
     params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));
-    response = HttpUtil.post("https", FULLNODE_HOST, "/wallet/broadcasthex", params);
+    response = HttpUtil.post("https", FULLNODE_HOST,
+            "/wallet/broadcasthex", params);
     BroadCastResponse broadCastResponse =
-        JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+            JsonUtil.json2Obj(response, BroadCastResponse.class);
 
     TronTx tx = new TronTx();
     tx.setFrom(KeyStore.getAddr());
-    tx.setTo(contractAddress);
+    tx.setTo(request.getContractAddr());
     tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString()); // for resend
+    tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(data);
+    tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
     return tx;
   }
 
@@ -210,7 +222,7 @@ public class OracleClient {
 
         // filter the events
         String eventName = eventData.getEventName();
-        if (!EVENT_NAME.equals(eventName) && !VRF_EVENT_NAME.equals(eventName)) {
+        if (!EVENT_NAME.equals(eventName) && !EVENT_NEW_ROUND.equals(eventName) && !VRF_EVENT_NAME.equals(eventName)) {
           log.warn(
               "this node does not support this event, event name: {}", eventData.getEventName());
           continue;
@@ -248,35 +260,10 @@ public class OracleClient {
         String requestId;
         switch (eventName) {
           case EVENT_NAME:
-            String requester =
-                Tool.convertHexToTronAddr((String) eventData.getResult().get("requester"));
-            String callbackAddr =
-                Tool.convertHexToTronAddr((String) eventData.getResult().get("callbackAddr"));
-            String callbackFuncId = (String) eventData.getResult().get("callbackFunctionId");
-            long cancelExpiration =
-                Long.parseLong((String) eventData.getResult().get("cancelExpiration"));
-            String data = (String) eventData.getResult().get("data");
-            long dataVersion = Long.parseLong((String) eventData.getResult().get("dataVersion"));
-            requestId = (String) eventData.getResult().get("requestId");
-            BigInteger payment = new BigInteger((String) eventData.getResult().get("payment"));
-            if (requestIdsCache.getIfPresent(requestId) != null) {
-              log.info("this event has been handled, requestid:{}", requestId);
-              continue;
-            }
-            JobSubscriber.receiveLogRequest(
-                new EventRequest(
-                    blockNum,
-                    jobId,
-                    requester,
-                    callbackAddr,
-                    callbackFuncId,
-                    cancelExpiration,
-                    data,
-                    dataVersion,
-                    requestId,
-                    payment,
-                    addr));
-            requestIdsCache.put(requestId, "");
+            processOracleRequestEvent(addr, eventData);
+            break;
+          case EVENT_NEW_ROUND:
+            processNewRoundEvent(addr, eventData);
             break;
           case VRF_EVENT_NAME:
             requestId = (String) eventData.getResult().get("requestID");
@@ -330,84 +317,89 @@ public class OracleClient {
     }
   }
 
-  public HttpResponse requestEvent(String urlPath, Map<String, String> params) {
-    HttpResponse response = HttpUtil.get("https", HTTP_EVENT_HOST, urlPath, params);
-    if (response == null) {
-      return null;
-    }
-    int status = response.getStatusLine().getStatusCode();
-    if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
-      int retry = 1;
-      for (; ; ) {
-        if (retry > HTTP_MAX_RETRY_TIME) {
-          break;
-        }
-        try {
-          Thread.sleep(100 * retry);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        response = HttpUtil.get("https", HTTP_EVENT_HOST, urlPath, params);
-        retry++;
-        status = response.getStatusLine().getStatusCode();
-        if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
-          break;
-        }
-      }
-    }
-    return response;
-  }
-
-  public HttpResponse requestNextPage(String urlNext) {
-    HttpResponse response = HttpUtil.getByUri(urlNext);
-    if (response == null) {
-      return null;
-    }
-    int status = response.getStatusLine().getStatusCode();
-    if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
-      int retry = 1;
-      for (; ; ) {
-        if (retry > HTTP_MAX_RETRY_TIME) {
-          break;
-        }
-        try {
-          Thread.sleep(100 * retry);
-        } catch (InterruptedException e) {
-          e.printStackTrace();
-        }
-        response = HttpUtil.getByUri(urlNext);
-        retry++;
-        status = response.getStatusLine().getStatusCode();
-        if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
-          break;
-        }
-      }
-    }
-    return response;
-  }
-
-  /** constructor. */
-  public static String getBlockByNum(long blockNum) {
+  private void processOracleRequestEvent(String addr, EventData eventData) {
+    String jobId = null;
     try {
-      Map<String, Object> params = Maps.newHashMap();
-      params.put("num", blockNum);
-      params.put("visible", true);
-      HttpResponse response =
-          HttpUtil.post("https", FULLNODE_HOST, "/wallet/getblockbynum", params);
-      HttpEntity responseEntity = response.getEntity();
-      TriggerResponse triggerResponse = null;
-      String responseStr = EntityUtils.toString(responseEntity);
-
-      return responseStr;
-    } catch (Exception e) {
-      e.printStackTrace();
-      return null;
+      jobId = new String(
+          org.apache.commons.codec.binary.Hex.decodeHex(
+              ((String)eventData.getResult().get("specId"))));
+    } catch (DecoderException e) {
+      log.warn("parse job failed, jobid: {}", jobId);
+      return;
     }
+    // filter events
+    if (!listeningAddrs.get(addr).contains(jobId)) {
+      log.warn("this node does not support this job, jobid: {}", jobId);
+      return;
+    }
+    long blockNum = eventData.getBlockNumber();
+    String requester = Tool.convertHexToTronAddr((String)eventData.getResult().get("requester"));
+    String callbackAddr = Tool.convertHexToTronAddr((String)eventData.getResult().get("callbackAddr"));
+    String callbackFuncId = (String)eventData.getResult().get("callbackFunctionId");
+    long cancelExpiration = Long.parseLong((String)eventData.getResult().get("cancelExpiration"));
+    String data = (String)eventData.getResult().get("data");
+    long dataVersion = Long.parseLong((String)eventData.getResult().get("dataVersion"));
+    String requestId = (String)eventData.getResult().get("requestId");
+    BigInteger payment = new BigInteger((String)eventData.getResult().get("payment"));
+    if (requestIdsCache.getIfPresent(requestId) != null) {
+      log.info("this event has been handled, requestid:{}", requestId);
+      return;
+    }
+    JobSubscriber.receiveLogRequest(
+        new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
+            cancelExpiration, data, dataVersion,requestId, payment, addr));
+    requestIdsCache.put(requestId, "");
+  }
+
+  private void processNewRoundEvent(String addr, EventData eventData) {
+    long roundId = 0;
+    try {
+      roundId = Long.parseLong((String)eventData.getResult().get("roundId"));
+    } catch (NumberFormatException e) {
+      log.warn("parse job failed, roundId: {}", roundId);
+      return;
+    }
+
+    String startedBy = Tool.convertHexToTronAddr((String)eventData.getResult().get("startedBy"));
+    long startedAt = Long.parseLong((String)eventData.getResult().get("startedAt"));
+    if (requestIdsCache.getIfPresent(addr + roundId) != null) {
+      log.info("this event has been handled, address:{}, roundId:{}", addr, roundId);
+      return;
+    }
+
+    JobSubscriber.receiveNewRoundLog(addr, startedBy, roundId, startedAt);
+
+    requestIdsCache.put(addr + roundId, "");
+  }
+
+  public String requestEvent(String urlPath, Map<String, String> params) throws IOException {
+    String response = HttpUtil.get("https", HTTP_EVENT_HOST,
+        urlPath, params);
+    if (Strings.isNullOrEmpty(response)) {
+      int retry = 1;
+      for (;;) {
+        if(retry > HTTP_MAX_RETRY_TIME) {
+          break;
+        }
+        try {
+          Thread.sleep(100 * retry);
+        } catch (InterruptedException e) {
+          e.printStackTrace();
+        }
+        response = HttpUtil.get("https", HTTP_EVENT_HOST,
+            urlPath, params);
+        retry++;
+        if (!Strings.isNullOrEmpty(response)) {
+          break;
+        }
+      }
+    }
+    return response;
   }
 
   private List<EventData> getEventData(String addr, String filterEvent) {
     List<EventData> data = new ArrayList<>();
-    HttpResponse httpResponse = null;
+    String httpResponse = null;
     String urlPath;
     Map<String, String> params = Maps.newHashMap();
     if ("nile.trongrid.io".equals(HTTP_EVENT_HOST)) { // for test
@@ -431,14 +423,11 @@ public class OracleClient {
       urlPath = String.format("/v1/contracts/%s/events", addr);
     }
     httpResponse = requestEvent(urlPath, params);
-    if (httpResponse == null) {
+    if (Strings.isNullOrEmpty(httpResponse)) {
       return null;
     }
-    HttpEntity responseEntity = httpResponse.getEntity();
-    EventResponse response = null;
     try {
-      String responseStr = EntityUtils.toString(responseEntity);
-      response = JsonUtil.json2Obj(responseStr, EventResponse.class);
+      response = JsonUtil.json2Obj(httpResponse, EventResponse.class);
     } catch (IOException e) {
       log.error("parse response failed, err: {}", e.getMessage());
     }
@@ -455,15 +444,12 @@ public class OracleClient {
     }
     while (isNext) {
       isNext = false;
-      HttpResponse responseNext = requestNextPage(urlNext);
-      if (responseNext == null) {
+      String responseNext = requestNextPage(urlNext);
+      if (Strings.isNullOrEmpty(responseNext)) {
         return data;
       }
-      responseEntity = responseNext.getEntity();
-      response = null;
       try {
-        String responseStr = EntityUtils.toString(responseEntity);
-        response = JsonUtil.json2Obj(responseStr, EventResponse.class);
+        response = JsonUtil.json2Obj(responseNext, EventResponse.class);
       } catch (IOException e) {
         log.error("parse response failed, err: {}", e.getMessage());
       }

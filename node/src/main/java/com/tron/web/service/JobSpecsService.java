@@ -26,4 +26,6 @@ public interface JobSpecsService {
   int deleteJob(String jobId);
 
   long getJobCount();
+
+  Initiator getInitiatorByAddress(String addr);
 }

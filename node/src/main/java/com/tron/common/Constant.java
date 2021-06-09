@@ -27,6 +27,9 @@ public class Constant {
           "fulfillOracleRequest(bytes32,uint256,address,bytes4,uint256,bytes32)";
   public static final String VRF_FULFIL_METHOD_SIGN =
           "fulfillRandomnessRequest(bytes)";
+  public static final String SUBMIT_METHOD_SIGN = "submit(uint256,int256)";
+  public static final String ROUND_STATE_METHOD_SIGN = "oracleRoundState(address,uint32)";
+  public static final String ROUND_STATE_RESULT_SIGN = "bool,uint32,int256,uint64,uint64,uint128,uint8,uint128";
 
   // task type
   public static final String TASK_TYPE_HTTP_GET = "httpget";

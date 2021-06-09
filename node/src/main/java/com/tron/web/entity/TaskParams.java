@@ -12,4 +12,5 @@ public class TaskParams {
   private String trc20;
   private String publicKey;
   private String type;
+  private Long version;
 }

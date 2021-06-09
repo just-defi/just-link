@@ -8,6 +8,7 @@ import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.net.URISyntaxException;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
@@ -23,7 +24,7 @@ public class OracleClientTest {
   }
 
   @Test
-  public void requestEventTest() {
+  public void requestEventTest() throws IOException {
     String addr = "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9";
     Map<String, String> params = Maps.newHashMap();
     params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_HOUR));
@@ -32,7 +33,7 @@ public class OracleClientTest {
   }
 
   @Test
-  public void fulfilTest() throws IOException, BadItemException {
+  public void fulfilTest() throws IOException, URISyntaxException {
     System.out.println(CommonParameter.getInstance()
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);

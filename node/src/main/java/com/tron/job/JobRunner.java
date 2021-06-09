@@ -1,5 +1,6 @@
 package com.tron.job;
 
+import com.google.common.collect.Maps;
 import com.tron.common.Constant;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
@@ -79,20 +80,70 @@ public class JobRunner {
 
         jobRunsService.insert(jobRun);
 
-        for (TaskSpec task : job.getTaskSpecs()) {
-          TaskRun taskRun = new TaskRun();
-          String taskRunId = UUID.randomUUID().toString();
-          taskRunId = taskRunId.replaceAll("-", "");
-          taskRun.setId(taskRunId);
-          taskRun.setJobRunID(jobRunId);
-          taskRun.setTaskSpecId(task.getId());
-          taskRun.setLevel(task.getLevel());
-          jobRunsService.insertTaskRun(taskRun);
-        }
+        insertTaskRuns(jobRunId, job.getTaskSpecs());
 
         run(jobRun, eventParams);
       }
     } catch (Exception e) {
+      log.error("add job run failed, error msg:" + e.getMessage());
+      e.printStackTrace();
+    }
+  }
+
+  private void insertTaskRuns(String jobRunId, List<TaskSpec> taskSpecs) {
+    for (TaskSpec task : taskSpecs) {
+      TaskRun taskRun = new TaskRun();
+      String taskRunId = UUID.randomUUID().toString();
+      taskRunId = taskRunId.replaceAll("-", "");
+      taskRun.setId(taskRunId);
+      taskRun.setJobRunID(jobRunId);
+      taskRun.setTaskSpecId(task.getId());
+      taskRun.setLevel(task.getLevel());
+      jobRunsService.insertTaskRun(taskRun);
+    }
+  }
+
+  public void addJobRunV2(String addr, long roundId, String startBy, long startAt, BigInteger payment) {
+
+    try {
+      Initiator initiator = jobSpecsService.getInitiatorByAddress(addr);
+      if (initiator == null) {
+        log.warn("initiator is not exist, address:{}", addr);
+        return;
+      }
+      JobSpec job = jobSpecsService.getById(initiator.getJobSpecID());
+
+      // check run
+      boolean checkResult = validateRunV2(job, initiator.getJobSpecID(), payment);
+
+      if (checkResult) {
+        JobRun jobRun = new JobRun();
+        String jobRunId = UUID.randomUUID().toString();
+        jobRunId = jobRunId.replaceAll("-", "");
+        jobRun.setId(jobRunId);
+        jobRun.setJobSpecID(job.getId());
+        jobRun.setRequestId("-");
+        jobRun.setStatus(1);
+        jobRun.setCreationHeight(0L);
+        jobRun.setPayment(0L);  // todo
+        jobRun.setInitiatorId(job.getInitiators().get(0).getId());
+
+        Map<String, Object> params = Maps.newHashMap();
+        params.put("roundId", roundId);
+        params.put("startBy", startBy);
+        params.put("startAt", startAt);
+        params.put("address", addr);
+        String paramsStr = com.tron.web.common.util.JsonUtil.obj2String(params);
+        jobRun.setParams(paramsStr);
+
+        jobRunsService.insert(jobRun);
+
+        insertTaskRuns(jobRunId, job.getTaskSpecs());
+
+        run(jobRun, paramsStr);
+      }
+    } catch (Exception e) {
+      log.error("add job run failed, error msg:" + e.getMessage());
       e.printStackTrace();
     }
   }
@@ -150,10 +201,9 @@ public class JobRunner {
         jobRunsService.updateJobResult(runId, 3, null, String.valueOf(preTaskResult.get("msg")));
       }
     } catch (Exception e) {
+      log.error("execute job run error, msg:" + e.getMessage());
       e.printStackTrace();
     }
-
-
   }
 
   private R executeTask(TaskRun taskRun, TaskSpec taskSpec, R input) {
@@ -214,6 +264,28 @@ public class JobRunner {
     String runId = jobRunsService.getByRequestId(requestId);
     if (runId != null) {
       log.warn("event repeated request id {}", requestId);
+      return false;
+    }
+
+    return true;
+  }
+
+  private boolean validateRunV2(JobSpec jobSpec, String jobId, BigInteger payment) {
+    if (jobSpec == null) {
+      log.warn("failed to find job spec, ID: " + jobId);
+      return false;
+    }
+
+    if (jobSpec.archived()) {
+      log.warn("Trying to run archived job " + jobSpec.getId());
+      return false;
+    }
+
+    BigInteger minPayment;
+    minPayment = new BigInteger(nodeMinPayment);
+
+    if (payment != null && payment.compareTo(new BigInteger("0")) > 0 && minPayment.compareTo(payment) > 0) {
+      log.warn("rejecting job {} with payment {} below minimum threshold ({})", jobId, payment, minPayment);
       return false;
     }
 

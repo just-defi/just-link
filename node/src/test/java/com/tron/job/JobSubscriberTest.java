@@ -2,6 +2,9 @@ package com.tron.job;
 
 import com.tron.OracleApplication;
 import com.tron.client.EventRequest;
+import com.tron.common.Constant;
+import com.tron.keystore.KeyStore;
+import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -16,9 +19,8 @@ import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 public class JobSubscriberTest {
 
   @Before
-  public void init() {
-//    String[] args = {""};
-//    SpringApplication.run(OracleApplication.class, args);
+  public void init() throws FileNotFoundException {
+    KeyStore.initKeyStore("classpath:key.store");
   }
 
   @Test
@@ -38,6 +40,17 @@ public class JobSubscriberTest {
     );
 
     JobSubscriber.receiveLogRequest(event);
+    Thread.sleep(10000);
+  }
+
+  @Test
+  public void receiveNewRoundTest() throws InterruptedException {
+
+    Constant.FULLNODE_HOST = "api.nileex.io";
+    JobSubscriber.receiveNewRoundLog("TGm9cecRyrHAUziKrmRASPLb8fgZbJJmF9",
+        "TGm9cecRyrHAUziKrmRASPLb8fgZbJJmF9",
+        13,
+        1);
     Thread.sleep(10000);
   }
 

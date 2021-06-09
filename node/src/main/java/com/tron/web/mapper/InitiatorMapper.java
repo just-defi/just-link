@@ -13,4 +13,6 @@ public interface InitiatorMapper {
   int insertList(List<Initiator> initiators);
 
   List<Initiator> getByJobId(@Param("jobId") String jobId);
+
+  Initiator getByAddress(@Param("addr") String addr);
 }

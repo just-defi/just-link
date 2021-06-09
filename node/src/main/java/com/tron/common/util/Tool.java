@@ -6,6 +6,7 @@ import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.Transaction;
 import com.tron.client.message.TriggerResponse;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.http.HttpEntity;
@@ -28,14 +29,20 @@ public class Tool {
     return StringUtil.encode58Check(ByteArray.fromHexString(addr));
   }
 
-  public static BroadCastResponse triggerContract(ECKey key, Map<String, Object> params, String api)
-      throws IOException {
-    HttpResponse response = HttpUtil.post("https", api, "/wallet/triggersmartcontract", params);
-    HttpEntity responseEntity = response.getEntity();
-    String responsrStr = EntityUtils.toString(responseEntity);
-    TriggerResponse triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+  public static BroadCastResponse triggerContract(ECKey key, Map<String, Object> params, String schema, String api)
+          throws IOException, URISyntaxException {
+    String response = HttpUtil.post(schema, api, "/wallet/triggersmartcontract", params);
+    TriggerResponse triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
     //
-    return broadcastHex(api, signTransaction(triggerResponse.getTransaction(), key));
+    return broadcastHex(schema, api, signTransaction(triggerResponse.getTransaction(), key));
+  }
+
+  public static BroadCastResponse triggerContract(ECKey key, Map<String, Object> params, String api)
+          throws IOException, URISyntaxException {
+    String response = HttpUtil.post("https", api, "/wallet/triggersmartcontract", params);
+    TriggerResponse triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
+    //
+    return broadcastHex("https", api, signTransaction(triggerResponse.getTransaction(), key));
   }
 
   public static org.tron.protos.Protocol.Transaction signTransaction(Transaction transaction,
@@ -49,12 +56,12 @@ public class Tool {
     return Protocol.Transaction.newBuilder().setRawData(raw).addSignature(bsSign).build();
   }
 
-  public static BroadCastResponse broadcastHex(String api,
-      org.tron.protos.Protocol.Transaction transaction) throws IOException {
+  public static BroadCastResponse broadcastHex(String schema, String api,
+      org.tron.protos.Protocol.Transaction transaction) throws IOException, URISyntaxException {
     Map<String, Object> params = new HashMap<>();
     params.put("transaction", Hex.toHexString(transaction.toByteArray()));
-    HttpResponse response = HttpUtil.post("https", api, "/wallet/broadcasthex", params);
-    return JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+    String response = HttpUtil.post(schema, api, "/wallet/broadcasthex", params);
+    return JsonUtil.json2Obj(response, BroadCastResponse.class);
   }
 
 }

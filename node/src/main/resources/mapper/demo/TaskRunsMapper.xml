@@ -51,7 +51,7 @@
 	<update id="updateResult">
 		UPDATE task_runs
     SET `status` = #{status},
-				updated_at = DATE_FORMAT(NOW(),'%Y-%m-%d %H:%m:%s')
+				updated_at = DATE_FORMAT(NOW(),'%Y-%m-%d %H:%i:%s')
     <if test="error!=null and error!=''">
 			,`error` = #{error}
 		</if>

@@ -1,8 +1,8 @@
 package com.tron.job.adapters;
 
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import com.googlecode.cqengine.query.simple.In;
 import com.tron.client.EventRequest;
+import com.tron.client.FluxAggregator;
 import com.tron.client.VrfEventRequest;
 import com.tron.client.FulfillRequest;
 import com.tron.client.OracleClient;
@@ -10,6 +10,8 @@ import com.tron.common.Constant;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.TronTx;
+import java.util.Map;
+import lombok.Getter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.util.EntityUtils;
@@ -20,9 +22,12 @@ import java.math.BigInteger;
 public class TronTxAdapter extends BaseAdapter {
 
   @Getter
+  private Long ver;
+  @Getter
   private String linkType;
 
-  public TronTxAdapter(String _linkType) {
+  public TronTxAdapter(Long version, String _linkType) {
+    ver = version;
     linkType = _linkType;
   }
 
@@ -45,19 +50,28 @@ public class TronTxAdapter extends BaseAdapter {
       }
       switch (iLinkType) {
         case 0:
-          EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
-          FulfillRequest fulfillRequest = new FulfillRequest(
-                  event.getContractAddr(),
-                  event.getRequestId(),
-                  event.getPayment(),
-                  event.getCallbackAddr(),
-                  event.getCallbackFunctionId(),
-                  event.getCancelExpiration(),
-                  codecData((long)input.get("result")));
-          //Long.toString((long)input.get("result")));
-          //(Long) input.get("result"));
+          if (ver == null || ver == 1) {
+            EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
+            FulfillRequest fulfillRequest = new FulfillRequest(
+                event.getContractAddr(),
+                event.getRequestId(),
+                event.getPayment(),
+                event.getCallbackAddr(),
+                event.getCallbackFunctionId(),
+                event.getCancelExpiration(),
+                codecData((long)input.get("result")));
+            //Long.toString((long)input.get("result")));
+            //(Long) input.get("result"));
 
-          TronTx tx = OracleClient.fulfil(fulfillRequest);
+            tx = OracleClient.fulfil(fulfillRequest);
+          } else {
+            Map<String, Object> params = JsonUtil.json2Map((String)input.get("params"));
+            long roundId = Long.parseLong(params.get("roundId").toString());
+            String addr = String.valueOf(params.get("address"));
+
+            tx = FluxAggregator.submit(addr, roundId, (long)input.get("result"));
+          }
+
           tx.setValue((long)input.get("result"));
           tx.setSentAt(System.currentTimeMillis());
           tx.setTaskRunId((String)input.get("taskRunId"));
@@ -69,13 +83,13 @@ public class TronTxAdapter extends BaseAdapter {
           String proof = (String)input.get("result");
           VrfEventRequest vrfEvent = JsonUtil.fromJson((String)input.get("params"), VrfEventRequest.class);
           FulfillRequest vrfFulfillRequest = new FulfillRequest(
-                  vrfEvent.getContractAddr(),
-                  vrfEvent.getRequestId(),
-                  new BigInteger("0"),
-                  "",
-                  "",
-                  0,
-                  proof);
+              vrfEvent.getContractAddr(),
+              vrfEvent.getRequestId(),
+              new BigInteger("0"),
+              "",
+              "",
+              0,
+              proof);
           TronTx vrfTx = OracleClient.vrfFulfil(vrfFulfillRequest);
           vrfTx.setValue(0L);
           vrfTx.setSentAt(System.currentTimeMillis());

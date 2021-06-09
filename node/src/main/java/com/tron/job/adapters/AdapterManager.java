@@ -33,7 +33,11 @@ public class AdapterManager {
         } catch (Exception e) {
           tronTxType = "";
         }
-        adapter = new TronTxAdapter(tronTxType);
+        if (params != null) {
+          adapter = new TronTxAdapter(params.getVersion(), tronTxType);
+        } else {
+          adapter = new TronTxAdapter(null, tronTxType);
+        }
         break;
       case Constant.TASK_TYPE_RECIPROCAL:
         adapter = new ReciprocalAdapter();

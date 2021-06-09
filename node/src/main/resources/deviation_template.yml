@@ -1,0 +1,21 @@
+#aggType: flux  # flux or null
+
+sleep: 120000 # ms
+
+#fullnodeSchema: https  # default: https
+fullnode: api.trongrid.io
+
+privateKey:
+
+feelimit: 40000000
+
+pairs:
+  - {name: TRX-USD,  contract: @{contract address}, deviation: 10, updateInterval: 10800000}
+
+
+nodeServer:
+  - {host: @{ip}, port: @{port} }
+
+jobs:
+  TRX-USD:
+    - @{jobid}

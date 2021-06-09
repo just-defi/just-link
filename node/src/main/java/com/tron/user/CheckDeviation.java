@@ -19,16 +19,13 @@ import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.net.URISyntaxException;
 import java.util.Arrays;
-import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.StringUtil;
@@ -41,6 +38,8 @@ public class CheckDeviation {
   private static long DEVIATION = 10;
   private static Map<String, Long> deviationMap = new HashMap<>();
   private static Map<String, Long> forceRequestTime = new HashMap<>();
+  private static String schema = "https";
+  private static String fullnode = FULLNODE_HOST;
 
   public static void main(String[] args) {
     Args argv = new Args();
@@ -56,6 +55,12 @@ public class CheckDeviation {
     try {
       config = DeviationConfig.loadConfig(argv.config);
       key = ECKey.fromPrivate(ByteArray.fromHexString(config.getPrivateKey()));
+      if (!Strings.isNullOrEmpty(config.getFullnodeSchema())) {
+        schema = config.getFullnodeSchema();
+      }
+      if (!Strings.isNullOrEmpty(config.getFullnode())) {
+        fullnode = config.getFullnode();
+      }
       run();
     } catch (FileNotFoundException e) {
       e.printStackTrace();
@@ -111,10 +116,9 @@ public class CheckDeviation {
   private static long getPrice(String jobUrl) {
     long price = 0;
     try {
-      HttpResponse response = HttpUtil.getByUri(jobUrl);
-      if (response != null && response.getStatusLine().getStatusCode() == HttpStatus.SC_OK) {
-        String result = EntityUtils.toString(response.getEntity());
-        JsonObject data = (JsonObject) JsonParser.parseString(result);
+      String response = HttpUtil.getByUri(jobUrl);
+      if (!Strings.isNullOrEmpty(response)) {
+        JsonObject data = (JsonObject) JsonParser.parseString(response);
         return data.getAsJsonPrimitive("data").getAsLong();
       } else {
         log.error("[alarm]getPrice fail. job="+jobUrl);
@@ -126,16 +130,23 @@ public class CheckDeviation {
   }
 
   private static void sendRequest(String contract) {
+    String method;
+    if (!Strings.isNullOrEmpty(config.getAggType()) && "flux".equals(config.getAggType())) {
+      method = "requestNewRound()";
+    } else {
+      method = "requestRateUpdate()";
+    }
+
     try {
       Map<String, Object> params = Maps.newHashMap();
       params.put("owner_address", StringUtil.encode58Check(key.getAddress()));
       params.put("contract_address", contract);
-      params.put("function_selector", "requestRateUpdate()");
+      params.put("function_selector", method);
       params.put("parameter", "");
       params.put("fee_limit", config.getFeelimit().toString());
       params.put("call_value", 0);
       params.put("visible", true);
-      BroadCastResponse rps = Tool.triggerContract(key, params, config.getFullnode());
+      BroadCastResponse rps = Tool.triggerContract(key, params, schema, config.getFullnode());
       if (rps != null) {
         log.info("trigger " + contract + " Contract result is: " + rps.isResult()
                 + ", msg is: " + rps.getMessage());
@@ -145,7 +156,7 @@ public class CheckDeviation {
     }
   }
 
-  private static long getPriceFromContract(String contract) throws IOException {
+  private static long getPriceFromContract(String contract) throws IOException, URISyntaxException {
     String param = AbiUtil.parseParameters("latestAnswer()", "");
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", READONLY_ACCOUNT);
@@ -153,11 +164,10 @@ public class CheckDeviation {
     params.put("function_selector", "latestAnswer()");
     params.put("parameter", param);
     params.put("visible", true);
-    HttpResponse response = HttpUtil.post(
-            "https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+    String response = HttpUtil.post(
+            schema, fullnode, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
-    assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(str-> str.replaceAll("^0[x|X]", ""))
@@ -169,6 +179,9 @@ public class CheckDeviation {
     try {
       long prePrice = getPriceFromContract(contract);
       log.info(contract +": " + prePrice + "  " + nowPrice);
+      if (prePrice == 0) {
+        return true;
+      }
       long sub = Math.abs(Math.subtractExact(prePrice, nowPrice));
       Long deviation = deviationMap.get(contract);
       deviation = deviation == null ? DEVIATION : deviation;

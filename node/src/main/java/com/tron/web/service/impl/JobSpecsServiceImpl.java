@@ -91,6 +91,10 @@ public class JobSpecsServiceImpl implements JobSpecsService {
     return initiatorMapper.getByJobId(id);
   }
 
+  public Initiator getInitiatorByAddress(String addr) {
+    return initiatorMapper.getByAddress(addr);
+  }
+
   public List<TaskSpec> getTasksByJobId(String id) {
     return taskSpecsMapper.getByJobId(id);
   }

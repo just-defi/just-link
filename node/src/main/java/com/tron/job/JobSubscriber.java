@@ -2,8 +2,10 @@ package com.tron.job;
 
 import com.tron.client.EventRequest;
 import com.tron.client.VrfEventRequest;
+import com.tron.client.FluxAggregator;
 import com.tron.client.OracleClient;
-import com.tron.web.common.util.JsonUtil;
+import com.tron.client.message.OracleRoundState;
+import com.tron.keystore.KeyStore;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.Initiator;
 import com.tron.web.entity.JobSpec;
@@ -12,7 +14,6 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.stereotype.Service;
 
 @Slf4j
 @Component
@@ -71,6 +72,28 @@ public class JobSubscriber {
 
     log.info("VRF event: " + event);
     jobRunner.addJobRun(com.tron.web.common.util.JsonUtil.obj2String(event));
+  }
+
+  public static void receiveNewRoundLog(String addr, String startBy, long roundId, long startAt) {
+    log.info("receive event: roundId:{}, startBy:{}, startAt:{}", roundId, startBy, startAt);
+
+    // validate request
+    if (startBy == null || startBy.isEmpty()) {
+      log.error("startBy in event request is empty");
+      return;
+    }
+
+    // Ignore rounds we started
+    if (KeyStore.getAddr().equals(startBy)) {
+      log.info("Ignoring new round request: we started this round, contract:{}, roundId:{}", addr, roundId);
+      return;
+    }
+
+    OracleRoundState roundState = FluxAggregator.getOracleRoundState(addr, roundId);
+    boolean checkResult = FluxAggregator.checkOracleRoundState(roundState);
+    if (checkResult) {
+      jobRunner.addJobRunV2(addr, roundId, startBy, startAt, roundState.getPaymentAmount());
+    }
   }
 
   public static void setup() {
