@@ -1,6 +1,5 @@
 pragma solidity ^0.6.0;
 
-import "./Ownable.sol";
 import "./TRC20Interface.sol";
 import "./VRFRequestIDBase.sol";
 import "./Owned.sol";

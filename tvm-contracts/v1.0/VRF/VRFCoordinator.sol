@@ -6,7 +6,7 @@ import "./SafeMathTron.sol";
 import "./TRC20Interface.sol";
 import "./BlockHashStoreInterface.sol";
 
-import "./Ownable.sol";
+import "./Owned.sol";
 
 import "./VRF.sol";
 import "./VRFRequestIDBase.sol";
@@ -16,7 +16,7 @@ import "./VRFConsumerBase.sol";
  * @title VRFCoordinator coordinates on-chain verifiable-randomness requests
  * @title with off-chain responses
  */
-contract VRFCoordinator is VRF, VRFRequestIDBase, Ownable {
+contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
 
   using SafeMathTron for uint256;
 

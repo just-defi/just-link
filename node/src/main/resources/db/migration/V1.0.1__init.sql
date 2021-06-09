@@ -140,7 +140,7 @@ CREATE TABLE `txes`  (
   PRIMARY KEY (`id`),
   index `idx_txes_created_at` (`created_at`),
   unique index `txes_surrogate_id_key` (`surrogate_id`),
-  index `idx_txes_task_run_id_key` (`task_run_id`)
+  index `idx_txes_task_run_id_key` (`task_run_id`),
   index `idx_txes_from` (`from`),
   index `idx_txes_hash` (`hash`),
   index `idx_confirmed` (`confirmed`),
