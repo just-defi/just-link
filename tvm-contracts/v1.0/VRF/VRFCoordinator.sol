@@ -99,12 +99,11 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     serviceAgreements[keyHash].vRFOracle = _oracle;
     serviceAgreements[keyHash].jobID = _jobID;
     // Yes, this revert message doesn't fit in a word
-    require(_fee <= 1e9 trx,
+    require(_fee <= 1e27,
       "you can't charge more than all the LINK in the world, greedy");
     serviceAgreements[keyHash].fee = uint96(_fee);
     emit NewServiceAgreement(keyHash, _fee);
   }
-
   /**
    * @notice Creates the VRF request
    * @dev Stores the hash of the params as the on-chain commitment for the request.
@@ -246,8 +245,8 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     // actual gas available to the consuming contract will be b-floor(b/64).
     // This is chosen to leave the consuming contract ~200k gas, after the cost
     // of the call itself.
-    uint256 b = 206000;
-    require(gasleft() >= b, "not enough gas for consumer");
+    //uint256 b = 206000;
+    //require(gasleft() >= b, "not enough gas for consumer");
     // A low-level call is necessary, here, because we don't want the consuming
     // contract to be able to revert this execution, and thus deny the oracle
     // payment for a valid randomness response. This also necessitates the above
