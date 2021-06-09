@@ -3,6 +3,7 @@ package com.tron.client;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Maps;
 import com.tron.client.message.TriggerResponse;
+import com.tron.common.Config;
 import com.tron.common.util.HttpUtil;
 import com.tron.job.adapters.ContractAdapter;
 import com.tron.keystore.KeyStore;
@@ -31,7 +32,6 @@ public class ReSender {
     tronTxService = _tronTxService;
   }
 
-  private static final long MIN_FEE_LIMIT = 100_000_000L; // 100 trx
   private static final long RESEND_AFTER_THRESHOLD = 100_000L ; // 100 Second
 
 
@@ -69,7 +69,7 @@ public class ReSender {
           log.error("Exception in pollResend ", ex);
           return;
         }
-        if (nodeBalance < MIN_FEE_LIMIT) {
+        if (nodeBalance < Config.getMinFeeLimit()) {
           log.error("Insufficient TRX in the node account");
           continue;
         }
@@ -104,7 +104,7 @@ public class ReSender {
           log.error("Exception in pollResend for OUT_OF_ENERGY tx", ex);
           return;
         }
-        if (nodeBalance < MIN_FEE_LIMIT) {
+        if (nodeBalance < Config.getMinFeeLimit()) {
           log.error("Insufficient TRX in the node account for OUT_OF_ENERGY tx");
           continue;
         }
@@ -129,13 +129,10 @@ public class ReSender {
       Map<String, Object> params = Maps.newHashMap();
       params.put("value", txId);
       params.put("visible", true);
-      HttpResponse response =
+      String response =
           HttpUtil.post("https", FULLNODE_HOST, "/walletsolidity/gettransactioninfobyid", params);
-      HttpEntity responseEntity = response.getEntity();
-      TriggerResponse triggerResponse = null;
-      String responseStr = EntityUtils.toString(responseEntity);
 
-      return responseStr;
+      return response;
     } catch (Exception e) {
       e.printStackTrace();
       return null;
@@ -168,17 +165,4 @@ public class ReSender {
     }
   }
 
-  private static long calculateFeeLimit(long payment) {
-    /*double trxBalance = 0;
-    try {
-      trxBalance = ContractAdapter.getTradePriceWithTRX(ContractAdapter.TradePair.JUST_TRX) * payment;
-    } catch (IOException e) {
-      return MIN_FEE_LIMIT;
-    }
-    if (Math.round(trxBalance) < MIN_FEE_LIMIT) {
-      log.warn("the payment maybe even can't afford the energy cost, payment: {}", payment);
-    }
-    return Math.max(MIN_FEE_LIMIT, Math.round(trxBalance * 20 / 100));*/
-    return MIN_FEE_LIMIT;
-  }
 }

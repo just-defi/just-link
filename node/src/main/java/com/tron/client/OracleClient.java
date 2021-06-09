@@ -76,17 +76,16 @@ public class OracleClient {
   private static final String EVENT_NAME = "OracleRequest";
   private static final String EVENT_NEW_ROUND = "NewRound";
   private static final String VRF_EVENT_NAME = "VRFRequest";
-  private static final long MIN_FEE_LIMIT = 100_000_000L; // 100 trx
 
   private static final HashMap<String, String> initiatorEventMap =
       new HashMap<String, String>() {
         {
-          put(INITIATOR_TYPE_RUN_LOG, EVENT_NAME);
+          put(INITIATOR_TYPE_RUN_LOG, EVENT_NAME + "," + EVENT_NEW_ROUND); // support multiple events for the same job
           put(INITIATOR_TYPE_RANDOMNESS_LOG, VRF_EVENT_NAME);
         }
       };
 
-  private static ConcurrentHashMap<String, Set<String>> listeningAddrs = new ConcurrentHashMap<>();
+  private static ConcurrentHashMap<String, HashMap<String, String>> listeningAddrs = new ConcurrentHashMap<>();
   private static Cache<String, String> requestIdsCache =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
@@ -94,7 +93,6 @@ public class OracleClient {
           .recordStats()
           .build();
 
-  private static HashMap<String, HashMap<String, String>> listeningAddrs = Maps.newHashMap();
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
   private ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
@@ -126,13 +124,13 @@ public class OracleClient {
    * @param request
    * @return transactionid
    */
-  public static TronTx fulfil(FulfillRequest request) throws IOException, BadItemException {
+  public static TronTx fulfil(FulfillRequest request) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", request.getContractAddr());
     params.put("function_selector", FULFIL_METHOD_SIGN);
     params.put("parameter", AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
-    params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
+    params.put("fee_limit", Config.getMinFeeLimit());
     params.put("call_value", 0);
     params.put("visible", true);
 
@@ -143,14 +141,14 @@ public class OracleClient {
    * @param request
    * @return transactionid
    */
-  public static TronTx vrfFulfil(FulfillRequest request) throws IOException, BadItemException {
+  public static TronTx vrfFulfil(FulfillRequest request) throws Exception {
     List<Object> parameters = Arrays.asList(request.getData());
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", request.getContractAddr());
     params.put("function_selector", VRF_FULFIL_METHOD_SIGN);
     params.put("parameter", AbiUtil.parseParameters(VRF_FULFIL_METHOD_SIGN, parameters));
-    params.put("fee_limit", calculateFeeLimit(MIN_FEE_LIMIT));
+    params.put("fee_limit", Config.getMinFeeLimit());
     params.put("call_value", 0);
     params.put("visible", true);
 
@@ -167,7 +165,7 @@ public class OracleClient {
   }
 
   public static TronTx triggerSignAndResponse(Map<String, Object> params)
-      throws IOException {
+      throws Exception {
     String response =
         HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
     TriggerResponse triggerResponse = null;
@@ -196,11 +194,11 @@ public class OracleClient {
 
     TronTx tx = new TronTx();
     tx.setFrom(KeyStore.getAddr());
-    tx.setTo(request.getContractAddr());
+    tx.setTo(contractAddress);
     tx.setSurrogateId(broadCastResponse.getTxid());
     tx.setSignedRawTx(bsSign.toString());
     tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(AbiUtil.parseParameters(FULFIL_METHOD_SIGN, request.toList()));
+    tx.setData(data);
     return tx;
   }
 
@@ -208,10 +206,17 @@ public class OracleClient {
     for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
       String addr = addrEntry.getKey();
       Map<String, String> map = addrEntry.getValue();
-      Map.Entry<String, String> entry = map.entrySet().iterator().next();
-      String destJobId = entry.getKey();
-      String filterEvent = entry.getValue();
-      List<EventData> events = getEventData(addr, filterEvent);
+      Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
+      String destJobId = jobEventEntry.getKey();
+      String expectedEvents = jobEventEntry.getValue();
+      String[] filterEvents = expectedEvents.split(",");
+      List<EventData> events = new ArrayList<>();
+      for (String filterEvent : filterEvents) {
+        List<EventData> data = getEventData(addr, filterEvent);
+        if (data != null && data.size() >0 ) {
+          events.addAll(data);
+        }
+      }
       if (events == null || events.size() == 0) {
         continue;
       }
@@ -227,87 +232,15 @@ public class OracleClient {
               "this node does not support this event, event name: {}", eventData.getEventName());
           continue;
         }
-        String jobId = null;
-        try {
-          switch (eventName) {
-            case EVENT_NAME:
-              jobId =
-                  new String(
-                      org.apache.commons.codec.binary.Hex.decodeHex(
-                          ((String) eventData.getResult().get("specId"))));
-              break;
-            case VRF_EVENT_NAME:
-              jobId =
-                  new String(
-                      org.apache.commons.codec.binary.Hex.decodeHex(
-                          ((String) eventData.getResult().get("jobID"))));
-              break;
-            default:
-              break;
-          }
-
-        } catch (DecoderException e) {
-          log.warn("parse job failed, jobid: {}", jobId);
-          continue;
-        }
-        // filter events
-        if (Strings.isNullOrEmpty(destJobId) || !destJobId.equals(jobId)) {
-          log.warn("this node does not support this job, jobid: {}", jobId);
-          continue;
-        }
-        // Number/height of the block in which this request appeared
-        long blockNum = eventData.getBlockNumber();
-        String requestId;
         switch (eventName) {
           case EVENT_NAME:
-            processOracleRequestEvent(addr, eventData);
+            processOracleRequestEvent(destJobId, addr, eventData);
             break;
           case EVENT_NEW_ROUND:
             processNewRoundEvent(addr, eventData);
             break;
           case VRF_EVENT_NAME:
-            requestId = (String) eventData.getResult().get("requestID");
-            if (requestIdsCache.getIfPresent(requestId) != null) {
-              log.info("this vrf event has been handled, requestid:{}", requestId);
-              continue;
-            }
-            if(!Strings.isNullOrEmpty(jobRunsService.getByRequestId(requestId))) { // for reboot
-              log.info("from DB, this vrf event has been handled, requestid:{}", requestId);
-              continue;
-            }
-            // Hash of the block in which this request appeared
-            String responseStr = getBlockByNum(blockNum);
-            JSONObject responseContent = JSONObject.parseObject(responseStr);
-            String blockHash = responseContent.getString("blockID");
-            JSONObject rawHead = JSONObject.parseObject(JSONObject.parseObject(responseContent.getString("block_header"))
-                .getString("raw_data"));
-            String parentHash = rawHead.getString("parentHash");
-            Long blockTimestamp = Long.valueOf(rawHead.getString("timestamp"));
-            List<Head> hisHead = headService.getByAddress(addr);
-            Head head = new Head();
-            head.setAddress(addr);
-            head.setNumber(blockNum);
-            head.setHash(blockHash);
-            head.setParentHash(parentHash);
-            head.setBlockTimestamp(blockTimestamp);
-            if (hisHead == null || hisHead.size() == 0) {
-              headService.insert(head);
-            } else if (!hisHead.get(0).getNumber().equals(blockNum)) { //Only update unequal blockNum.
-              head.setId(hisHead.get(0).getId());
-              head.setUpdatedAt(new Date());
-              headService.update(head);
-            } else {
-
-            }
-
-            String sender = Tool.convertHexToTronAddr((String) eventData.getResult().get("sender"));
-            String keyHash = (String) eventData.getResult().get("keyHash");
-            String seed = (String) eventData.getResult().get("seed");
-            BigInteger fee = new BigInteger((String) eventData.getResult().get("fee"));
-            JobSubscriber.receiveVrfRequest(
-                new VrfEventRequest(
-                    blockNum, blockHash, jobId, keyHash, seed, sender, requestId, fee, addr));
-            requestIdsCache.put(requestId, "");
+            processVrfRequestEvent(destJobId, addr, eventData);
             break;
           default:
             log.warn("unexpected event:{}", eventName);
@@ -317,7 +250,23 @@ public class OracleClient {
     }
   }
 
-  private void processOracleRequestEvent(String addr, EventData eventData) {
+  /** constructor. */
+  public static String getBlockByNum(long blockNum) {
+    try {
+      Map<String, Object> params = Maps.newHashMap();
+      params.put("num", blockNum);
+      params.put("visible", true);
+      String response =
+          HttpUtil.post("https", FULLNODE_HOST, "/wallet/getblockbynum", params);
+
+      return response;
+    } catch (Exception e) {
+      e.printStackTrace();
+      return null;
+    }
+  }
+
+  private void processOracleRequestEvent(String destJobId, String addr, EventData eventData) {
     String jobId = null;
     try {
       jobId = new String(
@@ -327,11 +276,12 @@ public class OracleClient {
       log.warn("parse job failed, jobid: {}", jobId);
       return;
     }
-    // filter events
-    if (!listeningAddrs.get(addr).contains(jobId)) {
+    // match jobId
+    if (Strings.isNullOrEmpty(destJobId) || !destJobId.equals(jobId)) {
       log.warn("this node does not support this job, jobid: {}", jobId);
       return;
     }
+    // Number/height of the block in which this request appeared
     long blockNum = eventData.getBlockNumber();
     String requester = Tool.convertHexToTronAddr((String)eventData.getResult().get("requester"));
     String callbackAddr = Tool.convertHexToTronAddr((String)eventData.getResult().get("callbackAddr"));
@@ -348,6 +298,67 @@ public class OracleClient {
     JobSubscriber.receiveLogRequest(
         new EventRequest(blockNum, jobId, requester, callbackAddr, callbackFuncId,
             cancelExpiration, data, dataVersion,requestId, payment, addr));
+    requestIdsCache.put(requestId, "");
+  }
+
+  private void processVrfRequestEvent(String destJobId, String addr, EventData eventData) {
+    String jobId = null;
+    try {
+      jobId = new String(
+          org.apache.commons.codec.binary.Hex.decodeHex(
+              ((String)eventData.getResult().get("jobID"))));
+    } catch (DecoderException e) {
+      log.warn("parse vrf job failed, jobid: {}", jobId);
+      return;
+    }
+    // match jobId
+    if (Strings.isNullOrEmpty(destJobId) || !destJobId.equals(jobId)) {
+      log.warn("this node does not support this vrf job, jobid: {}", jobId);
+      return;
+    }
+    // Number/height of the block in which this request appeared
+    long blockNum = eventData.getBlockNumber();
+    String requestId = (String) eventData.getResult().get("requestID");
+    if (requestIdsCache.getIfPresent(requestId) != null) {
+      log.info("this vrf event has been handled, requestid:{}", requestId);
+      return;
+    }
+    if(!Strings.isNullOrEmpty(jobRunsService.getByRequestId(requestId))) { // for reboot
+      log.info("from DB, this vrf event has been handled, requestid:{}", requestId);
+      return;
+    }
+    // Hash of the block in which this request appeared
+    String responseStr = getBlockByNum(blockNum);
+    JSONObject responseContent = JSONObject.parseObject(responseStr);
+    String blockHash = responseContent.getString("blockID");
+    JSONObject rawHead = JSONObject.parseObject(JSONObject.parseObject(responseContent.getString("block_header"))
+        .getString("raw_data"));
+    String parentHash = rawHead.getString("parentHash");
+    Long blockTimestamp = Long.valueOf(rawHead.getString("timestamp"));
+    List<Head> hisHead = headService.getByAddress(addr);
+    Head head = new Head();
+    head.setAddress(addr);
+    head.setNumber(blockNum);
+    head.setHash(blockHash);
+    head.setParentHash(parentHash);
+    head.setBlockTimestamp(blockTimestamp);
+    if (hisHead == null || hisHead.size() == 0) {
+      headService.insert(head);
+    } else if (!hisHead.get(0).getNumber().equals(blockNum)) { //Only update unequal blockNum.
+      head.setId(hisHead.get(0).getId());
+      head.setUpdatedAt(new Date());
+      headService.update(head);
+    } else {
+
+    }
+
+    String sender = Tool.convertHexToTronAddr((String) eventData.getResult().get("sender"));
+    String keyHash = (String) eventData.getResult().get("keyHash");
+    String seed = (String) eventData.getResult().get("seed");
+    BigInteger fee = new BigInteger((String) eventData.getResult().get("fee"));
+    JobSubscriber.receiveVrfRequest(
+        new VrfEventRequest(
+            blockNum, blockHash, jobId, keyHash, seed, sender, requestId, fee, addr));
     requestIdsCache.put(requestId, "");
   }
 
@@ -422,11 +433,12 @@ public class OracleClient {
       }
       urlPath = String.format("/v1/contracts/%s/events", addr);
     }
-    httpResponse = requestEvent(urlPath, params);
-    if (Strings.isNullOrEmpty(httpResponse)) {
-      return null;
-    }
+    EventResponse response = null;
     try {
+      httpResponse = requestEvent(urlPath, params);
+      if (Strings.isNullOrEmpty(httpResponse)) {
+        return null;
+      }
       response = JsonUtil.json2Obj(httpResponse, EventResponse.class);
     } catch (IOException e) {
       log.error("parse response failed, err: {}", e.getMessage());
@@ -450,7 +462,7 @@ public class OracleClient {
       }
       try {
         response = JsonUtil.json2Obj(responseNext, EventResponse.class);
-      } catch (IOException e) {
+      } catch (Exception e) {
         log.error("parse response failed, err: {}", e.getMessage());
       }
       data.addAll(response.getData());
@@ -467,6 +479,20 @@ public class OracleClient {
 
     return data;
   }
+  public String requestNextPage(String urlNext) {
+    try {
+      String response = HttpUtil.requestWithRetry(urlNext);
+      if (response == null) {
+        return null;
+      }
+      return response;
+    } catch (Exception ex) {
+      ex.printStackTrace();
+    }
+    return null;
+  }
+
+
 
   private void updateConsumeMap(String addr, long timestamp) {
     if (consumeIndexMap.containsKey(addr)) {
@@ -478,21 +504,5 @@ public class OracleClient {
     }
   }
 
-  public static boolean checkTransactionStatus(String transactionId) {
-    return true;
-  }
 
-  private static long calculateFeeLimit(long payment) {
-    /*double trxBalance = 0;
-    try {
-      trxBalance = ContractAdapter.getTradePriceWithTRX(ContractAdapter.TradePair.JUST_TRX) * payment;
-    } catch (IOException e) {
-      return MIN_FEE_LIMIT;
-    }
-    if (Math.round(trxBalance) < MIN_FEE_LIMIT) {
-      log.warn("the payment maybe even can't afford the energy cost, payment: {}", payment);
-    }
-    return Math.max(MIN_FEE_LIMIT, Math.round(trxBalance * 20 / 100));*/
-    return MIN_FEE_LIMIT;
-  }
 }

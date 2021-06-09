@@ -30,19 +30,19 @@ public class ContractAdapter {
   private static final String BALANCE_OF = "balanceOf(address)";
   private static final String DECIMAL = "decimals()";
 
-  public static long getTRXBalance(String addr) throws IOException {
+  public static long getTRXBalance(String addr) throws Exception {
     return getTRXBalance(addr, true);
   }
 
-  public static long getTRXBalance(String addr, boolean visible) throws IOException {
+  public static long getTRXBalance(String addr, boolean visible) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("address", addr);
     params.put("visible", visible);
-    HttpResponse response = HttpUtil.post(
+    String response = HttpUtil.post(
             "https", Constant.FULLNODE_HOST, GET_ACCOUNT, params);
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable(result.get("balance"))
             .map(balance -> {
               if (balance instanceof Integer) {
@@ -53,11 +53,11 @@ public class ContractAdapter {
             .orElse(0L);
   }
 
-  public static BigInteger balanceOf(String ownerAddress, String contractAddress) throws IOException {
+  public static BigInteger balanceOf(String ownerAddress, String contractAddress) throws Exception {
     return balanceOf(ownerAddress, contractAddress, true);
   }
 
-  public static BigInteger balanceOf(String ownerAddress, String contractAddress, boolean visible) throws IOException {
+  public static BigInteger balanceOf(String ownerAddress, String contractAddress, boolean visible) throws Exception {
     if (!visible) {
       throw new UnsupportedOperationException("not supported yet");
     }
@@ -68,11 +68,11 @@ public class ContractAdapter {
     params.put("function_selector", BALANCE_OF);
     params.put("parameter", param);
     params.put("visible", visible);
-    HttpResponse response = HttpUtil.post(
+    String response = HttpUtil.post(
             "https", TRONGRID_HOST, TRIGGET_CONSTANT, params);
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(Hex::decode)
@@ -81,11 +81,11 @@ public class ContractAdapter {
             .orElse(new BigInteger("0"));
   }
 
-  public static int getDecimal(String contractAddress) throws IOException {
+  public static int getDecimal(String contractAddress) throws Exception {
     return getDecimal(contractAddress, true);
   }
 
-  public static int getDecimal(String contractAddress, boolean visible) throws IOException {
+  public static int getDecimal(String contractAddress, boolean visible) throws Exception {
     if (!visible) {
       throw new UnsupportedOperationException("not supported yet");
     }
@@ -96,11 +96,11 @@ public class ContractAdapter {
     params.put("function_selector", DECIMAL);
     params.put("parameter", param);
     params.put("visible", visible);
-    HttpResponse response = HttpUtil.post(
+    String response = HttpUtil.post(
             "https", TRONGRID_HOST, TRIGGET_CONSTANT, params);
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     return Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(Hex::decode)
@@ -111,11 +111,11 @@ public class ContractAdapter {
   }
 
   // todo 1. rename  2. check handle exception when blance is 0
-  public static double getTradePriceWithTRX(TradePair pair) throws IOException {
+  public static double getTradePriceWithTRX(TradePair pair) throws Exception {
     return getTradePriceWithTRX(pair.getPoolAddr(), pair.getTrc20Addr());
   }
 
-  public static double getTradePriceWithTRX(String poolAddr, String trc20Addr) throws IOException {
+  public static double getTradePriceWithTRX(String poolAddr, String trc20Addr) throws Exception {
     // 1. get trx balance
     BigDecimal trxBalance = new BigDecimal(getTRXBalance(poolAddr));
     trxBalance = trxBalance.divide(new BigDecimal(TRX_DECIMAL_STR), 4, RoundingMode.HALF_UP);

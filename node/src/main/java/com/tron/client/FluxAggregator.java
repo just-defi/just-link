@@ -33,10 +33,10 @@ import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocol;
-import org.tron.tronj.abi.datatypes.Bool;
-import org.tron.tronj.abi.datatypes.Int;
-import org.tron.tronj.abi.datatypes.Type;
-import org.tron.tronj.abi.datatypes.Uint;
+import org.tron.trident.abi.datatypes.Bool;
+import org.tron.trident.abi.datatypes.Int;
+import org.tron.trident.abi.datatypes.Type;
+import org.tron.trident.abi.datatypes.Uint;
 
 @Slf4j
 public class FluxAggregator {

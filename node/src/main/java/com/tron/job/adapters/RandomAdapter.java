@@ -110,7 +110,7 @@ public class RandomAdapter extends BaseAdapter {
   }
 
   // checkFulfillment checks to see if the randomness request has already been fulfilled or not
-  private boolean checkFulfillment(String contractAddr, String requestId) throws IOException {
+  private boolean checkFulfillment(String contractAddr, String requestId) throws Exception {
     if (Strings.isNullOrEmpty(contractAddr)) {
       return true;
     }
@@ -123,10 +123,10 @@ public class RandomAdapter extends BaseAdapter {
     params.put("function_selector", "callbacks(bytes32)");
     params.put("parameter", param);
     params.put("visible", true);
-    HttpResponse response = HttpUtil.post("https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+    String response = HttpUtil.post("https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
-    Map<String, Object> result = mapper.readValue(EntityUtils.toString(response.getEntity()), Map.class);
+    Map<String, Object> result = mapper.readValue(response, Map.class);
     boolean flag = Optional.ofNullable((List<String>)result.get("constant_result"))
             .map(constantResult -> constantResult.get(0))
             .map(str -> str.substring(128)) //seedAndBlockNum is the third element in the `Callback` struct.

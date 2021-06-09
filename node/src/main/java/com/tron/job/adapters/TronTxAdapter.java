@@ -50,6 +50,7 @@ public class TronTxAdapter extends BaseAdapter {
       }
       switch (iLinkType) {
         case 0:
+          TronTx tx;
           if (ver == null || ver == 1) {
             EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
             FulfillRequest fulfillRequest = new FulfillRequest(

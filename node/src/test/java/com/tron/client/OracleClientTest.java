@@ -33,7 +33,7 @@ public class OracleClientTest {
   }
 
   @Test
-  public void fulfilTest() throws IOException, URISyntaxException {
+  public void fulfilTest() throws Exception {
     System.out.println(CommonParameter.getInstance()
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);

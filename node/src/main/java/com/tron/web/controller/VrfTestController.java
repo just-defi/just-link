@@ -64,12 +64,10 @@ public class VrfTestController {
       params.put("fee_limit", 100_000_000L);
       params.put("call_value",0);
       params.put("visible",true);
-      HttpResponse response = HttpUtil.post("https", FULLNODE_HOST,
+      String response = HttpUtil.post("https", FULLNODE_HOST,
               "/wallet/triggersmartcontract", params);
-      HttpEntity responseEntity = response.getEntity();
       TriggerResponse triggerResponse = null;
-      String responsrStr = EntityUtils.toString(responseEntity);
-      triggerResponse = JsonUtil.json2Obj(responsrStr, TriggerResponse.class);
+      triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
 
       // sign
       ECKey key = KeyStore.getKey();
@@ -86,7 +84,7 @@ public class VrfTestController {
       response = HttpUtil.post("https", FULLNODE_HOST,
               "/wallet/broadcasthex", params);
       BroadCastResponse broadCastResponse =
-              JsonUtil.json2Obj(EntityUtils.toString(response.getEntity()), BroadCastResponse.class);
+              JsonUtil.json2Obj(response, BroadCastResponse.class);
 
       return R.ok().put("data", "");
     } catch (Exception e) {
