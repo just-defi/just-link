@@ -335,6 +335,16 @@ public class OracleClient {
         .getString("raw_data"));
     String parentHash = rawHead.getString("parentHash");
     Long blockTimestamp = Long.valueOf(rawHead.getString("timestamp"));
+
+    String sender = Tool.convertHexToTronAddr((String) eventData.getResult().get("sender"));
+    String keyHash = (String) eventData.getResult().get("keyHash");
+    String seed = (String) eventData.getResult().get("seed");
+    BigInteger fee = new BigInteger((String) eventData.getResult().get("fee"));
+    JobSubscriber.receiveVrfRequest(
+        new VrfEventRequest(
+            blockNum, blockHash, jobId, keyHash, seed, sender, requestId, fee, addr));
+    requestIdsCache.put(requestId, "");
+
     List<Head> hisHead = headService.getByAddress(addr);
     Head head = new Head();
     head.setAddress(addr);
@@ -351,15 +361,6 @@ public class OracleClient {
     } else {
 
     }
-
-    String sender = Tool.convertHexToTronAddr((String) eventData.getResult().get("sender"));
-    String keyHash = (String) eventData.getResult().get("keyHash");
-    String seed = (String) eventData.getResult().get("seed");
-    BigInteger fee = new BigInteger((String) eventData.getResult().get("fee"));
-    JobSubscriber.receiveVrfRequest(
-        new VrfEventRequest(
-            blockNum, blockHash, jobId, keyHash, seed, sender, requestId, fee, addr));
-    requestIdsCache.put(requestId, "");
   }
 
   private void processNewRoundEvent(String addr, EventData eventData) {
@@ -416,20 +417,16 @@ public class OracleClient {
     if ("nile.trongrid.io".equals(HTTP_EVENT_HOST)) { // for test
       params.put("event_name", filterEvent);
       params.put("order_by", "block_timestamp,asc");
-      if (consumeIndexMap.containsKey(addr)) {
-        params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
-      } else {
-        params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
+      if(!getMinBlockTimestamp(addr, filterEvent, params)){
+        return null;
       }
       urlPath = String.format("/v1/contracts/%s/events", addr);
     } else { // for production
       params.put("event_name", filterEvent);
       params.put("order_by", "block_timestamp,asc");
       // params.put("only_confirmed", "true");
-      if (consumeIndexMap.containsKey(addr)) {
-        params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
-      } else {
-        params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
+      if(!getMinBlockTimestamp(addr, filterEvent, params)){
+        return null;
       }
       urlPath = String.format("/v1/contracts/%s/events", addr);
     }
@@ -504,5 +501,32 @@ public class OracleClient {
     }
   }
 
-
+  public boolean getMinBlockTimestamp(String addr, String eventName, Map<String, String> params)
+  {
+    switch (eventName) {
+      case EVENT_NAME:
+        if (consumeIndexMap.containsKey(addr)) {
+          params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
+        } else {
+          params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
+        }
+        break;
+      case VRF_EVENT_NAME:
+        if (consumeIndexMap.containsKey(addr)) {
+          params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
+        } else {
+          List<Head> hisHead = headService.getByAddress(addr);
+          if (hisHead == null || hisHead.size() == 0) {
+            params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
+          } else {
+            params.put("min_block_timestamp", Long.toString(hisHead.get(0).getBlockTimestamp()));
+          }
+        }
+        break;
+      default:
+        log.warn("unexpected event:{}", eventName);
+        return false;
+    }
+    return true;
+  }
 }
