@@ -227,11 +227,6 @@ public class OracleClient {
 
         // filter the events
         String eventName = eventData.getEventName();
-        if (!EVENT_NAME.equals(eventName) && !EVENT_NEW_ROUND.equals(eventName) && !VRF_EVENT_NAME.equals(eventName)) {
-          log.warn(
-              "this node does not support this event, event name: {}", eventData.getEventName());
-          continue;
-        }
         switch (eventName) {
           case EVENT_NAME:
             processOracleRequestEvent(destJobId, addr, eventData);
