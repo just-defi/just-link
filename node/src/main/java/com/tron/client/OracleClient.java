@@ -500,6 +500,7 @@ public class OracleClient {
   {
     switch (eventName) {
       case EVENT_NAME:
+      case EVENT_NEW_ROUND:
         if (consumeIndexMap.containsKey(addr)) {
           params.put("min_block_timestamp", Long.toString(consumeIndexMap.get(addr)));
         } else {
