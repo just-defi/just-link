@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Lists;
+
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.tron.client.message.BroadCastResponse;
@@ -23,34 +23,22 @@ import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
-import java.net.InetAddress;
-import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import com.tron.web.service.HeadService;
 import com.tron.web.service.JobRunsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
-import org.tron.core.exception.BadItemException;
 import org.tron.protos.Protocol;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -95,13 +83,29 @@ public class OracleClient {
 
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
-  private ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
-
   public void run() {
+    try {
+      // concurrent listen
+      for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
+        String addr = addrEntry.getKey();
+        Map<String, String> map = addrEntry.getValue();
+        Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
+        String destJobId = jobEventEntry.getKey();
+        String expectedEvents = jobEventEntry.getValue();
+        String[] filterEvents = expectedEvents.split(",");
+        listenTask(addr, destJobId, filterEvents);
+      }
+    } catch (Exception ex) {
+      log.error("Exception in run: ", ex);
+    }
+  }
+
+  private void listenTask(String addr, String destJobId, String[] filterEvents)  {
+    ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
     listenExecutor.scheduleWithFixedDelay(
         () -> {
           try {
-            listen();
+            listen(addr, destJobId, filterEvents);
           } catch (Throwable t) {
             log.error("Exception in listener ", t);
           }
@@ -202,15 +206,8 @@ public class OracleClient {
     return tx;
   }
 
-  private void listen() {
-    for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
-      String addr = addrEntry.getKey();
-      Map<String, String> map = addrEntry.getValue();
-      Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
-      String destJobId = jobEventEntry.getKey();
-      String expectedEvents = jobEventEntry.getValue();
-      String[] filterEvents = expectedEvents.split(",");
-      List<EventData> events = new ArrayList<>();
+  private void listen(String addr, String destJobId, String[] filterEvents) {
+     List<EventData> events = new ArrayList<>();
       for (String filterEvent : filterEvents) {
         List<EventData> data = getEventData(addr, filterEvent);
         if (data != null && data.size() >0 ) {
@@ -218,7 +215,7 @@ public class OracleClient {
         }
       }
       if (events == null || events.size() == 0) {
-        continue;
+        return;
       }
       // handle events
       for (EventData eventData : events) {
@@ -242,7 +239,7 @@ public class OracleClient {
             break;
         }
       }
-    }
+
   }
 
   /** constructor. */

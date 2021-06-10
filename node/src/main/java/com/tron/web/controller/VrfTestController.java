@@ -7,6 +7,7 @@ import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
 import com.tron.common.util.HttpUtil;
+import com.tron.common.util.Tool;
 import com.tron.keystore.KeyStore;
 import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
@@ -31,6 +32,7 @@ import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
+import org.tron.common.utils.StringUtil;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocol;
 
@@ -85,6 +87,23 @@ public class VrfTestController {
               "/wallet/broadcasthex", params);
       BroadCastResponse broadCastResponse =
               JsonUtil.json2Obj(response, BroadCastResponse.class);
+
+
+      // send oracleRequest
+      String aggregatorContract = "TM63JqzAhc3oAgSjAzhD5i3ohFp1f3YY4k";
+      params.clear();
+      params.put("owner_address", KeyStore.getAddr());
+      params.put("contract_address", aggregatorContract);
+      params.put("function_selector", "requestRateUpdate()");
+      params.put("parameter", "");
+      params.put("fee_limit", 40000000);
+      params.put("call_value", 0);
+      params.put("visible", true);
+      BroadCastResponse rps = Tool.triggerContract(KeyStore.getKey(), params, FULLNODE_HOST);
+      if (rps != null) {
+        System.out.println(new Date() + ": trigger " + aggregatorContract + " Contract result is: " + rps.isResult()
+            + ", msg is: " + rps.getMessage());
+      }
 
       return R.ok().put("data", "");
     } catch (Exception e) {
