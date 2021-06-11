@@ -1,5 +1,6 @@
 package com.tron.job.adapters;
 
+import com.google.common.base.Strings;
 import com.googlecode.cqengine.query.simple.In;
 import com.tron.client.EventRequest;
 import com.tron.client.FluxAggregator;
@@ -15,8 +16,11 @@ import lombok.Getter;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.http.util.EntityUtils;
+import org.tron.common.utils.ByteArray;
+import org.tron.common.utils.Sha256Hash;
 
 import java.math.BigInteger;
+import java.util.Random;
 
 @Slf4j
 public class TronTxAdapter extends BaseAdapter {
@@ -50,7 +54,7 @@ public class TronTxAdapter extends BaseAdapter {
       }
       switch (iLinkType) {
         case 0:
-          TronTx tx;
+          TronTx tx = new TronTx();
           if (ver == null || ver == 1) {
             EventRequest event = JsonUtil.fromJson((String)input.get("params"), EventRequest.class);
             FulfillRequest fulfillRequest = new FulfillRequest(
@@ -64,7 +68,7 @@ public class TronTxAdapter extends BaseAdapter {
             //Long.toString((long)input.get("result")));
             //(Long) input.get("result"));
 
-            tx = OracleClient.fulfil(fulfillRequest);
+            OracleClient.fulfil(fulfillRequest, tx);
           } else {
             Map<String, Object> params = JsonUtil.json2Map((String)input.get("params"));
             long roundId = Long.parseLong(params.get("roundId").toString());
@@ -91,7 +95,28 @@ public class TronTxAdapter extends BaseAdapter {
               "",
               0,
               proof);
-          TronTx vrfTx = OracleClient.vrfFulfil(vrfFulfillRequest);
+
+          TronTx vrfTx = new TronTx();
+          try{
+            OracleClient.vrfFulfil(vrfFulfillRequest, vrfTx);
+          } catch (Exception ex) { // catch http exception for next VRF resend
+            if (Strings.isNullOrEmpty(vrfTx.getSurrogateId())) {
+              String fakedId = "abc" + getRandomHexString(10); // "abc" is special prefix, with special length.
+              vrfTx.setSurrogateId(fakedId);
+            }
+            if (Strings.isNullOrEmpty(vrfTx.getSignedRawTx())) {
+              String fakedRawTx = getRandomHexString(15);
+              vrfTx.setSignedRawTx(fakedRawTx);
+              vrfTx.setHash(ByteArray.toHexString(Sha256Hash.hash(true, fakedRawTx.getBytes())));
+            }
+            vrfTx.setValue(0L);
+            vrfTx.setSentAt(System.currentTimeMillis());
+            vrfTx.setTaskRunId((String)input.get("taskRunId"));
+            vrfTx.setConfirmed(Constant.TronTxInProgress);
+            log.info("vrfFulFil exception vrfTx id : " + vrfTx.getSurrogateId());
+            return R.error(1, "vrf fulfillRequest failed")
+                .put("result", vrfTx.getSurrogateId()).put("tx", vrfTx);
+          }
           vrfTx.setValue(0L);
           vrfTx.setSentAt(System.currentTimeMillis());
           vrfTx.setTaskRunId((String)input.get("taskRunId"));
@@ -101,7 +126,7 @@ public class TronTxAdapter extends BaseAdapter {
           return R.ok().put("result", vrfTx.getSurrogateId()).put("tx", vrfTx);
         default:
           log.error("unsupported linkType neither oracle nor vrf: " + linkType);
-          return R.error(1, "fulfillRequest failed");
+          return R.error(1, "unsupported linkType fulfillRequest failed");
       }
 
     } catch (Exception e) {
@@ -109,6 +134,16 @@ public class TronTxAdapter extends BaseAdapter {
       return R.error(1, "fulfillRequest failed");
     }
 
+  }
+
+  private String getRandomHexString(int numchars){
+    Random r = new Random();
+    StringBuffer sb = new StringBuffer();
+    while(sb.length() < numchars){
+      sb.append(Integer.toHexString(r.nextInt()));
+    }
+
+    return sb.toString().substring(0, numchars);
   }
 
   private String codecData(long data) {

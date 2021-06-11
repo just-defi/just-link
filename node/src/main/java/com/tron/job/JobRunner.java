@@ -220,6 +220,12 @@ public class JobRunner {
       }
     } else {
       jobRunsService.updateTaskResult(taskRun.getId(), 3, null, String.valueOf(result.get("msg")));
+      //
+      if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX)) {
+        if (result.get("tx") != null) { // for VRF resend
+          tronTxService.insert((TronTx) result.get("tx"));
+        }
+      }
     }
 
     return result;

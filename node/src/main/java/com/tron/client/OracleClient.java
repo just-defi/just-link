@@ -128,7 +128,7 @@ public class OracleClient {
    * @param request
    * @return transactionid
    */
-  public static TronTx fulfil(FulfillRequest request) throws Exception {
+  public static void fulfil(FulfillRequest request, TronTx tx) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", request.getContractAddr());
@@ -138,14 +138,14 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params);
+    triggerSignAndResponse(params, tx);
   }
 
   /**
    * @param request
    * @return transactionid
    */
-  public static TronTx vrfFulfil(FulfillRequest request) throws Exception {
+  public static void vrfFulfil(FulfillRequest request, TronTx vrfTx) throws Exception {
     List<Object> parameters = Arrays.asList(request.getData());
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
@@ -156,7 +156,7 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params);
+    triggerSignAndResponse(params, vrfTx);
   }
 
   public static String convertWithIteration(Map<String, Object> map) {
@@ -168,12 +168,20 @@ public class OracleClient {
     return mapAsString.toString();
   }
 
-  public static TronTx triggerSignAndResponse(Map<String, Object> params)
+  public static void triggerSignAndResponse(Map<String, Object> params, TronTx tx)
       throws Exception {
+    String contractAddress = params.get("contract_address").toString();
+    String data = convertWithIteration(params);
+    tx.setFrom(KeyStore.getAddr());
+    tx.setTo(contractAddress);
+    tx.setData(data);
+
     String response =
         HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
     TriggerResponse triggerResponse = null;
     triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
+
+    tx.setSurrogateId(triggerResponse.getTransaction().getTxID());
 
     // sign
     ECKey key = KeyStore.getKey();
@@ -185,8 +193,8 @@ public class OracleClient {
     ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
     TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
 
-    String contractAddress = params.get("contract_address").toString();
-    String data = convertWithIteration(params);
+    tx.setSignedRawTx(bsSign.toString());
+    tx.setHash(ByteArray.toHexString(hash));
 
     // broadcast
     params.clear();
@@ -195,15 +203,6 @@ public class OracleClient {
             "/wallet/broadcasthex", params);
     BroadCastResponse broadCastResponse =
             JsonUtil.json2Obj(response, BroadCastResponse.class);
-
-    TronTx tx = new TronTx();
-    tx.setFrom(KeyStore.getAddr());
-    tx.setTo(contractAddress);
-    tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString());
-    tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(data);
-    return tx;
   }
 
   private void listen(String addr, String destJobId, String[] filterEvents) {
