@@ -60,7 +60,8 @@ public class OracleClientTest {
               1600670994,
               "456");
       System.out.println(Hex.toHexString(new BigInteger("16").toByteArray()));
-      OracleClient.fulfil(request);
+      TronTx tx = new TronTx();
+      OracleClient.fulfil(request, tx);
     }
   }
 
@@ -87,7 +88,7 @@ public class OracleClientTest {
               0,
               proof);
       TronTx tx = new TronTx();
-      tx = OracleClient.vrfFulfil(vrfFulfillRequest);
+      OracleClient.vrfFulfil(vrfFulfillRequest, tx);
       System.out.println("transaction ID:"+tx.getSurrogateId());
     }
   }

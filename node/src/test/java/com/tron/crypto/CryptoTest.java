@@ -54,10 +54,7 @@ public class CryptoTest {
 
   @Test
   public void vRFTest() throws IOException {
-    long i = 1;
-    //for (int i = 1; i < 10000; i++) {
-    while(true){
-      System.out.println();
+    for (int i = 1; i < 100; i++) {
       System.out.println("i = : "+ i++);
       //secretKey must be less than secp256k1 group order
       String prikey = getFieldRandomBigInteger().toString(16);
