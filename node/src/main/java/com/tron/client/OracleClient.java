@@ -4,7 +4,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.google.common.base.Strings;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
-import com.google.common.collect.Lists;
+
 import com.google.common.collect.Maps;
 import com.google.protobuf.ByteString;
 import com.tron.client.message.BroadCastResponse;
@@ -23,34 +23,22 @@ import com.tron.web.entity.TronTx;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.*;
-import java.net.InetAddress;
-import java.net.URISyntaxException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 
 import com.tron.web.service.HeadService;
 import com.tron.web.service.JobRunsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
-import org.tron.core.exception.BadItemException;
 import org.tron.protos.Protocol;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -95,13 +83,29 @@ public class OracleClient {
 
   private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
-  private ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
-
   public void run() {
+    try {
+      // concurrent listen
+      for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
+        String addr = addrEntry.getKey();
+        Map<String, String> map = addrEntry.getValue();
+        Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
+        String destJobId = jobEventEntry.getKey();
+        String expectedEvents = jobEventEntry.getValue();
+        String[] filterEvents = expectedEvents.split(",");
+        listenTask(addr, destJobId, filterEvents);
+      }
+    } catch (Exception ex) {
+      log.error("Exception in run: ", ex);
+    }
+  }
+
+  private void listenTask(String addr, String destJobId, String[] filterEvents)  {
+    ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
     listenExecutor.scheduleWithFixedDelay(
         () -> {
           try {
-            listen();
+            listen(addr, destJobId, filterEvents);
           } catch (Throwable t) {
             log.error("Exception in listener ", t);
           }
@@ -124,7 +128,7 @@ public class OracleClient {
    * @param request
    * @return transactionid
    */
-  public static TronTx fulfil(FulfillRequest request) throws Exception {
+  public static void fulfil(FulfillRequest request, TronTx tx) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", request.getContractAddr());
@@ -134,14 +138,14 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params);
+    triggerSignAndResponse(params, tx);
   }
 
   /**
    * @param request
    * @return transactionid
    */
-  public static TronTx vrfFulfil(FulfillRequest request) throws Exception {
+  public static void vrfFulfil(FulfillRequest request, TronTx vrfTx) throws Exception {
     List<Object> parameters = Arrays.asList(request.getData());
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
@@ -152,7 +156,7 @@ public class OracleClient {
     params.put("call_value", 0);
     params.put("visible", true);
 
-    return triggerSignAndResponse(params);
+    triggerSignAndResponse(params, vrfTx);
   }
 
   public static String convertWithIteration(Map<String, Object> map) {
@@ -164,12 +168,20 @@ public class OracleClient {
     return mapAsString.toString();
   }
 
-  public static TronTx triggerSignAndResponse(Map<String, Object> params)
+  public static void triggerSignAndResponse(Map<String, Object> params, TronTx tx)
       throws Exception {
+    String contractAddress = params.get("contract_address").toString();
+    String data = convertWithIteration(params);
+    tx.setFrom(KeyStore.getAddr());
+    tx.setTo(contractAddress);
+    tx.setData(data);
+
     String response =
         HttpUtil.post("https", FULLNODE_HOST, "/wallet/triggersmartcontract", params);
     TriggerResponse triggerResponse = null;
     triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
+
+    tx.setSurrogateId(triggerResponse.getTransaction().getTxID());
 
     // sign
     ECKey key = KeyStore.getKey();
@@ -181,8 +193,8 @@ public class OracleClient {
     ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
     TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
 
-    String contractAddress = params.get("contract_address").toString();
-    String data = convertWithIteration(params);
+    tx.setSignedRawTx(bsSign.toString());
+    tx.setHash(ByteArray.toHexString(hash));
 
     // broadcast
     params.clear();
@@ -191,26 +203,10 @@ public class OracleClient {
             "/wallet/broadcasthex", params);
     BroadCastResponse broadCastResponse =
             JsonUtil.json2Obj(response, BroadCastResponse.class);
-
-    TronTx tx = new TronTx();
-    tx.setFrom(KeyStore.getAddr());
-    tx.setTo(contractAddress);
-    tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString());
-    tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(data);
-    return tx;
   }
 
-  private void listen() {
-    for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
-      String addr = addrEntry.getKey();
-      Map<String, String> map = addrEntry.getValue();
-      Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
-      String destJobId = jobEventEntry.getKey();
-      String expectedEvents = jobEventEntry.getValue();
-      String[] filterEvents = expectedEvents.split(",");
-      List<EventData> events = new ArrayList<>();
+  private void listen(String addr, String destJobId, String[] filterEvents) {
+     List<EventData> events = new ArrayList<>();
       for (String filterEvent : filterEvents) {
         List<EventData> data = getEventData(addr, filterEvent);
         if (data != null && data.size() >0 ) {
@@ -218,7 +214,7 @@ public class OracleClient {
         }
       }
       if (events == null || events.size() == 0) {
-        continue;
+        return;
       }
       // handle events
       for (EventData eventData : events) {
@@ -227,11 +223,6 @@ public class OracleClient {
 
         // filter the events
         String eventName = eventData.getEventName();
-        if (!EVENT_NAME.equals(eventName) && !EVENT_NEW_ROUND.equals(eventName) && !VRF_EVENT_NAME.equals(eventName)) {
-          log.warn(
-              "this node does not support this event, event name: {}", eventData.getEventName());
-          continue;
-        }
         switch (eventName) {
           case EVENT_NAME:
             processOracleRequestEvent(destJobId, addr, eventData);
@@ -247,7 +238,7 @@ public class OracleClient {
             break;
         }
       }
-    }
+
   }
 
   /** constructor. */

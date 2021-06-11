@@ -75,7 +75,9 @@ public class ReSender {
         }
         log.info("Resending txes id: " + tx.getId());
         TronTx resendTx = resendUnconfirmed(tx);
-        tronTxService.update(resendTx);
+        if (resendTx != null) {
+          tronTxService.update(resendTx);
+        }
         continue;
       }
       JSONObject receipt = JSONObject.parseObject(JSONObject.parseObject(responseStr).getString("receipt"));
@@ -110,7 +112,9 @@ public class ReSender {
         }
         log.info("Resending OUT_OF_ENERGY txes id: " + tx.getId());
         TronTx resendTx = resendUnconfirmed(tx);
-        tronTxService.update(resendTx);
+        if (resendTx != null) {
+          tronTxService.update(resendTx);
+        }
       } else if ("SUCCESS".equals(receiptResult)) {
         tx.setConfirmed(TronTxConfirmed);
         tx.setUpdatedAt(new Date());
@@ -152,7 +156,8 @@ public class ReSender {
       Map<String, Object> params = convertWithStream(data);
       params.put("call_value", 0); // reset
       params.put("visible", true);
-      TronTx resendTx = OracleClient.triggerSignAndResponse(params);
+      TronTx resendTx = new TronTx();
+      OracleClient.triggerSignAndResponse(params, resendTx);
       tx.setSurrogateId(resendTx.getSurrogateId());
       tx.setSignedRawTx(resendTx.getSignedRawTx()); // for resend
       tx.setHash(resendTx.getHash());
