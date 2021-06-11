@@ -130,7 +130,7 @@ public class ReSender {
       params.put("value", txId);
       params.put("visible", true);
       String response =
-          HttpUtil.post("https", FULLNODE_HOST, "/walletsolidity/gettransactioninfobyid", params);
+              HttpUtil.post("https", FULLNODE_HOST, "/walletsolidity/gettransactioninfobyid", params);
 
       return response;
     } catch (Exception e) {
