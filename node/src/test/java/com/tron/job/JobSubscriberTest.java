@@ -44,25 +44,6 @@ public class JobSubscriberTest {
     Thread.sleep(10000);
   }
 
-//  @Test
-//  public void receiveVrfRequestTest() throws InterruptedException {
-//
-//    BigInteger payment = new BigInteger("12");
-//    long blockNum = 16744854L;
-//    VrfEventRequest event = new VrfEventRequest(
-//            blockNum,
-//            "0000000000ff8196f08f7c0701056568882dc0295da4de776bc60288e428c9b2",
-//            "04d773890bc347f88544dc85bea24985",
-//            "e4f280f6d621db4bccd8568197e3c84e3f402c963264369a098bb2f0922cb125",
-//            "263aca793faea84e75a95b703d4497e55b8198d284ce2f36f0d329645be17356",
-//            "TYJ1GmCWsUhD7sNRHnFLdCP6RnE4mwzo7n",
-//            "140ebadad4c038db7a3771b9ce4c74bc995e16bb4dac5c60e0bcc28c8254583c",
-//            payment,
-//            "TUeVYd9ZYeKh87aDA9Tp7F5Ljc47JKC37x"
-//    );
-//    JobSubscriber.receiveVrfRequest(event);
-//  }
-
   @Test
   public void receiveNewRoundTest() throws InterruptedException {
 

@@ -3,6 +3,7 @@ package com.tron.client;
 import static com.tron.common.Constant.ONE_HOUR;
 import static com.tron.common.Constant.ONE_MINUTE;
 
+import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
 import com.tron.OracleApplication;
 import com.tron.common.Constant;
@@ -12,8 +13,10 @@ import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.math.BigInteger;
+import java.util.List;
 import java.util.Map;
 
+import com.tron.web.entity.Head;
 import com.tron.web.entity.TronTx;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -62,6 +65,7 @@ public class OracleClientTest {
       System.out.println(Hex.toHexString(new BigInteger("16").toByteArray()));
       TronTx tx = new TronTx();
       OracleClient.fulfil(request, tx);
+
     }
   }
 
@@ -88,26 +92,45 @@ public class OracleClientTest {
               0,
               proof);
       TronTx tx = new TronTx();
-      OracleClient.vrfFulfil(vrfFulfillRequest, tx);
+      OracleClient.vrfFulfil(vrfFulfillRequest,tx);
+      assert !(tx.getSurrogateId().startsWith("abc")  && (tx.getSurrogateId().length() == 13)) :"trigger contract failure";
+      assert !(Strings.isNullOrEmpty(tx.getSurrogateId())):"trigger contract failure";
       System.out.println("transaction ID:"+tx.getSurrogateId());
     }
   }
 
   @Test
   public void getMinBlockTimestampTest() throws Exception {
+    boolean result;
+    Long expetedTimestamp;
+    Long maxTimestamp;
+    Long minTimestamp;
+    Long timestamp;
+    OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService, JobSubscriber.jobRunner.jobRunsService);
     System.out.println(CommonParameter.getInstance()
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);
     String addr = "TUeVYd9ZYeKh87aDA9Tp7F5Ljc47JKC37x";  //VRFCoordinator address
+    List<Head> hisHead = JobSubscriber.jobRunner.headService.getByAddress(addr);
+
     //1:
     String filterEvent1 = "VRFRequest";
     Map<String, String> params1 = Maps.newHashMap();
     params1.put("event_name", filterEvent1);
     params1.put("order_by", "block_timestamp,asc");
 
-    OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService, JobSubscriber.jobRunner.jobRunsService);
-    if (!oracleClient.getMinBlockTimestamp(addr, filterEvent1, params1)) {
-      System.out.println("getMinBlockTimestampTest failed");
+    result = oracleClient.getMinBlockTimestamp(addr, filterEvent1, params1);
+    assert (result) : "getMinBlockTimestampTest failed";
+    if (hisHead == null || hisHead.size() == 0) {
+      maxTimestamp = System.currentTimeMillis() - ONE_MINUTE;
+      minTimestamp = System.currentTimeMillis() - ONE_MINUTE-5;
+      timestamp = Long.valueOf(params1.get("min_block_timestamp"),16);
+      assert ((timestamp>minTimestamp) && (timestamp <= maxTimestamp)) : "the MinBlockTimestampTest is wrong";
+    }
+    else{
+      expetedTimestamp = hisHead.get(0).getBlockTimestamp();
+      timestamp = Long.valueOf(params1.get("min_block_timestamp"),10);
+      assert (timestamp.equals(expetedTimestamp) ) : "the MinBlockTimestampTest is wrong";
     }
 
     //2:
@@ -115,27 +138,32 @@ public class OracleClientTest {
     Map<String, String> params2 = Maps.newHashMap();
     params2.put("event_name", filterEvent2);
     params2.put("order_by", "block_timestamp,asc");
-    if (!oracleClient.getMinBlockTimestamp(addr, filterEvent2, params2)) {
-      System.out.println("getMinBlockTimestampTest failed");
-    }
+    result = oracleClient.getMinBlockTimestamp(addr, filterEvent2, params2);
+    assert (result) : "getMinBlockTimestampTest failed";
+    maxTimestamp = System.currentTimeMillis() - ONE_MINUTE;
+    minTimestamp = System.currentTimeMillis() - ONE_MINUTE-5;
+    timestamp = Long.valueOf(params2.get("min_block_timestamp"),10);
+    assert ((timestamp>minTimestamp) && (timestamp <= maxTimestamp)) : "the MinBlockTimestampTest is wrong";
     //System.out.println("currentTimeMillis is:" + Long.toString(System.currentTimeMillis()));
     //3:
     String filterEvent3 = "NewRound";
     Map<String, String> params3 = Maps.newHashMap();
     params3.put("event_name", filterEvent3);
     params3.put("order_by", "block_timestamp,asc");
-    if (!oracleClient.getMinBlockTimestamp(addr, filterEvent3, params3)) {
-      System.out.println("getMinBlockTimestampTest failed");
-    }
+    result = oracleClient.getMinBlockTimestamp(addr, filterEvent3, params3);
+    assert (result) : "getMinBlockTimestampTest failed";
+    maxTimestamp = System.currentTimeMillis() - ONE_MINUTE;
+    minTimestamp = System.currentTimeMillis() - ONE_MINUTE-5;
+    timestamp = Long.valueOf(params3.get("min_block_timestamp"),10);
+    assert ((timestamp>minTimestamp) && (timestamp <= maxTimestamp)) : "the MinBlockTimestampTest is wrong";
     //System.out.println("currentTimeMillis is:" + Long.toString(System.currentTimeMillis()));
     //4:
     String filterEvent4 = "TESTRequest";
     Map<String, String> params4 = Maps.newHashMap();
     params4.put("event_name", filterEvent4);
     params4.put("order_by", "block_timestamp,asc");
-    if (!oracleClient.getMinBlockTimestamp(addr, filterEvent4, params4)) {
-      System.out.println("getMinBlockTimestampTest failed");
-    }
+    result = oracleClient.getMinBlockTimestamp(addr, filterEvent4, params4);
+    assert (!result) : "getMinBlockTimestampTest failed";
   }
 
 }

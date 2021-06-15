@@ -35,6 +35,10 @@ import java.io.FileNotFoundException;
 import java.util.Map;
 
 import static com.tron.common.Constant.FULFIL_METHOD_SIGN;
+import java.util.List;
+
+import static com.tron.common.Constant.TronTxInProgress;
+
 
 public class ReSenderTest {
 
@@ -75,3 +79,4 @@ public class ReSenderTest {
     }
   }
 }
+

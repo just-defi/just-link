@@ -55,7 +55,8 @@ public class CryptoTest {
   @Test
   public void vRFTest() throws IOException {
     for (int i = 1; i < 100; i++) {
-      System.out.println("i = : "+ i++);
+      System.out.println();
+      System.out.println("i = : "+ i);
       //secretKey must be less than secp256k1 group order
       String prikey = getFieldRandomBigInteger().toString(16);
       String seed = getRandomBigInteger().toString(16);
@@ -63,10 +64,12 @@ public class CryptoTest {
       VRF vrf = new VRF(prikey);
 
       Proof proof = vrf.generateProof(ByteArray.fromHexString(seed));
+      assert(proof != null ) : "fail to generate Proof";
       //System.out.println(proof.toString());
 
       //2
       SolidityProof solidityProof = vrf.solidityPrecalculations(proof);
+      assert(proof != null ) : "fail to generate solidityProof";
       //System.out.println(solidityProof.toString());
 
       //3
@@ -78,16 +81,6 @@ public class CryptoTest {
         return;
       }
       //System.out.println("marshaledProof:" + ByteArray.toHexString(marshaledProof));
-
-      //4
-      Proof unmarshalProof;
-      try {
-        unmarshalProof = vrf.unmarshalSolidityProof(marshaledProof);
-      } catch (VRFException vrfException) {
-        vrfException.printStackTrace();
-        return;
-      }
-   //   System.out.println(unmarshalProof.toString());
     }
   }
   }
