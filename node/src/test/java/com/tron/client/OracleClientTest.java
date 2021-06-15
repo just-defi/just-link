@@ -106,7 +106,7 @@ public class OracleClientTest {
     Long maxTimestamp;
     Long minTimestamp;
     Long timestamp;
-    OracleClient oracleClient = new OracleClient(JobSubscriber.jobRunner.headService, JobSubscriber.jobRunner.jobRunsService);
+    OracleClient oracleClient = new OracleClient();
     System.out.println(CommonParameter.getInstance()
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);

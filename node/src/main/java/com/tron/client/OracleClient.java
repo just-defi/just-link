@@ -53,11 +53,6 @@ public class OracleClient {
   @Autowired
   private static JobRunsService jobRunsService;
 
-  public OracleClient(HeadService _headService, JobRunsService _jobRunsService) {
-    headService = _headService;
-    jobRunsService = _jobRunsService;
-  }
-
   public OracleClient() {
   }
 
@@ -82,11 +77,13 @@ public class OracleClient {
 
   private static HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
-  public void run() {
+  public void init() {
     try {
-
+      JobSubscriber.setup();
+      headService = JobSubscriber.jobRunner.headService;
+      jobRunsService = JobSubscriber.jobRunner.jobRunsService;
     } catch (Exception ex) {
-      log.error("Exception in run: ", ex);
+      log.error("Exception in init: ", ex);
     }
   }
 
