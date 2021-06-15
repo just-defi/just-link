@@ -49,9 +49,9 @@ import static com.tron.common.Constant.*;
 public class OracleClient {
 
   @Autowired
-  private HeadService headService;
+  private static HeadService headService;
   @Autowired
-  private JobRunsService jobRunsService;
+  private static JobRunsService jobRunsService;
 
   public OracleClient(HeadService _headService, JobRunsService _jobRunsService) {
     headService = _headService;
@@ -73,7 +73,6 @@ public class OracleClient {
         }
       };
 
-  private static ConcurrentHashMap<String, HashMap<String, String>> listeningAddrs = new ConcurrentHashMap<>();
   private static Cache<String, String> requestIdsCache =
       CacheBuilder.newBuilder()
           .maximumSize(10000)
@@ -81,26 +80,17 @@ public class OracleClient {
           .recordStats()
           .build();
 
-  private HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
+  private static HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
   public void run() {
     try {
-      // concurrent listen
-      for (Map.Entry<String, HashMap<String, String>> addrEntry : listeningAddrs.entrySet()) {
-        String addr = addrEntry.getKey();
-        Map<String, String> map = addrEntry.getValue();
-        Map.Entry<String, String> jobEventEntry = map.entrySet().iterator().next();
-        String destJobId = jobEventEntry.getKey();
-        String expectedEvents = jobEventEntry.getValue();
-        String[] filterEvents = expectedEvents.split(",");
-        listenTask(addr, destJobId, filterEvents);
-      }
+
     } catch (Exception ex) {
       log.error("Exception in run: ", ex);
     }
   }
 
-  private void listenTask(String addr, String destJobId, String[] filterEvents)  {
+  private static void listenTask(String addr, String destJobId, String[] filterEvents)  {
     ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
     listenExecutor.scheduleWithFixedDelay(
         () -> {
@@ -116,12 +106,7 @@ public class OracleClient {
   }
 
   public static void registerJob(String address, String jobId, String initiatorType) {
-    HashMap<String, String> map = listeningAddrs.get(address);
-    if (map == null) {
-      map = new HashMap<String, String>();
-    }
-    map.put(jobId, initiatorEventMap.get(initiatorType));
-    listeningAddrs.put(address, map);
+    listenTask(address, jobId, initiatorEventMap.get(initiatorType).split(","));
   }
 
   /**
@@ -205,7 +190,7 @@ public class OracleClient {
             JsonUtil.json2Obj(response, BroadCastResponse.class);
   }
 
-  private void listen(String addr, String destJobId, String[] filterEvents) {
+  private static void listen(String addr, String destJobId, String[] filterEvents) {
      List<EventData> events = new ArrayList<>();
       for (String filterEvent : filterEvents) {
         List<EventData> data = getEventData(addr, filterEvent);
@@ -257,7 +242,7 @@ public class OracleClient {
     }
   }
 
-  private void processOracleRequestEvent(String destJobId, String addr, EventData eventData) {
+  private static void processOracleRequestEvent(String destJobId, String addr, EventData eventData) {
     String jobId = null;
     try {
       jobId = new String(
@@ -292,7 +277,7 @@ public class OracleClient {
     requestIdsCache.put(requestId, "");
   }
 
-  private void processVrfRequestEvent(String destJobId, String addr, EventData eventData) {
+  private static void processVrfRequestEvent(String destJobId, String addr, EventData eventData) {
     String jobId = null;
     try {
       jobId = new String(
@@ -354,7 +339,7 @@ public class OracleClient {
     }
   }
 
-  private void processNewRoundEvent(String addr, EventData eventData) {
+  private static void processNewRoundEvent(String addr, EventData eventData) {
     long roundId = 0;
     try {
       roundId = Long.parseLong((String)eventData.getResult().get("roundId"));
@@ -375,7 +360,7 @@ public class OracleClient {
     requestIdsCache.put(addr + roundId, "");
   }
 
-  public String requestEvent(String urlPath, Map<String, String> params) throws IOException {
+  public static String requestEvent(String urlPath, Map<String, String> params) throws IOException {
     String response = HttpUtil.get("https", HTTP_EVENT_HOST,
         urlPath, params);
     if (Strings.isNullOrEmpty(response)) {
@@ -400,7 +385,7 @@ public class OracleClient {
     return response;
   }
 
-  private List<EventData> getEventData(String addr, String filterEvent) {
+  private static List<EventData> getEventData(String addr, String filterEvent) {
     List<EventData> data = new ArrayList<>();
     String httpResponse = null;
     String urlPath;
@@ -467,7 +452,7 @@ public class OracleClient {
 
     return data;
   }
-  public String requestNextPage(String urlNext) {
+  public static String requestNextPage(String urlNext) {
     try {
       String response = HttpUtil.requestWithRetry(urlNext);
       if (response == null) {
@@ -482,7 +467,7 @@ public class OracleClient {
 
 
 
-  private void updateConsumeMap(String addr, long timestamp) {
+  private static void updateConsumeMap(String addr, long timestamp) {
     if (consumeIndexMap.containsKey(addr)) {
       if (timestamp > consumeIndexMap.get(addr)) {
         consumeIndexMap.put(addr, timestamp);
@@ -492,7 +477,7 @@ public class OracleClient {
     }
   }
 
-  public boolean getMinBlockTimestamp(String addr, String eventName, Map<String, String> params)
+  public static boolean getMinBlockTimestamp(String addr, String eventName, Map<String, String> params)
   {
     switch (eventName) {
       case EVENT_NAME:
