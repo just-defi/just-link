@@ -41,6 +41,7 @@ import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocol;
 import org.springframework.beans.factory.annotation.Autowired;
+import com.beust.jcommander.internal.Sets;
 
 import static com.tron.common.Constant.*;
 
@@ -75,6 +76,7 @@ public class OracleClient {
           .recordStats()
           .build();
 
+  private static ConcurrentHashMap<String, Set<String>> listeningAddrs = new ConcurrentHashMap<>();
   private static HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
   public void init() {
@@ -87,12 +89,12 @@ public class OracleClient {
     }
   }
 
-  private static void listenTask(String addr, String destJobId, String[] filterEvents)  {
+  private static void listenTask(String addr, String[] filterEvents)  {
     ScheduledExecutorService listenExecutor = Executors.newSingleThreadScheduledExecutor();
     listenExecutor.scheduleWithFixedDelay(
         () -> {
           try {
-            listen(addr, destJobId, filterEvents);
+            listen(addr, filterEvents);
           } catch (Throwable t) {
             log.error("Exception in listener ", t);
           }
@@ -103,7 +105,17 @@ public class OracleClient {
   }
 
   public static void registerJob(String address, String jobId, String initiatorType) {
-    listenTask(address, jobId, initiatorEventMap.get(initiatorType).split(","));
+    Set<String> set = listeningAddrs.get(address);
+    if (set == null) {
+      set = Sets.newHashSet();
+    }
+    set.add(jobId);
+    if (listeningAddrs.get(address) == null) { // each address with only one listen task
+      listeningAddrs.put(address, set);
+      listenTask(address, initiatorEventMap.get(initiatorType).split(","));
+    } else {
+      listeningAddrs.put(address, set); // only add recent jobId
+    }
   }
 
   /**
@@ -187,7 +199,7 @@ public class OracleClient {
             JsonUtil.json2Obj(response, BroadCastResponse.class);
   }
 
-  private static void listen(String addr, String destJobId, String[] filterEvents) {
+  private static void listen(String addr, String[] filterEvents) {
      List<EventData> events = new ArrayList<>();
       for (String filterEvent : filterEvents) {
         List<EventData> data = getEventData(addr, filterEvent);
@@ -207,13 +219,13 @@ public class OracleClient {
         String eventName = eventData.getEventName();
         switch (eventName) {
           case EVENT_NAME:
-            processOracleRequestEvent(destJobId, addr, eventData);
+            processOracleRequestEvent(addr, eventData);
             break;
           case EVENT_NEW_ROUND:
             processNewRoundEvent(addr, eventData);
             break;
           case VRF_EVENT_NAME:
-            processVrfRequestEvent(destJobId, addr, eventData);
+            processVrfRequestEvent(addr, eventData);
             break;
           default:
             log.warn("unexpected event:{}", eventName);
@@ -239,7 +251,7 @@ public class OracleClient {
     }
   }
 
-  private static void processOracleRequestEvent(String destJobId, String addr, EventData eventData) {
+  private static void processOracleRequestEvent(String addr, EventData eventData) {
     String jobId = null;
     try {
       jobId = new String(
@@ -250,7 +262,7 @@ public class OracleClient {
       return;
     }
     // match jobId
-    if (Strings.isNullOrEmpty(destJobId) || !destJobId.equals(jobId)) {
+    if (!listeningAddrs.get(addr).contains(jobId)) {
       log.warn("this node does not support this job, jobid: {}", jobId);
       return;
     }
@@ -274,7 +286,7 @@ public class OracleClient {
     requestIdsCache.put(requestId, "");
   }
 
-  private static void processVrfRequestEvent(String destJobId, String addr, EventData eventData) {
+  private static void processVrfRequestEvent(String addr, EventData eventData) {
     String jobId = null;
     try {
       jobId = new String(
@@ -285,7 +297,7 @@ public class OracleClient {
       return;
     }
     // match jobId
-    if (Strings.isNullOrEmpty(destJobId) || !destJobId.equals(jobId)) {
+    if (!listeningAddrs.get(addr).contains(jobId)) {
       log.warn("this node does not support this vrf job, jobid: {}", jobId);
       return;
     }
