@@ -77,7 +77,7 @@ dependencies {
 	implementation 'io.grpc:grpc-stub:1.31.0'
 	implementation "org.bouncycastle:bcprov-jdk15on:1.68"
 	implementation 'com.google.guava:guava:28.0-jre'
-	implementation fileTree(dir:'src/lib', include: '*.jar')
+	implementation fileTree(dir:'src/libs', include: '*.jar')
 }
 
 def binaryRelease(taskName, jarName, mainClass) {

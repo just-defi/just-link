@@ -46,7 +46,7 @@ public class VrfKeyStore {
             ecKey = ECKey.fromPrivate(ByteArray.fromHexString(privateKey));
             vrfKeyMap.put(ByteArray.toHexString(ecKey.getPubKeyPoint().getEncoded(true)), privateKey);
 
-            System.out.println("zyd ecKey x:" + ecKey.getPubKeyPoint().normalize().getAffineXCoord()
+            System.out.println("ecKey x:" + ecKey.getPubKeyPoint().normalize().getAffineXCoord()
                     + ", ecKey y:" + ecKey.getPubKeyPoint().normalize().getAffineYCoord()
                     + ",\n ecKey compressed:" + ByteArray.toHexString(ecKey.getPubKeyPoint().getEncoded(true))
                     + ", ecKey uncompressed:" + ECKey.fromPublicOnly(ByteArray.fromHexString(ByteArray.toHexString(ecKey.getPubKeyPoint().getEncoded(true)))).getPubKeyPoint().getXCoord());

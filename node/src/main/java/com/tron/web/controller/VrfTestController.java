@@ -88,23 +88,6 @@ public class VrfTestController {
       BroadCastResponse broadCastResponse =
               JsonUtil.json2Obj(response, BroadCastResponse.class);
 
-
-      // send oracleRequest
-      String aggregatorContract = "TM63JqzAhc3oAgSjAzhD5i3ohFp1f3YY4k";
-      params.clear();
-      params.put("owner_address", KeyStore.getAddr());
-      params.put("contract_address", aggregatorContract);
-      params.put("function_selector", "requestRateUpdate()");
-      params.put("parameter", "");
-      params.put("fee_limit", 40000000);
-      params.put("call_value", 0);
-      params.put("visible", true);
-      BroadCastResponse rps = Tool.triggerContract(KeyStore.getKey(), params, FULLNODE_HOST);
-      if (rps != null) {
-        System.out.println(new Date() + ": trigger " + aggregatorContract + " Contract result is: " + rps.isResult()
-            + ", msg is: " + rps.getMessage());
-      }
-
       return R.ok().put("data", "");
     } catch (Exception e) {
       log.error("vrf rolldice failed, error : " + e.getMessage());

@@ -74,7 +74,7 @@ public class TronTxAdapter extends BaseAdapter {
             long roundId = Long.parseLong(params.get("roundId").toString());
             String addr = String.valueOf(params.get("address"));
 
-            tx = FluxAggregator.submit(addr, roundId, (long)input.get("result"));
+            FluxAggregator.submit(addr, roundId, (long)input.get("result"), tx);
           }
 
           tx.setValue((long)input.get("result"));
