@@ -7,32 +7,24 @@ import com.tron.client.message.BroadCastResponse;
 import com.tron.client.message.TriggerResponse;
 import com.tron.common.AbiUtil;
 import com.tron.common.util.HttpUtil;
-import com.tron.common.util.Tool;
 import com.tron.keystore.KeyStore;
+import com.tron.keystore.VrfKeyStore;
 import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
 
+import java.io.FileNotFoundException;
 import java.math.BigInteger;
 import java.security.SecureRandom;
 import java.util.*;
 
 import lombok.AllArgsConstructor;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
-import org.tron.common.utils.StringUtil;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocol;
 
@@ -91,6 +83,17 @@ public class VrfTestController {
       return R.ok().put("data", "");
     } catch (Exception e) {
       log.error("vrf rolldice failed, error : " + e.getMessage());
+      return R.error(ResultStatus.Failed);
+    }
+  }
+
+  @RequestMapping(value = "/updateVRFKey/{vrfConfigFile}", method = RequestMethod.GET)
+  public R getJobById(@PathVariable("vrfConfigFile") String filePath) {
+    try {
+      VrfKeyStore.initKeyStore(filePath);
+      return R.ok().put("data", VrfKeyStore.getVrfKeyMap().keySet());
+    } catch (FileNotFoundException e) {
+      log.error("update init VRF ECKey failed, err: {}", e.getMessage());
       return R.error(ResultStatus.Failed);
     }
   }
