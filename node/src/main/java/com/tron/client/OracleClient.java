@@ -33,7 +33,9 @@ import com.tron.web.service.HeadService;
 import com.tron.web.service.JobRunsService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.DecoderException;
+import org.aspectj.weaver.ast.Or;
 import org.spongycastle.util.encoders.Hex;
+import org.springframework.stereotype.Component;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
 import org.tron.common.utils.JsonUtil;
@@ -47,14 +49,15 @@ import static com.tron.common.Constant.*;
 
 /** Subscribe the events of the oracle contracts and reply. */
 @Slf4j
+@Component
 public class OracleClient {
-
-  @Autowired
   private static HeadService headService;
-  @Autowired
   private static JobRunsService jobRunsService;
 
-  public OracleClient() {
+  @Autowired
+  public OracleClient(HeadService headService, JobRunsService jobRunsService) {
+    OracleClient.headService = headService;
+    OracleClient.jobRunsService = jobRunsService;
   }
 
   private static final String EVENT_NAME = "OracleRequest";
@@ -79,11 +82,9 @@ public class OracleClient {
   private static ConcurrentHashMap<String, Set<String>> listeningAddrs = new ConcurrentHashMap<>();
   private static HashMap<String, Long> consumeIndexMap = Maps.newHashMap();
 
-  public void init() {
+  public static void init() {
     try {
       JobSubscriber.setup();
-      headService = JobSubscriber.jobRunner.headService;
-      jobRunsService = JobSubscriber.jobRunner.jobRunsService;
     } catch (Exception ex) {
       log.error("Exception in init: ", ex);
     }
@@ -424,6 +425,7 @@ public class OracleClient {
       response = JsonUtil.json2Obj(httpResponse, EventResponse.class);
     } catch (IOException e) {
       log.error("parse response failed, err: {}", e.getMessage());
+      return data;
     }
     data.addAll(response.getData());
 
@@ -446,6 +448,7 @@ public class OracleClient {
         response = JsonUtil.json2Obj(responseNext, EventResponse.class);
       } catch (Exception e) {
         log.error("parse response failed, err: {}", e.getMessage());
+        return data;
       }
       data.addAll(response.getData());
 

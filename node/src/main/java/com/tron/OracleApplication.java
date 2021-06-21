@@ -55,8 +55,8 @@ public class OracleApplication {
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
 		JobCache jobCache = context.getBean(JobCache.class);
 		jobCache.run();
-		OracleClient oracleClient = new OracleClient();
-		oracleClient.init();
+		//OracleClient oracleClient = context.getBean(OracleClient.class);
+		OracleClient.init();
 
 		ReSender reSender = new ReSender(JobSubscriber.jobRunner.tronTxService);
 		reSender.run();

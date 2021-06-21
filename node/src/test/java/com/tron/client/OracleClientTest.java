@@ -41,8 +41,8 @@ public class OracleClientTest {
     String addr = "TCFLL5dx5ZJdKnWuesXxi1VPwjLVmWZZy9";
     Map<String, String> params = Maps.newHashMap();
     params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_HOUR));
-    OracleClient oracleClient = new OracleClient();
-    System.out.println(oracleClient.requestEvent(addr, params));
+    //OracleClient oracleClient = new OracleClient();
+    //System.out.println(oracleClient.requestEvent(addr, params));
   }
 
   @Test
@@ -106,7 +106,7 @@ public class OracleClientTest {
     Long maxTimestamp;
     Long minTimestamp;
     Long timestamp;
-    OracleClient oracleClient = new OracleClient();
+    /*OracleClient oracleClient = new OracleClient();
     System.out.println(CommonParameter.getInstance()
             .getValidContractProtoThreadNum());
     CommonParameter.getInstance().setValidContractProtoThreadNum(1);
@@ -163,7 +163,7 @@ public class OracleClientTest {
     params4.put("event_name", filterEvent4);
     params4.put("order_by", "block_timestamp,asc");
     result = oracleClient.getMinBlockTimestamp(addr, filterEvent4, params4);
-    assert (!result) : "getMinBlockTimestampTest failed";
+    assert (!result) : "getMinBlockTimestampTest failed";*/
   }
 
 }
