@@ -45,20 +45,6 @@ public class ReSenderTest {
   @BeforeClass
   public static void init() throws FileNotFoundException {
     KeyStore.initKeyStore("classpath:key.store");
-
-    ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, new String[]{});
-    JobCache jobCache = context.getBean(JobCache.class);
-    jobCache.run();
-    JobSubscriber.setup();
-  }
-
-  @Test
-  //pre: Create at least one ongoing transaction
-  public void reSenderTest() {
-    Constant.HTTP_EVENT_HOST = "nile.trongrid.io";
-    Constant.FULLNODE_HOST = "api.nileex.io";
-    ReSender reSender = new ReSender(JobSubscriber.jobRunner.tronTxService);
-    reSender.run();
   }
 
   @Test
