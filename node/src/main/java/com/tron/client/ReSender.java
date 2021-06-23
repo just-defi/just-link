@@ -64,7 +64,7 @@ public class ReSender {
       if("{}\n".equals(responseStr)) { // cannot find the tx
         long nodeBalance = 0L;
         try {
-          nodeBalance = ContractAdapter.getTRXBalance(KeyStore.getAddr());
+          nodeBalance = ContractAdapter.getTRXBalance(KeyStore.getAddr(), true, true);
         } catch (Exception ex) {
           log.error("Exception in pollResend ", ex);
           return;
@@ -101,7 +101,7 @@ public class ReSender {
       if ("OUT_OF_ENERGY".equals(receiptResult)) {
         long nodeBalance = 0L;
         try {
-          nodeBalance = ContractAdapter.getTRXBalance(KeyStore.getAddr());
+          nodeBalance = ContractAdapter.getTRXBalance(KeyStore.getAddr(), true, true);
         } catch (Exception ex) {
           log.error("Exception in pollResend for OUT_OF_ENERGY tx", ex);
           return;

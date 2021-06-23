@@ -31,15 +31,19 @@ public class ContractAdapter {
   private static final String DECIMAL = "decimals()";
 
   public static long getTRXBalance(String addr) throws Exception {
-    return getTRXBalance(addr, true);
+    return getTRXBalance(addr, true, false);
   }
 
-  public static long getTRXBalance(String addr, boolean visible) throws Exception {
+  public static long getTRXBalance(String addr, boolean visible, boolean flexibleHost) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("address", addr);
     params.put("visible", visible);
-    String response = HttpUtil.post(
-            "https", Constant.FULLNODE_HOST, GET_ACCOUNT, params);
+    String response = null;
+    if (flexibleHost) {
+      response = HttpUtil.post("https", Constant.FULLNODE_HOST, GET_ACCOUNT, params);
+    } else {
+      response = HttpUtil.post("https", TRONGRID_HOST, GET_ACCOUNT, params);
+    }
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
     Map<String, Object> result = mapper.readValue(response, Map.class);
