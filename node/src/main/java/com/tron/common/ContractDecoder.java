@@ -1,19 +1,19 @@
 package com.tron.common;
 
-import static org.tron.tronj.abi.Utils.convert;
+import static org.tron.trident.abi.Utils.convert;
 
 import java.util.ArrayList;
 import java.util.List;
-import org.tron.tronj.abi.FunctionReturnDecoder;
-import org.tron.tronj.abi.TypeReference;
-import org.tron.tronj.abi.datatypes.Address;
-import org.tron.tronj.abi.datatypes.Bool;
-import org.tron.tronj.abi.datatypes.Bytes;
-import org.tron.tronj.abi.datatypes.Int;
-import org.tron.tronj.abi.datatypes.TrcToken;
-import org.tron.tronj.abi.datatypes.Type;
-import org.tron.tronj.abi.datatypes.Uint;
-import org.tron.tronj.abi.datatypes.Utf8String;
+import org.tron.trident.abi.FunctionReturnDecoder;
+import org.tron.trident.abi.TypeReference;
+import org.tron.trident.abi.datatypes.Address;
+import org.tron.trident.abi.datatypes.Bool;
+import org.tron.trident.abi.datatypes.Bytes;
+import org.tron.trident.abi.datatypes.Int;
+import org.tron.trident.abi.datatypes.TrcToken;
+import org.tron.trident.abi.datatypes.Type;
+import org.tron.trident.abi.datatypes.Uint;
+import org.tron.trident.abi.datatypes.Utf8String;
 
 public class ContractDecoder {
 

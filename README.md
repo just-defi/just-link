@@ -33,6 +33,7 @@ java -jar node-v1.0.jar --server.port=8081 --spring.profiles.active=dev --key ke
 
 Note:
 - The `key.store` file contain the private key that this node use. The format refer to: `node/src/main/resouces/key.store.template`.
+- The `vrfKeyStore.yml` file contain the private keys for VRF that this node use. The format refer to: `node/src/main/resouces/vrfKeyStore-template.yml`.
 - You can just put a new `application.yml` or `application-{ENV}.yml` in the working dir to replace the default spring config file.
 - There is a set of demo contracts deployed on `nile` network, the node will listen on `nile` when starting node with the command: `--env dev`
 
@@ -41,6 +42,8 @@ Note:
 JustLink is is a monorepo containing several logicaly separatable and relatable projects.
 
 - `tvm-contracts` - smart contracts
+  - `v1.0/TronOracle.sol` and `v1.0/TronUser.sol` are oracle contracts
+  - `v1.0/VRF` are VRF contracts
 - `node` - the core JustLink node
 - `@node/webapp` - the webapp for JustLink node
 

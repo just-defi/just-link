@@ -14,12 +14,9 @@ public class Constant {
   public static String HTTP_EVENT_HOST = "api.trongrid.io";
   public static String FULLNODE_HOST = "api.trongrid.io";
 
-//  public static String HTTP_EVENT_HOST = "event.nileex.io"; // for test
-//  public static String FULLNODE_HOST = "api.nileex.io"; // for test
-
   public static void initEnv(String env) {
     if ("dev".equals(env)) {
-      HTTP_EVENT_HOST = "event.nileex.io";
+      HTTP_EVENT_HOST = "nile.trongrid.io";
       FULLNODE_HOST = "api.nileex.io";
     }
   }
@@ -28,6 +25,8 @@ public class Constant {
 
   public static final String FULFIL_METHOD_SIGN =
           "fulfillOracleRequest(bytes32,uint256,address,bytes4,uint256,bytes32)";
+  public static final String VRF_FULFIL_METHOD_SIGN =
+          "fulfillRandomnessRequest(bytes)";
   public static final String SUBMIT_METHOD_SIGN = "submit(uint256,int256)";
   public static final String ROUND_STATE_METHOD_SIGN = "oracleRoundState(address,uint32)";
   public static final String ROUND_STATE_RESULT_SIGN = "bool,uint32,int256,uint64,uint64,uint128,uint8,uint128";
@@ -43,9 +42,11 @@ public class Constant {
   public static final String TASK_TYPE_JUST_SWAP = "justswap";
   public static final String TASK_TYPE_CACHE = "cache";
   public static final String TASK_TYPE_CONVERT_TRX = "converttrx";
+  public static final String TASK_TYPE_RANDOM = "random";
 
   // initiator type
   public static final String INITIATOR_TYPE_RUN_LOG = "runlog";
+  public static final String INITIATOR_TYPE_RANDOMNESS_LOG = "randomnesslog";
 
   // pairs
   public static final String PAIR_TYPE_JUST_TRX = "jst-trx";
@@ -55,4 +56,12 @@ public class Constant {
   public static final String PAIR_TYPE_BTC_TRX = "btc-trx";
   public static final String PAIR_TYPE_USDJ_TRX = "usdj-trx";
   public static final String PAIR_TYPE_USDT_TRX = "usdt-trx";
+
+
+  public static final long TronTxUnstarted = 101L;
+  public static final long TronTxInProgress = 102L;
+  public static final long TronTxFatalError = 103L;
+  public static final long TronTxOutOfEnergy = 104L;
+  public static final long TronTxConfirmed = 105L;
+
 }

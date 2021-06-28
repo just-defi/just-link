@@ -74,7 +74,7 @@ DROP TABLE IF EXISTS `job_runs`;
 CREATE TABLE `job_runs`  (
   `id` varchar(36) NOT NULL,
   `job_spec_id` varchar(36) NOT NULL,
-  `result` varchar(255),
+  `result` text,
   `error` varchar(255),
   `request_id` varchar(127),
   `params` text,
@@ -102,7 +102,7 @@ DROP TABLE IF EXISTS `task_runs`;
 CREATE TABLE `task_runs`  (
   `id` varchar(36) NOT NULL,
   `job_run_id` varchar(36) NOT NULL,
-  `result` varchar(255),
+  `result` text,
   `error` varchar(255),
   `task_spec_id` bigint NOT NULL,
   `status` tinyint NOT NULL DEFAULT 0 COMMENT '0:init 1:processing 2:complete 3:error',
@@ -122,6 +122,7 @@ CREATE TABLE `task_runs`  (
 DROP TABLE IF EXISTS `txes`;
 CREATE TABLE `txes`  (
   `id` INT UNSIGNED AUTO_INCREMENT,
+  `task_run_id` varchar(36),
   `surrogate_id` varchar(255) ,
   `from` varchar(127) NOT NULL,
   `to` varchar(127) NOT NULL,
@@ -131,7 +132,7 @@ CREATE TABLE `txes`  (
   `gas_limit` bigint,
   `hash` varchar(127) NOT NULL,
   `gas_price` bigint,
-  `confirmed` tinyint,
+  `confirmed` tinyint DEFAULT 0 COMMENT '0:init 101:unstarted 102:inprogress 103:fatalerror 104:outofenergy 105:confirmed',
   `sent_at` bigint NOT NULL,
   `signed_raw_tx` varchar(255) NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -139,7 +140,26 @@ CREATE TABLE `txes`  (
   PRIMARY KEY (`id`),
   index `idx_txes_created_at` (`created_at`),
   unique index `txes_surrogate_id_key` (`surrogate_id`),
+  index `idx_txes_task_run_id_key` (`task_run_id`),
   index `idx_txes_from` (`from`),
   index `idx_txes_hash` (`hash`),
+  index `idx_confirmed` (`confirmed`),
+  index `idx_sent_at` (`sent_at`),
   index `idx_txes_updated_at` (`updated_at`)
+) ENGINE = InnoDB default charset=utf8;
+
+DROP TABLE IF EXISTS `heads`;
+CREATE TABLE `heads`  (
+  `id` INT UNSIGNED AUTO_INCREMENT,
+  `address` varchar(128) NOT NULL,
+  `hash` varchar(255) NOT NULL ,
+  `number` BIGINT NOT NULL,
+  `parent_hash` varchar(255) NOT NULL,
+  `block_timestamp` BIGINT NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  index `idx_heads_created_at` (`created_at`),
+  unique index `heads_address_key` (`address`),
+  index `idx_heads_address` (`address`)
 ) ENGINE = InnoDB default charset=utf8;
