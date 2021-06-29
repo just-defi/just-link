@@ -26,6 +26,7 @@ public class VrfKeyStore {
     private static HashMap<String, String> vrfKeyMap = Maps.newHashMap(); // <CompressedPublicKey, PrivateKey>
 
     public static void initKeyStore(String filePath) throws FileNotFoundException {
+        vrfKeyMap.clear();
         if (Strings.isEmpty(filePath)) {
             filePath = "classpath:vrfKeyStore.yml";
         }
