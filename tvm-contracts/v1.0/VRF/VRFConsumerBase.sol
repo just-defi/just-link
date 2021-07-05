@@ -97,7 +97,7 @@ import "./Owned.sol";
  * @dev cost. This cost scales with the number of blocks the VRF oracle waits
  * @dev until it calls responds to a request.
  */
-abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
+abstract contract VRFConsumerBase is VRFRequestIDBase, WinklinkClient {
     using SignedSafeMath for int256;
 
     event VRFRequested(bytes32 indexed id);
@@ -142,7 +142,7 @@ abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
      * @dev VRF seed it ultimately uses.
      *
      * @param _keyHash ID of public key against which randomness is generated
-     * @param _fee The amount of JST to send with the request
+     * @param _fee The amount of WIN to send with the request
      * @param _seed seed mixed into the input of the VRF.
      *
      * @return requestId unique ID for this request
@@ -154,12 +154,12 @@ abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
     function requestRandomness(bytes32 _keyHash, uint256 _fee, uint256 _seed)
       internal returns (bytes32 requestId)
     {
-        Justlink.Request memory _req;
-        _req = buildJustlinkRequest(_keyHash, address(this), this.rawFulfillRandomness.selector);
+        Winklink.Request memory _req;
+        _req = buildWinklinkRequest(_keyHash, address(this), this.rawFulfillRandomness.selector);
         _req.nonce = nonces[_keyHash];
         _req.buf.buf = abi.encode(_keyHash, _seed);
-        token.approve(justMidAddress(), _fee);
-        require(justMid.transferAndCall(address(this), vrfCoordinator, _fee, encodeVRFRequest(_req)), "unable to transferAndCall to vrfCoordinator");
+        token.approve(winkMidAddress(), _fee);
+        require(winkMid.transferAndCall(address(this), vrfCoordinator, _fee, encodeVRFRequest(_req)), "unable to transferAndCall to vrfCoordinator");
 
         // This is the seed passed to VRFCoordinator. The oracle will mix this with
         // the hash of the block containing this request to obtain the seed/input
@@ -167,7 +167,7 @@ abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
         uint256 vRFSeed  = makeVRFInputSeed(_keyHash, _seed, address(this), nonces[_keyHash]);
         // nonces[_keyHash] must stay in sync with
         // VRFCoordinator.nonces[_keyHash][this], which was incremented by the above
-        // successful justMid.transferAndCall (in VRFCoordinator.randomnessRequest).
+        // successful winkMid.transferAndCall (in VRFCoordinator.randomnessRequest).
         // This provides protection against the user repeating their input seed,
         // which would result in a predictable/duplicate output, if multiple such
         // requests appeared in the same block.
@@ -177,14 +177,14 @@ abstract contract VRFConsumerBase is VRFRequestIDBase, JustlinkClient {
     }
 
     /**
-     * @param _jst The address of the JST token
-     * @param _justMid The address of the JustMid token
+     * @param _win The address of the WIN token
+     * @param _winkMid The address of the WinkMid token
      * @param _vrfCoordinator The address of the VRFCoordinator contract
      * @dev https://docs.chain.link/docs/link-token-contracts
      */
-    constructor(address _vrfCoordinator, address _jst, address _justMid) public {
-        setJustlinkToken(_jst);
-        setJustMid(_justMid);
+    constructor(address _vrfCoordinator, address _win, address _winkMid) public {
+        setWinklinkToken(_win);
+        setWinkMid(_winkMid);
         vrfCoordinator = _vrfCoordinator;
     }
 

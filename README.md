@@ -44,6 +44,6 @@ WinkLink is is a monorepo containing several logicaly separatable and relatable 
 - `tvm-contracts` - smart contracts
   - `v1.0/TronOracle.sol` and `v1.0/TronUser.sol` are oracle contracts
   - `v1.0/VRF` are VRF contracts
-- `node` - the core JustLink node
+- `node` - the core WinkLink node
 - `@node/webapp` - the webapp for WinkLink node
 

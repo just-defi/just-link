@@ -29,7 +29,7 @@ class MainWrap extends React.PureComponent {
   }
   render() {
     return (
-        <DocumentTitle title="JustLink Operation UI">
+        <DocumentTitle title="WinkLink Operation UI">
           <ConnectedRouter history={reduxHistory}>
           <Fragment>
             <Header isMobile={this.state.isMobile} />

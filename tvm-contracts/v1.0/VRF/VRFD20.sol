@@ -30,14 +30,14 @@ contract VRFD20 is VRFConsumerBase, Owned {
      * @dev   Fee:        0.1 LINK (100000000000000000)
      *
      * @param vrfCoordinator address of the VRF Coordinator
-     * @param jst address of the JST token
-     * @param justMid address of justMid token
+     * @param win address of the WIN token
+     * @param winkMid address of winkMid token
      * @param keyHash bytes32 representing the hash of the VRF job
      * @param fee uint256 fee to pay the VRF oracle
      */
-    constructor(address vrfCoordinator, address jst, address justMid, bytes32 keyHash, uint256 fee)
+    constructor(address vrfCoordinator, address win, address winkMid, bytes32 keyHash, uint256 fee)
         public
-        VRFConsumerBase(vrfCoordinator, jst, justMid)
+        VRFConsumerBase(vrfCoordinator, win, winkMid)
     {
         s_keyHash = keyHash;
         s_fee = fee;
@@ -58,7 +58,7 @@ contract VRFD20 is VRFConsumerBase, Owned {
         /*onlyOwner*/ //DEBUG TODO
         returns (bytes32 requestId)
     {
-        require(justMid.balanceOf(address(this)) >= s_fee, "Not enough JST to pay fee");
+        require(winkMid.balanceOf(address(this)) >= s_fee, "Not enough WIN to pay fee");
         //require(s_results[roller] == 0, "Already rolled"); //DEBUG TODO
         requestId = requestRandomness(s_keyHash, s_fee, userProvidedSeed);
         //s_rollers[requestId] = roller; //DEBUG TODO
@@ -97,16 +97,16 @@ contract VRFD20 is VRFConsumerBase, Owned {
     }
 
     /**
-     * @notice Withdraw JST from this contract.
+     * @notice Withdraw WIN from this contract.
      * @dev this is an example only, and in a real contract withdrawals should
      * happen according to the established withdrawal pattern: 
      * https://docs.soliditylang.org/en/v0.4.24/common-patterns.html#withdrawal-from-contracts
-     * @param to the address to withdraw JST to
-     * @param value the amount of JST to withdraw
+     * @param to the address to withdraw WIN to
+     * @param value the amount of WIN to withdraw
      */
-    function withdrawJST(address to, uint256 value) public onlyOwner {
-        token.approve(justMidAddress(), value);
-        require(justMid.transferFrom(address(this), to, value), "Not enough JST");
+    function withdrawWIN(address to, uint256 value) public onlyOwner {
+        token.approve(winkMidAddress(), value);
+        require(winkMid.transferFrom(address(this), to, value), "Not enough WIN");
     }
 
     /**
