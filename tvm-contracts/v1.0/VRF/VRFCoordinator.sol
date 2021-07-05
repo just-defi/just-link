@@ -99,7 +99,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     serviceAgreements[keyHash].vRFOracle = _oracle;
     serviceAgreements[keyHash].jobID = _jobID;
     // Yes, this revert message doesn't fit in a word
-    require(_fee <= 1e27,
+    require(_fee <= 1e17,
       "you can't charge more than all the LINK in the world, greedy");
     serviceAgreements[keyHash].fee = uint96(_fee);
     emit NewServiceAgreement(keyHash, _fee);
@@ -153,6 +153,12 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     validRequestLength(_data)
     permittedFunctionsForLINK(_data)
   {
+    bytes32 keyHash;
+    assembly {
+      keyHash := mload(add(_data,100))
+    }
+    require(serviceAgreements[keyHash].vRFOracle != address(0), "please use a registered keyHash");
+
     assembly { // solhint-disable-line no-inline-assembly
       mstore(add(_data, 36), _sender) // ensure correct sender is passed
       mstore(add(_data, 68), _fee) // ensure correct amount is passed
@@ -192,7 +198,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     // Cryptographically guaranteed by preSeed including an increasing nonce
     assert(callbacks[requestId].callbackContract == address(0));
     callbacks[requestId].callbackContract = _sender;
-    assert(_feePaid < 1e27); // Total LINK fits in uint96
+    assert(_feePaid < 1e17); // Total LINK fits in uint96
     callbacks[requestId].randomnessFee = uint96(_feePaid);
     callbacks[requestId].seedAndBlockNum = keccak256(abi.encodePacked(
       preSeed, block.number));

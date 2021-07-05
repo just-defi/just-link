@@ -123,7 +123,17 @@ public class RandomAdapter extends BaseAdapter {
     params.put("function_selector", "callbacks(bytes32)");
     params.put("parameter", param);
     params.put("visible", true);
-    String response = HttpUtil.post("https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+    String response = null;
+    int i = 0;
+    while (i <= HTTP_MAX_RETRY_TIME && Strings.isNullOrEmpty(response)) {
+      try {
+        i++;
+        response = HttpUtil.post("https", FULLNODE_HOST, TRIGGET_CONSTANT_CONTRACT, params);
+      } catch (Exception ex) {
+        log.error("checkFulfillment failed:" + ex.getMessage() + ", num:" + i);
+        ex.printStackTrace();
+      }
+    }
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
     Map<String, Object> result = mapper.readValue(response, Map.class);
