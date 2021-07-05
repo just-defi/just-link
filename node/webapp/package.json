@@ -1,5 +1,5 @@
 {
-  "name": "justlink-webapp",
+  "name": "winklink-webapp",
   "version": "1.0.0",
   "dependencies": {
     "antd": "^3.9.0",

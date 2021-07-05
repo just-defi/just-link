@@ -20,7 +20,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
 
   using SafeMathTron for uint256;
 
-  JustMid internal justMid;
+  WinkMid internal winkMid;
   TRC20Interface internal token;
   BlockHashStoreInterface internal blockHashStore;
 
@@ -28,9 +28,9 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
   uint256 constant private EXPECTED_REQUEST_WORDS = 2;
   uint256 constant private MINIMUM_REQUEST_LENGTH = SELECTOR_LENGTH + (32 * EXPECTED_REQUEST_WORDS);
 
-  constructor(address _jst, address _justMid, address _blockHashStore) public {
-    token = TRC20Interface(_jst);
-    justMid = JustMid(_justMid);
+  constructor(address _win, address _winkMid, address _blockHashStore) public {
+    token = TRC20Interface(_win);
+    winkMid = WinkMid(_winkMid);
     blockHashStore = BlockHashStoreInterface(_blockHashStore);
   }
 
@@ -107,9 +107,9 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
   /**
    * @notice Creates the VRF request
    * @dev Stores the hash of the params as the on-chain commitment for the request.
-   * Emits VRFRequest event for the Justlink node to detect.
+   * Emits VRFRequest event for the Winklink node to detect.
    * @param _sender The sender of the request
-   * @param _feePaid The amount of payment given (specified in JST)
+   * @param _feePaid The amount of payment given (specified in WIN)
    * @param _callbackAddress The callback address for the response
    * param _callbackFunctionId The callback function ID for the response
    * @param _data The CBOR payload of the request
@@ -125,7 +125,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     bytes calldata _data
   )
   external
-  onlyJustMid
+  onlyWinkMid
   checkCallbackAddress(_callbackAddress)
   {
     (bytes32 keyHash, uint256 consumerSeed) = abi.decode(_data, (bytes32, uint256));
@@ -149,7 +149,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
    */
   function onTokenTransfer(address _sender, uint256 _fee, bytes memory _data)
     public
-    onlyJustMid
+    onlyWinkMid
     validRequestLength(_data)
     permittedFunctionsForLINK(_data)
   {
@@ -190,7 +190,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     address _sender
   )
     internal
-    sufficientJST(_feePaid, _keyHash)
+    sufficientWIN(_feePaid, _keyHash)
   {
     uint256 nonce = nonces[_keyHash][_sender];
     uint256 preSeed = makeVRFInputSeed(_keyHash, _consumerSeed, _sender, nonce);
@@ -315,8 +315,8 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
     hasAvailableFunds(_amount)
   {
     withdrawableTokens[msg.sender] = withdrawableTokens[msg.sender].sub(_amount);
-    token.approve(address(justMid), _amount);
-    assert(justMid.transferFrom(address(this), _recipient, _amount));
+    token.approve(address(winkMid), _amount);
+    assert(winkMid.transferFrom(address(this), _recipient, _amount));
   }
 
   /**
@@ -335,7 +335,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
    * @param _feePaid The payment for the request
    * @param _keyHash The key which the request is for
    */
-  modifier sufficientJST(uint256 _feePaid, bytes32 _keyHash) {
+  modifier sufficientWIN(uint256 _feePaid, bytes32 _keyHash) {
     require(_feePaid >= serviceAgreements[_keyHash].fee, "Below agreed payment");
     _;
   }
@@ -343,8 +343,8 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
 /**
    * @dev Reverts if not sent from the LINK token
    */
-  modifier onlyJustMid() {
-    require(msg.sender == address(justMid), "Must use justMid token");
+  modifier onlyWinkMid() {
+    require(msg.sender == address(winkMid), "Must use winkMid token");
     _;
   }
 
@@ -384,7 +384,7 @@ contract VRFCoordinator is VRF, VRFRequestIDBase, Owned {
    * @param _to The callback address
    */
   modifier checkCallbackAddress(address _to) {
-    require(_to != address(justMid), "Cannot callback to LINK");
+    require(_to != address(winkMid), "Cannot callback to LINK");
     _;
   }
 }

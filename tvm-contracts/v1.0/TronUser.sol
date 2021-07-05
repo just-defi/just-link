@@ -534,7 +534,7 @@ interface PointerInterface {
     function getAddress() external view returns (address);
 }
 
-interface JustlinkRequestInterface {
+interface WinklinkRequestInterface {
     function oracleRequest(
         address sender,
         uint256 payment,
@@ -571,10 +571,10 @@ interface AggregatorInterface {
 
 
 /**
- * @title Library for common Justlink functions
+ * @title Library for common Winklink functions
  * @dev Uses imported CBOR library for encoding to buffer
  */
-library Justlink {
+library Winklink {
     uint256 internal constant defaultBufferSize = 256; // solhint-disable-line const-name-snakecase
 
     using Buffer for Buffer.buffer;
@@ -589,7 +589,7 @@ library Justlink {
     }
 
     /**
-     * @notice Initializes a Justlink request
+     * @notice Initializes a Winklink request
      * @dev Sets the ID, callback address, and callback function signature on the request
      * @param self The uninitialized request
      * @param _id The Job Specification ID
@@ -602,7 +602,7 @@ library Justlink {
         bytes32 _id,
         address _callbackAddress,
         bytes4 _callbackFunction
-    ) internal pure returns (Justlink.Request memory) {
+    ) internal pure returns (Winklink.Request memory) {
         Buffer.init(self.buf, defaultBufferSize);
         self.id = _id;
         self.callbackAddress = _callbackAddress;
@@ -693,7 +693,7 @@ library Justlink {
     }
 }
 
-contract JustMid {
+contract WinkMid {
 
     function setToken(address tokenAddress) public;
 
@@ -726,12 +726,12 @@ contract TRC20Interface {
 }
 
 /**
- * @title The JustlinkClient contract
+ * @title The WinklinkClient contract
  * @notice Contract writers can inherit this contract in order to create requests for the
- * Justlink network
+ * Winklink network
  */
-contract JustlinkClient {
-    using Justlink for Justlink.Request;
+contract WinklinkClient {
+    using Winklink for Winklink.Request;
     using SafeMath for uint256;
 
     uint256 constant internal LINK = 10 ** 18;
@@ -739,66 +739,66 @@ contract JustlinkClient {
     address constant private SENDER_OVERRIDE = 0x0;
     uint256 constant private ARGS_VERSION = 1;
 
-    JustMid internal justMid;
+    WinkMid internal winkMid;
     TRC20Interface internal token;
-    JustlinkRequestInterface private oracle;
+    WinklinkRequestInterface private oracle;
     uint256 private requests = 1;
     mapping(bytes32 => address) private pendingRequests;
 
-    event JustlinkRequested(bytes32 indexed id);
-    event JustlinkFulfilled(bytes32 indexed id);
-    event JustlinkCancelled(bytes32 indexed id);
+    event WinklinkRequested(bytes32 indexed id);
+    event WinklinkFulfilled(bytes32 indexed id);
+    event WinklinkCancelled(bytes32 indexed id);
 
     /**
      * @notice Creates a request that can hold additional parameters
      * @param _specId The Job Specification ID that the request will be created for
      * @param _callbackAddress The callback address that the response will be sent to
      * @param _callbackFunctionSignature The callback function signature to use for the callback address
-     * @return A Justlink Request struct in memory
+     * @return A Winklink Request struct in memory
      */
-    function buildJustlinkRequest(
+    function buildWinklinkRequest(
         bytes32 _specId,
         address _callbackAddress,
         bytes4 _callbackFunctionSignature
-    ) internal pure returns (Justlink.Request memory) {
-        Justlink.Request memory req;
+    ) internal pure returns (Winklink.Request memory) {
+        Winklink.Request memory req;
         return req.initialize(_specId, _callbackAddress, _callbackFunctionSignature);
     }
 
     /**
-     * @notice Creates a Justlink request to the stored oracle address
-     * @dev Calls `JustlinkRequestTo` with the stored oracle address
-     * @param _req The initialized Justlink Request
+     * @notice Creates a Winklink request to the stored oracle address
+     * @dev Calls `WinklinkRequestTo` with the stored oracle address
+     * @param _req The initialized Winklink Request
      * @param _payment The amount of LINK to send for the request
      * @return The request ID
      */
-    function sendJustlinkRequest(Justlink.Request memory _req, uint256 _payment)
+    function sendWinklinkRequest(Winklink.Request memory _req, uint256 _payment)
     internal
     returns (bytes32)
     {
-        return sendJustlinkRequestTo(oracle, _req, _payment);
+        return sendWinklinkRequestTo(oracle, _req, _payment);
     }
 
     /**
-     * @notice Creates a Justlink request to the specified oracle address
+     * @notice Creates a Winklink request to the specified oracle address
      * @dev Generates and stores a request ID, increments the local nonce, and uses `transferAndCall` to
      * send LINK which creates a request on the target oracle contract.
-     * Emits JustlinkRequested event.
+     * Emits WinklinkRequested event.
      * @param _oracle The address of the oracle for the request
-     * @param _req The initialized Justlink Request
+     * @param _req The initialized Winklink Request
      * @param _payment The amount of LINK to send for the request
      * @return The request ID
      */
-    function sendJustlinkRequestTo(address _oracle, Justlink.Request memory _req, uint256 _payment)
+    function sendWinklinkRequestTo(address _oracle, Winklink.Request memory _req, uint256 _payment)
     internal
     returns (bytes32 requestId)
     {
         requestId = keccak256(abi.encodePacked(this, requests));
         _req.nonce = requests;
         pendingRequests[requestId] = _oracle;
-        emit JustlinkRequested(requestId);
-        token.approve(justMidAddress(), _payment);
-        require(justMid.transferAndCall(address(this), _oracle, _payment, encodeRequest(_req)), "unable to transferAndCall to oracle");
+        emit WinklinkRequested(requestId);
+        token.approve(winkMidAddress(), _payment);
+        require(winkMid.transferAndCall(address(this), _oracle, _payment, encodeRequest(_req)), "unable to transferAndCall to oracle");
         requests += 1;
 
         return requestId;
@@ -808,13 +808,13 @@ contract JustlinkClient {
      * @notice Allows a request to be cancelled if it has not been fulfilled
      * @dev Requires keeping track of the expiration value emitted from the oracle contract.
      * Deletes the request from the `pendingRequests` mapping.
-     * Emits JustlinkCancelled event.
+     * Emits WinklinkCancelled event.
      * @param _requestId The request ID
      * @param _payment The amount of LINK sent for the request
      * @param _callbackFunc The callback function specified for the request
      * @param _expiration The time of the expiration for the request
      */
-    function cancelJustlinkRequest(
+    function cancelWinklinkRequest(
         bytes32 _requestId,
         uint256 _payment,
         bytes4 _callbackFunc,
@@ -822,9 +822,9 @@ contract JustlinkClient {
     )
     internal
     {
-        JustlinkRequestInterface requested = JustlinkRequestInterface(pendingRequests[_requestId]);
+        WinklinkRequestInterface requested = WinklinkRequestInterface(pendingRequests[_requestId]);
         delete pendingRequests[_requestId];
-        emit JustlinkCancelled(_requestId);
+        emit WinklinkCancelled(_requestId);
         requested.cancelOracleRequest(_requestId, _payment, _callbackFunc, _expiration);
     }
 
@@ -832,39 +832,39 @@ contract JustlinkClient {
      * @notice Sets the stored oracle address
      * @param _oracle The address of the oracle contract
      */
-    function setJustlinkOracle(address _oracle) internal {
-        oracle = JustlinkRequestInterface(_oracle);
+    function setWinklinkOracle(address _oracle) internal {
+        oracle = WinklinkRequestInterface(_oracle);
     }
 
     /**
      * @notice Sets the LINK token address
      * @param _link The address of the LINK token contract
      */
-    function setJustlinkToken(address _link) internal {
+    function setWinklinkToken(address _link) internal {
         token = TRC20Interface(_link);
     }
 
-    function setJustMid(address _justMid) internal {
-        justMid = JustMid(_justMid);
+    function setWinkMid(address _winkMid) internal {
+        winkMid = WinkMid(_winkMid);
     }
 
     /**
      * @notice Retrieves the stored address of the LINK token
      * @return The address of the LINK token
      */
-    function justMidAddress()
+    function winkMidAddress()
     public
     view
     returns (address)
     {
-        return address(justMid);
+        return address(winkMid);
     }
 
     /**
      * @notice Retrieves the stored address of the oracle contract
      * @return The address of the oracle contract
      */
-    function JustlinkOracleAddress()
+    function WinklinkOracleAddress()
     internal
     view
     returns (address)
@@ -878,7 +878,7 @@ contract JustlinkClient {
      * @param _oracle The address of the oracle contract that will fulfill the request
      * @param _requestId The request ID used for the response
      */
-    function addJustlinkExternalRequest(address _oracle, bytes32 _requestId)
+    function addWinklinkExternalRequest(address _oracle, bytes32 _requestId)
     internal
     notPendingRequest(_requestId)
     {
@@ -889,12 +889,12 @@ contract JustlinkClient {
 
     /**
      * @notice Encodes the request to be sent to the oracle contract
-     * @dev The Justlink node expects values to be in order for the request to be picked up. Order of types
+     * @dev The Winklink node expects values to be in order for the request to be picked up. Order of types
      * will be validated in the oracle contract.
-     * @param _req The initialized Justlink Request
+     * @param _req The initialized Winklink Request
      * @return The bytes payload for the `transferAndCall` method
      */
-    function encodeRequest(Justlink.Request memory _req)
+    function encodeRequest(Winklink.Request memory _req)
     private
     view
     returns (bytes memory)
@@ -916,21 +916,21 @@ contract JustlinkClient {
      * @dev Use if the contract developer prefers methods instead of modifiers for validation
      * @param _requestId The request ID for fulfillment
      */
-    function validateJustlinkCallback(bytes32 _requestId)
+    function validateWinklinkCallback(bytes32 _requestId)
     internal
-    recordJustlinkFulfillment(_requestId)
+    recordWinklinkFulfillment(_requestId)
         // solhint-disable-next-line no-empty-blocks
     {}
 
     /**
      * @dev Reverts if the sender is not the oracle of the request.
-     * Emits JustlinkFulfilled event.
+     * Emits WinklinkFulfilled event.
      * @param _requestId The request ID for fulfillment
      */
-    modifier recordJustlinkFulfillment(bytes32 _requestId) {
+    modifier recordWinklinkFulfillment(bytes32 _requestId) {
         require(msg.sender == pendingRequests[_requestId], "Source must be the oracle of the request");
         delete pendingRequests[_requestId];
-        emit JustlinkFulfilled(_requestId);
+        emit WinklinkFulfilled(_requestId);
         _;
     }
 
@@ -945,12 +945,12 @@ contract JustlinkClient {
 }
 
 /**
- * @title An example Justlink contract with aggregation
+ * @title An example Winklink contract with aggregation
  * @notice Requesters can use this contract as a framework for creating
- * requests to multiple Justlink nodes and running aggregation
+ * requests to multiple Winklink nodes and running aggregation
  * as the contract receives answers.
  */
-contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
+contract Aggregator is AggregatorInterface, WinklinkClient, Ownable {
     using SignedSafeMath for int256;
 
     struct Answer {
@@ -985,18 +985,18 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
      * @dev Sets the LinkToken address for the network, addresses of the oracles,
      * and jobIds in storage.
      * @param _link The address of the LINK token
-     * @param _justMid The address of the JustMid token
+     * @param _winkMid The address of the WinkMid token
      */
-    constructor(address _link, address _justMid) public Ownable() {
-        setJustlinkToken(_link);
-        setJustMid(_justMid);
+    constructor(address _link, address _winkMid) public Ownable() {
+        setWinklinkToken(_link);
+        setWinkMid(_winkMid);
         //, uint128 _paymentAmount, uint128 _minimumResponses,
         //        address[] _oracles, bytes32[] _jobIds
         //        updateRequestDetails(_paymentAmount, _minimumResponses, _oracles, _jobIds);
     }
 
     /**
-     * @notice Creates a Justlink request for each oracle in the oracles array.
+     * @notice Creates a Winklink request for each oracle in the oracles array.
      * @dev This example does not include request parameters. Reference any documentation
      * associated with the Job IDs used to determine the required parameters per-request.
      */
@@ -1006,13 +1006,13 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     returns (bytes32)
     {
         require(oracles.length > 0, "Please set oracles and jobIds");
-        Justlink.Request memory request;
+        Winklink.Request memory request;
         bytes32 requestId;
         uint256 oraclePayment = paymentAmount;
 
         for (uint i = 0; i < oracles.length; i++) {
-            request = buildJustlinkRequest(jobIds[i], this, this.justlinkCallback.selector);
-            requestId = sendJustlinkRequestTo(oracles[i], request, oraclePayment);
+            request = buildWinklinkRequest(jobIds[i], this, this.winklinkCallback.selector);
+            requestId = sendWinklinkRequestTo(oracles[i], request, oraclePayment);
             requestAnswers[requestId] = answerCounter;
         }
         answers[answerCounter].minimumResponses = minimumResponses;
@@ -1026,15 +1026,15 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     }
 
     /**
-     * @notice Receives the answer from the Justlink node.
+     * @notice Receives the answer from the Winklink node.
      * @dev This function can only be called by the oracle that received the request.
-     * @param _clRequestId The Justlink request ID associated with the answer
-     * @param _response The answer provided by the Justlink node
+     * @param _clRequestId The Winklink request ID associated with the answer
+     * @param _response The answer provided by the Winklink node
      */
-    function justlinkCallback(bytes32 _clRequestId, int256 _response)
+    function winklinkCallback(bytes32 _clRequestId, int256 _response)
     external
     {
-        validateJustlinkCallback(_clRequestId);
+        validateWinklinkCallback(_clRequestId);
 
         uint256 answerId = requestAnswers[_clRequestId];
         delete requestAnswers[_clRequestId];
@@ -1088,8 +1088,8 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     public
     onlyOwner()
     {
-        token.approve(justMidAddress(), _amount);
-        require(justMid.transferFrom(address(this), _recipient, _amount), "LINK transfer failed");
+        token.approve(winkMidAddress(), _amount);
+        require(winkMid.transferFrom(address(this), _recipient, _amount), "LINK transfer failed");
     }
 
     /**
@@ -1107,10 +1107,10 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     }
 
     /**
-     * @notice Cancels an outstanding Justlink request.
+     * @notice Cancels an outstanding Winklink request.
      * The oracle contract requires the request ID and additional metadata to
      * validate the cancellation. Only old answers can be cancelled.
-     * @param _requestId is the identifier for the Justlink request being cancelled
+     * @param _requestId is the identifier for the Winklink request being cancelled
      * @param _payment is the amount of LINK paid to the oracle for the request
      * @param _expiration is the time when the request expires
      */
@@ -1129,10 +1129,10 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
         answers[answerId].responses.push(0);
         deleteAnswer(answerId);
 
-        cancelJustlinkRequest(
+        cancelWinklinkRequest(
             _requestId,
             _payment,
-            this.justlinkCallback.selector,
+            this.winklinkCallback.selector,
             _expiration
         );
     }
@@ -1145,12 +1145,12 @@ contract Aggregator is AggregatorInterface, JustlinkClient, Ownable {
     external
     onlyOwner()
     {
-        transferLINK(owner, justMid.balanceOf(address(this)));
+        transferLINK(owner, winkMid.balanceOf(address(this)));
         selfdestruct(owner);
     }
 
     /**
-     * @dev Performs aggregation of the answers received from the Justlink nodes.
+     * @dev Performs aggregation of the answers received from the Winklink nodes.
      * Assumes that at least half the oracles are honest, which cannot control the
      * middle of the ordered responses.
      * @param _answerId The answer ID associated with the group of requests
