@@ -20,7 +20,7 @@ abstract contract TRC20Interface {
     event Approval(address indexed tokenOwner, address indexed spender, uint tokens);
 }
 
-abstract contract JustMid {
+abstract contract WinkMid {
 
     function setToken(address tokenAddress) public virtual;
 
@@ -404,10 +404,10 @@ library CBOR {
 }
 
 /**
- * @title Library for common Justlink functions
+ * @title Library for common Winklink functions
  * @dev Uses imported CBOR library for encoding to buffer
  */
-library Justlink {
+library Winklink {
     uint256 internal constant defaultBufferSize = 256; // solhint-disable-line const-name-snakecase
 
     using Buffer for Buffer.buffer;
@@ -422,7 +422,7 @@ library Justlink {
     }
 
     /**
-     * @notice Initializes a Justlink request
+     * @notice Initializes a Winklink request
      * @dev Sets the ID, callback address, and callback function signature on the request
      * @param self The uninitialized request
      * @param _id The Job Specification ID
@@ -435,7 +435,7 @@ library Justlink {
         bytes32 _id,
         address _callbackAddress,
         bytes4 _callbackFunction
-    ) internal pure returns (Justlink.Request memory) {
+    ) internal pure returns (Winklink.Request memory) {
         Buffer.init(self.buf, defaultBufferSize);
         self.id = _id;
         self.callbackAddress = _callbackAddress;
@@ -526,7 +526,7 @@ library Justlink {
     }
 }
 
-interface JustlinkRequestInterface {
+interface WinklinkRequestInterface {
     function vrfRequest(
         address sender,
         uint256 payment,
@@ -540,12 +540,12 @@ interface JustlinkRequestInterface {
 }
 
 /**
- * @title The JustlinkClient contract
+ * @title The WinklinkClient contract
  * @notice Contract writers can inherit this contract in order to create requests for the
- * Justlink network
+ * Winklink network
  */
-contract JustlinkClient {
-    using Justlink for Justlink.Request;
+contract WinklinkClient {
+    using Winklink for Winklink.Request;
     using SafeMathTron for uint256;
 
     uint256 constant internal LINK = 10 ** 18;
@@ -553,23 +553,23 @@ contract JustlinkClient {
     address constant private SENDER_OVERRIDE = address(0);
     uint256 constant private ARGS_VERSION = 1;
 
-    JustMid internal justMid;
+    WinkMid internal winkMid;
     TRC20Interface internal token;
-    JustlinkRequestInterface private oracle;
+    WinklinkRequestInterface private oracle;
 
     /**
      * @notice Creates a request that can hold additional parameters
      * @param _specId The Job Specification ID that the request will be created for
      * @param _callbackAddress The callback address that the response will be sent to
      * @param _callbackFunctionSignature The callback function signature to use for the callback address
-     * @return A Justlink Request struct in memory
+     * @return A Winklink Request struct in memory
      */
-    function buildJustlinkRequest(
+    function buildWinklinkRequest(
         bytes32 _specId,
         address _callbackAddress,
         bytes4 _callbackFunctionSignature
-    ) internal pure returns (Justlink.Request memory) {
-        Justlink.Request memory req;
+    ) internal pure returns (Winklink.Request memory) {
+        Winklink.Request memory req;
         return req.initialize(_specId, _callbackAddress, _callbackFunctionSignature);
     }
 
@@ -577,34 +577,34 @@ contract JustlinkClient {
      * @notice Sets the LINK token address
      * @param _link The address of the LINK token contract
      */
-    function setJustlinkToken(address _link) internal {
+    function setWinklinkToken(address _link) internal {
         token = TRC20Interface(_link);
     }
 
-    function setJustMid(address _justMid) internal {
-        justMid = JustMid(_justMid);
+    function setWinkMid(address _winkMid) internal {
+        winkMid = WinkMid(_winkMid);
     }
 
     /**
      * @notice Retrieves the stored address of the LINK token
      * @return The address of the LINK token
      */
-    function justMidAddress()
+    function winkMidAddress()
     public
     view
     returns (address)
     {
-        return address(justMid);
+        return address(winkMid);
     }
 
     /**
      * @notice Encodes the request to be sent to the vrfCoordinator contract
-     * @dev The Justlink node expects values to be in order for the request to be picked up. Order of types
+     * @dev The Winklink node expects values to be in order for the request to be picked up. Order of types
      * will be validated in the VRFCoordinator contract.
-     * @param _req The initialized Justlink Request
+     * @param _req The initialized Winklink Request
      * @return The bytes payload for the `transferAndCall` method
      */
-    function encodeVRFRequest(Justlink.Request memory _req)
+    function encodeVRFRequest(Winklink.Request memory _req)
     internal
     view
     returns (bytes memory)

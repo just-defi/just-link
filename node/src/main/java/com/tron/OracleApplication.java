@@ -33,7 +33,7 @@ public class OracleApplication {
 		JCommander jct = JCommander.newBuilder()
 						.addObject(argv)
 						.build();
-		jct.setProgramName("just-link");
+		jct.setProgramName("wink-link");
 		jct.setAcceptUnknownOptions(true);
 		jct.parse(args);
 		try {
@@ -59,7 +59,7 @@ public class OracleApplication {
 
 		ReSender reSender = new ReSender(JobSubscriber.jobRunner.tronTxService);
 		reSender.run();
-		log.info("==================Just Link start success================");
+		log.info("==================Wink Link start success================");
 	}
 
 	static class Args {

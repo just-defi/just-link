@@ -1,4 +1,4 @@
-# Just Link Node
+# Wink Link Node
 
 ## Install
 
