@@ -103,7 +103,7 @@ library SafeMath {
     }
 }
 
-interface JustlinkRequestInterface {
+interface WinklinkRequestInterface {
     function oracleRequest(
         address sender,
         uint256 payment,
@@ -138,7 +138,7 @@ interface OracleInterface {
     function withdrawable() external view returns (uint256);
 }
 
-contract JustMid {
+contract WinkMid {
 
     function setToken(address tokenAddress) public ;
 
@@ -167,10 +167,10 @@ contract TRC20Interface {
 
 
 /**
- * @title The Justlink Oracle contract
+ * @title The Winklink Oracle contract
  * @notice Node operators can deploy this contract to fulfill requests sent to them
  */
-contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
+contract Oracle is WinklinkRequestInterface, OracleInterface, Ownable {
     using SafeMath for uint256;
 
     uint256 constant public EXPIRY_TIME = 5 minutes;
@@ -181,7 +181,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     uint256 constant private EXPECTED_REQUEST_WORDS = 2;
     uint256 constant private MINIMUM_REQUEST_LENGTH = SELECTOR_LENGTH + (32 * EXPECTED_REQUEST_WORDS);
 
-    JustMid internal justMid;
+    WinkMid internal winkMid;
     TRC20Interface internal token;
     mapping(bytes32 => bytes32) private commitments;
     mapping(address => bool) private authorizedNodes;
@@ -208,9 +208,9 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
      * @dev Sets the LinkToken address for the imported LinkTokenInterface
      * @param _link The address of the LINK token
      */
-    constructor(address _link, address _justMid) public Ownable() {
+    constructor(address _link, address _winkMid) public Ownable() {
         token = TRC20Interface(_link); // external but already deployed and unalterable
-        justMid = JustMid(_justMid);
+        winkMid = WinkMid(_winkMid);
     }
 
     /**
@@ -227,7 +227,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes _data
     )
     public
-    onlyJustMid
+    onlyWinkMid
     validRequestLength(_data)
     permittedFunctionsForLINK(_data)
     {
@@ -243,18 +243,18 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     * @notice Retrieves the stored address of the LINK token
     * @return The address of the LINK token
     */
-    function justMidAddress()
+    function winkMidAddress()
     public
     view
     returns (address)
     {
-        return address(justMid);
+        return address(winkMid);
     }
 
     /**
-     * @notice Creates the Justlink request
+     * @notice Creates the Winklink request
      * @dev Stores the hash of the params as the on-chain commitment for the request.
-     * Emits OracleRequest event for the Justlink node to detect.
+     * Emits OracleRequest event for the Winklink node to detect.
      * @param _sender The sender of the request
      * @param _payment The amount of payment given (specified in wei)
      * @param _specId The Job Specification ID
@@ -275,7 +275,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
         bytes _data
     )
     external
-    onlyJustMid
+    onlyWinkMid
     checkCallbackAddress(_callbackAddress)
     {
         bytes32 requestId = keccak256(abi.encodePacked(_sender, _nonce));
@@ -305,7 +305,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     }
 
     /**
-     * @notice Called by the Justlink node to fulfill requests
+     * @notice Called by the Winklink node to fulfill requests
      * @dev Given params must hash back to the commitment stored from `oracleRequest`.
      * Will call the callback address' callback function without bubbling up error
      * checking in a `require` so that the node can get paid.
@@ -349,7 +349,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
 
     /**
      * @notice Use this to check if a node is authorized for fulfilling requests
-     * @param _node The address of the Justlink node
+     * @param _node The address of the Winklink node
      * @return The authorization status of the node
      */
     function getAuthorizationStatus(address _node) external view returns (bool) {
@@ -358,7 +358,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
 
     /**
      * @notice Sets the fulfillment permission for a given node. Use `true` to allow, `false` to disallow.
-     * @param _node The address of the Justlink node
+     * @param _node The address of the Winklink node
      * @param _allowed Bool value to determine if the node can fulfill requests
      */
     function setFulfillmentPermission(address _node, bool _allowed) external onlyOwner {
@@ -367,7 +367,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
 
     /**
      * @notice Allows the node operator to withdraw earned LINK to a given address
-     * @dev The owner of the contract can be another wallet and does not have to be a Justlink node
+     * @dev The owner of the contract can be another wallet and does not have to be a Winklink node
      * @param _recipient The address to send the LINK token to
      * @param _amount The amount to send (specified in wei)
      */
@@ -377,8 +377,8 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     hasAvailableFunds(_amount)
     {
         withdrawableTokens = withdrawableTokens.sub(_amount);
-        token.approve(justMidAddress(), _amount);
-        assert(justMid.transferFrom(address(this), _recipient, _amount));
+        token.approve(winkMidAddress(), _amount);
+        assert(winkMid.transferFrom(address(this), _recipient, _amount));
     }
 
     /**
@@ -419,8 +419,8 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
 
         delete commitments[_requestId];
         emit CancelOracleRequest(_requestId);
-        token.approve(justMidAddress(), _payment);
-        assert(justMid.transferFrom(address(this), msg.sender, _payment));
+        token.approve(winkMidAddress(), _payment);
+        assert(winkMid.transferFrom(address(this), msg.sender, _payment));
     }
 
     // MODIFIERS
@@ -454,8 +454,8 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
     /**
      * @dev Reverts if not sent from the LINK token
      */
-    modifier onlyJustMid() {
-        require(msg.sender == address(justMid), "Must use JustMid");
+    modifier onlyWinkMid() {
+        require(msg.sender == address(winkMid), "Must use WinkMid");
         _;
     }
 
@@ -477,7 +477,7 @@ contract Oracle is JustlinkRequestInterface, OracleInterface, Ownable {
      * @param _to The callback address
      */
     modifier checkCallbackAddress(address _to) {
-        require(_to != address(justMid), "Cannot callback to LINK");
+        require(_to != address(winkMid), "Cannot callback to LINK");
         _;
     }
 
