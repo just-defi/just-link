@@ -18,3 +18,6 @@ spring:
 
 node:
   minPayment: 2
+  cacheEnable: true
+  minFeeLimit: 50000000
+  tronApiKey: set_the_proper_apikey

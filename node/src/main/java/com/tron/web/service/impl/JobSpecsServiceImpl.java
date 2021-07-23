@@ -154,6 +154,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   private void checkInitiator(Initiator initiator) throws TronException {
     switch (initiator.getType()) {
       case Constant.INITIATOR_TYPE_RUN_LOG:
+      case Constant.INITIATOR_TYPE_RANDOMNESS_LOG:
         if (initiator.getAddress() == null || initiator.getAddress().isEmpty()) {
           throw new TronException("Initiator's address parameter is required");
         }
@@ -198,6 +199,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
       case Constant.TASK_TYPE_TRX_TO_USDT:
       case Constant.TASK_TYPE_CACHE:
       case Constant.TASK_TYPE_CONVERT_TRX:
+      case Constant.TASK_TYPE_RANDOM:
         break;
       default:
         throw new TronException("Task type " + taskSpec.getType() + " dose dot support");

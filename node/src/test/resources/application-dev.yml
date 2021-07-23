@@ -15,3 +15,9 @@ spring:
     locations: classpath:db/migration
     clean-disabled: false
     baselineOnMigrate: true
+
+node:
+  minPayment: 2
+  cacheEnable: true
+  minFeeLimit: 20000000
+  tronApiKey: 8ca51978-72aa-4e0e-9263-22ac222b30b5

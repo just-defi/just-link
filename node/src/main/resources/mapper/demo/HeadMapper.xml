@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.tron.web.mapper.HeadMapper">
+
+  <resultMap id="HeadResultMap" type="com.tron.web.entity.Head">
+	  <result column="id" property="id" jdbcType="BIGINT"/>
+	  <result column="address" property="address" jdbcType="VARCHAR"/>
+	  <result column="hash" property="hash" jdbcType="VARCHAR"/>
+	  <result column="number" property="number" jdbcType="BIGINT"/>
+	  <result column="parent_hash" property="parentHash" jdbcType="VARCHAR"/>
+	  <result column="block_timestamp" property="blockTimestamp" jdbcType="BIGINT"/>
+	  <result column="created_at" property="createdAt" jdbcType="TIMESTAMP"/>
+	  <result column="updated_at" property="updatedAt" jdbcType="TIMESTAMP"/>
+  </resultMap>
+
+  <insert id="insert" parameterType="com.tron.web.entity.Head">
+		insert into heads
+		(
+		`id`,
+	  `address`,
+	  `hash`,
+	  `number`,
+	  `parent_hash`,
+	  `block_timestamp`
+		)
+		values
+		(
+		#{id},
+		#{address},
+		#{hash},
+		#{number},
+	  #{parentHash},
+	  #{blockTimestamp}
+		)
+	</insert>
+
+
+  	<select id="getByAddress" parameterType="java.lang.String" resultType="com.tron.web.entity.Head" resultMap="HeadResultMap">
+		select id, `address`, `hash`, `number`, `parent_hash`, created_at, updated_at, `block_timestamp`
+		from heads
+		where `address` = #{address}
+	</select>
+
+	<update id="update">
+		update heads
+		set id = #{id}, address = #{address}, hash = #{hash}, number=#{number}, parent_hash=#{parentHash}, block_timestamp=#{blockTimestamp}, updated_at=#{updatedAt}
+		where id = #{id}
+	</update>
+
+</mapper>

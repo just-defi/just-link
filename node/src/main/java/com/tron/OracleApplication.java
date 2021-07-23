@@ -5,11 +5,14 @@ import static com.tron.common.Constant.HTTP_EVENT_HOST;
 
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
+import com.google.common.base.Strings;
 import com.tron.client.OracleClient;
+import com.tron.client.ReSender;
 import com.tron.common.Constant;
 import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.keystore.KeyStore;
+import com.tron.keystore.VrfKeyStore;
 import java.io.FileNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.mybatis.spring.annotation.MapperScan;
@@ -30,7 +33,7 @@ public class OracleApplication {
 		JCommander jct = JCommander.newBuilder()
 						.addObject(argv)
 						.build();
-		jct.setProgramName("just-link");
+		jct.setProgramName("wink-link");
 		jct.setAcceptUnknownOptions(true);
 		jct.parse(args);
 		try {
@@ -39,14 +42,24 @@ public class OracleApplication {
 			log.error("init ECKey failed, err: {}", e.getMessage());
 			System.exit(-1);
 		}
+		if(!Strings.isNullOrEmpty(argv.vrfKey)) { // optional
+			try {
+				VrfKeyStore.initKeyStore(argv.vrfKey);
+			} catch (FileNotFoundException e) {
+				log.error("init VRF ECKey failed, err: {}", e.getMessage());
+				System.exit(-1);
+			}
+		}
+
 		Constant.initEnv(argv.env);
 		ConfigurableApplicationContext context = SpringApplication.run(OracleApplication.class, args);
 		JobCache jobCache = context.getBean(JobCache.class);
 		jobCache.run();
-		OracleClient oracleClient = new OracleClient();
-		oracleClient.run();
-		JobSubscriber.setup();
-		log.info("==================Just Link start success================");
+		OracleClient.init();
+
+		ReSender reSender = new ReSender(JobSubscriber.jobRunner.tronTxService);
+		reSender.run();
+		log.info("==================Wink Link start success================");
 	}
 
 	static class Args {
@@ -67,6 +80,12 @@ public class OracleApplication {
 						help = true,
 						order = 3)
 		private boolean help;
+		@Parameter(
+				names = {"--vrfKey", "-vrfK"},
+				help = true,
+				description = "specify the VRF privatekey",
+				order = 4)
+		private String vrfKey;
 	}
 }
 
