@@ -90,7 +90,7 @@ public class CheckDeviation {
       }
     }, 1, config.getSleep(), TimeUnit.MILLISECONDS);
 
-    //start intervalUpdateExecutor schedule 1s
+    //start intervalUpdateExecutor schedule 30s
     intervalUpdateExecutor.scheduleWithFixedDelay(() -> {
       try {
         if (!updateFlag) {
@@ -102,7 +102,7 @@ public class CheckDeviation {
       } finally {
         updateFlag = false;
       }
-    }, 5, 1, TimeUnit.SECONDS);
+    }, 5, 30, TimeUnit.SECONDS);
 
     //start sendRequestExecutor schedule 1s
     sendRequestExecutor.scheduleWithFixedDelay(() -> {
@@ -170,8 +170,9 @@ public class CheckDeviation {
     String contract = "";
     try {
       if (!sendRequestQueue.isEmpty()) {
-        contract = sendRequestQueue.take();
+        contract = sendRequestQueue.peek();
         sendRequest(contract);
+        sendRequestQueue.poll();
         log.info("sendRequestQueue take success ! contract : {}", contract);
       }
     } catch (Exception ex) {
