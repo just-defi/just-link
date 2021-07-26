@@ -90,7 +90,7 @@ public class CheckDeviation {
       }
     }, 1, config.getSleep(), TimeUnit.MILLISECONDS);
 
-    //start intervalUpdateExecutor schedule 30s
+    //start intervalUpdateExecutor schedule 120s
     intervalUpdateExecutor.scheduleWithFixedDelay(() -> {
       try {
         if (!updateFlag) {
@@ -102,7 +102,7 @@ public class CheckDeviation {
       } finally {
         updateFlag = false;
       }
-    }, 5, 30, TimeUnit.SECONDS);
+    }, 5, 120, TimeUnit.SECONDS);
 
     //start sendRequestExecutor schedule 1s
     sendRequestExecutor.scheduleWithFixedDelay(() -> {
@@ -182,8 +182,9 @@ public class CheckDeviation {
 
   private static void putContractIntoQueue(String contract) {
     try {
-      sendRequestQueue.put(contract);
-//            log.info("sendRequestQueue put success ! contract : {}", contract);
+      if (!sendRequestQueue.contains(contract)) {
+        sendRequestQueue.put(contract);
+      }
     } catch (Exception ex) {
       log.error("sendRequestQueue put error. contract : {}", contract, ex);
     }
