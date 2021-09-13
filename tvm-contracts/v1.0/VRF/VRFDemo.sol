@@ -9,7 +9,7 @@ import "./Owned.sol";
  * of a 20 sided die
  * @dev This is only an example implementation and not necessarily suitable for mainnet.
  */
-contract VRFD20 is VRFConsumerBase, Owned {
+contract VRFDemo is VRFConsumerBase, Owned {
     uint256 private constant ROLL_IN_PROGRESS = 42;
 
     bytes32 private s_keyHash;
