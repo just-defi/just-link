@@ -6,16 +6,21 @@ import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
+import com.tron.web.entity.Initiator;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.JobSpecRequest;
 import com.tron.web.entity.TaskSpec;
+import com.tron.web.mapper.InitiatorMapper;
 import com.tron.web.service.JobSpecsService;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.eclipse.core.runtime.jobs.Job;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +41,7 @@ public class JobSpecsController {
   private JobSpecsService jobSpecsService;
   private JobSubscriber jobSubscriber;
   private JobCache jobCache;
+  private InitiatorMapper initiatorMapper;
 
   @GetMapping("/specs")
   public R index(
@@ -136,5 +142,31 @@ public class JobSpecsController {
       log.error("get job cache failed, jobId:" + jobId + ", error : " + e.getMessage());
       return R.error(ResultStatus.GET_JOB_DETAIL_FAILED).put("data", 0);
     }
+  }
+
+  @GetMapping(value = "/active/{address}")
+  public R getActiveJob(@PathVariable("address") String address) {
+    Initiator initiator = initiatorMapper.getByAddress(address);
+    if (initiator == null) {
+      return R.error("initiator not exists");
+    }
+
+    return R.ok().put("data", initiator.getJobSpecID());
+  }
+
+  @GetMapping(value = "/active")
+  public R getAllActiveJobs() {
+    List<Initiator> initiators = JobSubscriber.jobRunner.getAllJobInitiatorList();
+    Set<String> addresses = initiators.stream().map(Initiator::getAddress).collect(Collectors.toSet());
+
+    List<String> jobIds = new ArrayList<>(addresses.size());
+    addresses.forEach(each -> {
+      Initiator initiator = initiatorMapper.getByAddress(each);
+      if (initiator != null) {
+        jobIds.add(initiator.getJobSpecID());
+      }
+    });
+
+    return R.ok().put("data", jobIds);
   }
 }

@@ -137,9 +137,16 @@ public class CheckDeviation {
     for (PairInfo pairInfo : config.getPairs()) {
       String contract = pairInfo.getContract();
       Long lastUpdateTime = updateTimeMap.get(pairInfo.getName());
-      if (null == lastUpdateTime || lastUpdateTime + pairInfo.getUpdateInterval() > System.currentTimeMillis()) {
+      if (null == lastUpdateTime) {
+        updateTimeMap.put(pairInfo.getName(), System.currentTimeMillis());
+        log.info("intervalUpdate init update time for pairInfo: {}", JSONObject.toJSONString(pairInfo));
         continue;
       }
+
+      if (lastUpdateTime + pairInfo.getUpdateInterval() > System.currentTimeMillis()) {
+        continue;
+      }
+
       putContractIntoQueue(contract);
       updateTimeMap.put(pairInfo.getName(), System.currentTimeMillis());
       log.info("intervalUpdate put pairInfo into sendRequestQueue : {}", JSONObject.toJSONString(pairInfo));
