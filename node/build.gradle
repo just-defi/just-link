@@ -65,7 +65,11 @@ dependencies {
 	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.9'
 	compile group: 'com.madgag.spongycastle', name: 'core', version: '1.58.0.0'
 	compile group: 'com.madgag.spongycastle', name: 'prov', version: '1.58.0.0'
-	compile 'com.github.tronprotocol:java-tron:GreatVoyage-v4.2.2'
+	compile('com.github.tronprotocol:java-tron:GreatVoyage-v4.2.2') {
+		exclude group: 'com.alibaba', module: 'fastjson'
+	}
+	compile group: 'com.alibaba', name: 'fastjson', version: '1.2.83'
+
 	testCompile group: 'junit', name: 'junit', version: '4.13'
 	compile group: 'com.google.code.gson', name: 'gson', version: '2.8.6'
 	compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
