@@ -18,3 +18,4 @@ spring:
 
 node:
   minPayment: 100000
+  usdtUsdAggregator: "TYWY6L4mECH2Gtiq3sg4zY4fvD1XZpwGrb"

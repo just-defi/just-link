@@ -1,22 +1,33 @@
 package com.tron.job.adapters;
 
-import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
-
-import com.google.common.base.Strings;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import com.tron.common.Config;
 import com.tron.common.Constant;
-import com.tron.common.util.HttpUtil;
+import com.tron.job.JobSubscriber;
 import com.tron.web.common.util.R;
-import java.io.IOException;
+
+import com.tron.web.entity.Initiator;
+import com.tron.web.mapper.InitiatorMapper;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.util.EntityUtils;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 @Slf4j
+@Component
 public class ConvertUsdAdapter extends BaseAdapter {
+
+  public static ConvertUsdAdapter instance;
+
+  @Autowired
+  private InitiatorMapper initiatorMapper;
+
+  public static ConvertUsdAdapter getInstance() {
+    return instance;
+  }
+
+  @Autowired
+  public void setInstance(ConvertUsdAdapter adapter) {
+    instance = adapter;
+  }
 
   @Override
   public String taskType() {
@@ -26,36 +37,20 @@ public class ConvertUsdAdapter extends BaseAdapter {
   @Override
   public R perform(R input) {
     R result  = new R();
-    String url = "https://api-pub.bitfinex.com/v2/ticker/tUSTUSD";
-    String response = null;
-    try {
-      response = HttpUtil.requestWithRetry(url);
-    } catch (IOException e) {
-      log.info("query USD failed, url:" + url);
-    }
-
-    if (!Strings.isNullOrEmpty(response)) {
-      try {
-        JsonElement data = JsonParser.parseString(response);
-
-        double value = 1;
-        if (data.isJsonArray() && data.getAsJsonArray().size() > 6) {
-          data = data.getAsJsonArray().get(6);
-          value = data.getAsDouble();
-        }
-
-        value = (long)input.get("result") * value;
-
-        result.put("result", Math.round(value));
-      } catch (Exception e) {
-        result.put("result", input.get("result"));
-        log.info("parse response failed, url:" + url);
-      }
-    } else {
-      result.put("result", input.get("result"));
-      log.warn("request failed, url:" + url);
-    }
+    double value = usdtUsdRate();
+    value = (long)input.get("result") * value;
+    result.put("result", Math.round(value));
 
     return result;
+  }
+
+  public Double usdtUsdRate() {
+    Initiator initiator = initiatorMapper.getByAddress(Config.getUsdtUsdAggregator());
+    if (initiator == null) {
+      log.warn("USDT/USD job doesn't exist");
+      return 1.0;
+    }
+    Long value = JobSubscriber.getJobResultById(initiator.getJobSpecID());
+    return value / 1000000.0;
   }
 }

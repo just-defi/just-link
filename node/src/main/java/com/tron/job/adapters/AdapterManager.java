@@ -46,7 +46,7 @@ public class AdapterManager {
         adapter = new JustSwapAdapter(params.getPair(), params.getPool(), params.getTrc20());
         break;
       case Constant.TASK_TYPE_TRX_TO_USDT:
-        adapter = new ConvertUsdtAdapter();
+        adapter = ConvertUsdAdapter.getInstance();
         break;
       case Constant.TASK_TYPE_CACHE:
         adapter = new CacheAdapter();
