@@ -6,7 +6,6 @@ import com.google.common.cache.CacheBuilder;
 import com.tron.common.Constant;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
-import com.tron.keystore.KeyStore;
 import com.tron.web.common.util.R;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.TaskSpec;
@@ -129,7 +128,6 @@ public class JobCache {
     preTaskResult.put("result", null);
     for (TaskSpec taskSpec : job.getTaskSpecs()) {
       if (taskSpec.getType().equals(Constant.TASK_TYPE_TRON_TX) ||
-          taskSpec.getType().equals(Constant.TASK_TYPE_CONVERT_USD) ||
           taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
         break;
       }
