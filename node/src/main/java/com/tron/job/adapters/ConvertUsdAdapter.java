@@ -51,6 +51,7 @@ public class ConvertUsdAdapter extends BaseAdapter {
       return 1.0;
     }
     Long value = JobSubscriber.getJobResultById(initiator.getJobSpecID());
+    log.info("Get USDT/USD rate job id: {} | aggregator address: {} | result: {}", initiator.getJobSpecID(), initiator.getAddress(), value);
     return value / 1000000.0;
   }
 }

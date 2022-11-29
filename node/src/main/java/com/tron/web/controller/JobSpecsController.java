@@ -111,6 +111,7 @@ public class JobSpecsController {
   @GetMapping(value = "/result/{jobId}")
   public R getJobResult(@PathVariable("jobId") String jobId) {
     try {
+      log.info("Get result by job id: {}", jobId);
       Long value = JobSubscriber.getJobResultById(jobId);
 
       return R.ok().put("data", value);

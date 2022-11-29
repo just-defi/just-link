@@ -31,6 +31,7 @@ public class JustSwapAdapter extends BaseAdapter {
   public R perform(R input) {
     R result = new R();
     double value = getPairPrice();
+    log.info("JustSwap Pair: {} | Result: {}", pair, value);
     if (Math.abs(value) > 0.000000001) {
       result.put("result", value);
     } else {
