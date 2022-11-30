@@ -10,6 +10,7 @@ import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.HttpStatus;
 import org.apache.http.NameValuePair;
@@ -23,7 +24,7 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
-
+@Slf4j
 public class HttpUtil {
 
   private static RequestConfig requestConfig = RequestConfig.custom()
@@ -126,6 +127,7 @@ public class HttpUtil {
       httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
       HttpResponse response = client.execute(httpGet);
       if (response == null) {
+        log.error("Http response is null");
         return null;
       }
       int status = response.getStatusLine().getStatusCode();
@@ -142,6 +144,7 @@ public class HttpUtil {
           }
           response = client.execute(httpGet);
           if (response == null) {
+            log.error("Http response is null");
             break;
           }
           retry++;
@@ -153,6 +156,7 @@ public class HttpUtil {
       }
       return EntityUtils.toString(response.getEntity());
     } catch (Exception e) {
+      log.error("Http Exception: {}", e.getMessage());
       return null;
     } finally {
       client.close();
