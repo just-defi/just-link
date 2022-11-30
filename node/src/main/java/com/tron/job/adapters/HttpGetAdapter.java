@@ -41,7 +41,7 @@ public class HttpGetAdapter extends BaseAdapter {
     try {
       response = HttpUtil.requestWithRetry(url);
     } catch (IOException e) {
-      log.error("parse response failed, err:" + e.getMessage());
+      log.error("Http Request failed, err:" + e.getMessage(), e);
     }
 
     if (!Strings.isNullOrEmpty(response)) {
@@ -62,7 +62,7 @@ public class HttpGetAdapter extends BaseAdapter {
       } catch (Exception e) {
         result.replace("code", 1);
         result.replace("msg", "parse response failed, url:" + url);
-        log.error("parse response failed, url:" + url);
+        log.error("parse response failed, url:" + url, e);
       }
     } else {
       result.replace("code", 1);

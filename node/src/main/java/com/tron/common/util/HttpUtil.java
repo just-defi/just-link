@@ -24,33 +24,35 @@ import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+
 @Slf4j
 public class HttpUtil {
 
   private static RequestConfig requestConfig = RequestConfig.custom()
-          .setSocketTimeout(5000).setConnectTimeout(5000).build();
+    .setSocketTimeout(5000).setConnectTimeout(5000).build();
   private static CloseableHttpClient client =
-          HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
+    HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
 
-  public static String get(String scheme, String host, String path, Map<String, String> paramMap) throws IOException {
+  public static String get(String scheme, String host, String path, Map<String, String> paramMap)
+    throws IOException {
     List<NameValuePair> params = new ArrayList<>();
     paramMap.keySet().forEach(
-            k -> {
-              params.add(new BasicNameValuePair(k, paramMap.get(k)));
-            }
+      k -> {
+        params.add(new BasicNameValuePair(k, paramMap.get(k)));
+      }
     );
     URI uri = null;
     try {
       uri = new URIBuilder().setScheme(scheme).setHost(host).setPath(path)
-              .setParameters(params)
-              .build();
+        .setParameters(params)
+        .build();
     } catch (URISyntaxException e) {
       e.printStackTrace();
       return null;
     }
 
     CloseableHttpClient client =
-            HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
+      HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     HttpGet httpGet = new HttpGet(uri);
     httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     try (CloseableHttpResponse response = client.execute(httpGet)) {
@@ -63,24 +65,25 @@ public class HttpUtil {
     }
   }
 
-  public static String post(String scheme, String host, String path, Map<String, Object> paramMap) throws IOException, URISyntaxException {
+  public static String post(String scheme, String host, String path, Map<String, Object> paramMap)
+    throws IOException, URISyntaxException {
     ObjectMapper mapper = new ObjectMapper();
     String jsonString = mapper.writeValueAsString(paramMap);
     StringEntity entity = new StringEntity(jsonString, "UTF-8");
     URI uri = null;
     try {
       uri = new URIBuilder()
-              .setScheme(scheme)
-              .setHost(host)
-              .setPath(path)
-              .build();
+        .setScheme(scheme)
+        .setHost(host)
+        .setPath(path)
+        .build();
     } catch (URISyntaxException e) {
       e.printStackTrace();
       throw e;
     }
 
     CloseableHttpClient client =
-            HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
+      HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     HttpPost httpPost = new HttpPost(uri);
     httpPost.setEntity(entity);
     httpPost.setHeader("Content-Type", "application/json;charset=utf8");
@@ -120,7 +123,7 @@ public class HttpUtil {
 
   public static String requestWithRetry(String url) throws IOException {
     CloseableHttpClient client =
-            HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
+      HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     try {
       URI uri = new URI(url);
       HttpGet httpGet = new HttpGet(uri);
@@ -131,6 +134,7 @@ public class HttpUtil {
         return null;
       }
       int status = response.getStatusLine().getStatusCode();
+      log.debug("Call Url={} , status={}", url, status);
       if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
         int retry = 1;
         while (true) {
@@ -140,7 +144,7 @@ public class HttpUtil {
           try {
             Thread.sleep(100 * retry);
           } catch (InterruptedException e) {
-            e.printStackTrace();
+            log.error("InterruptedException: {}", e.getMessage(), e);
           }
           response = client.execute(httpGet);
           if (response == null) {
@@ -156,7 +160,7 @@ public class HttpUtil {
       }
       return EntityUtils.toString(response.getEntity());
     } catch (Exception e) {
-      log.error("Http Exception: {}", e.getMessage());
+      log.error("Http Exception: {}", e.getMessage(), e);
       return null;
     } finally {
       client.close();
