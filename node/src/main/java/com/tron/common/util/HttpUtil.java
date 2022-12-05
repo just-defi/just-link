@@ -29,7 +29,7 @@ import org.apache.http.util.EntityUtils;
 public class HttpUtil {
 
   private static RequestConfig requestConfig = RequestConfig.custom()
-    .setSocketTimeout(5000).setConnectTimeout(5000).build();
+    .setSocketTimeout(15000).setConnectTimeout(15000).build();
   private static CloseableHttpClient client =
     HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
 
