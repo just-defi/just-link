@@ -21,3 +21,4 @@ node:
   cacheEnable: true
   minFeeLimit: 50000000
   tronApiKey: set_the_proper_apikey
+  usdtUsdAggregator: "TYWY6L4mECH2Gtiq3sg4zY4fvD1XZpwGrb"

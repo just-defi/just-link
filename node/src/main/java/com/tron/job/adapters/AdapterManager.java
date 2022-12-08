@@ -24,7 +24,7 @@ public class AdapterManager {
         adapter = new MultiplyAdapter(params.getTimes());
         break;
       case Constant.TASK_TYPE_CONVERT_USD:
-        adapter = new ConvertUsdAdapter();
+        adapter = ConvertUsdAdapter.getInstance();
         break;
       case Constant.TASK_TYPE_TRON_TX:
         String tronTxType = "";
