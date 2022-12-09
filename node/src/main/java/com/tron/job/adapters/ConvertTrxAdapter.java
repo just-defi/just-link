@@ -42,6 +42,7 @@ public class ConvertTrxAdapter extends BaseAdapter {
 
     if (!Strings.isNullOrEmpty(response)) {
       try {
+        log.info("Convert TRX Request: {} | Response {}", url, response);
         JsonElement data = JsonParser.parseString(response);
 
         String[] paths = path.split("\\.");
