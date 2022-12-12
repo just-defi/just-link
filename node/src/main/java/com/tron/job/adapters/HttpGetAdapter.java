@@ -40,6 +40,7 @@ public class HttpGetAdapter extends BaseAdapter {
     String response = null;
     try {
       response = HttpUtil.requestWithRetry(url);
+      log.info("HttpGet Request: {} | Response: {}", url, response);
     } catch (IOException e) {
       log.error("Http Request failed, err:" + e.getMessage(), e);
     }
@@ -58,7 +59,6 @@ public class HttpGetAdapter extends BaseAdapter {
         }
         double value = data.getAsDouble();
         result.put("result", value);
-        log.info("HttpGet Request: {} | Response: {}", url, response);
       } catch (Exception e) {
         result.replace("code", 1);
         result.replace("msg", "parse response failed, url:" + url);
