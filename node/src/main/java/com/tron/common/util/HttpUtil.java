@@ -129,6 +129,7 @@ public class HttpUtil {
       HttpGet httpGet = new HttpGet(uri);
       httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
       HttpResponse response = client.execute(httpGet);
+      log.info("HttpGet Request: {} | Response: {}", url, response);
       if (response == null) {
         log.error("Http response is null");
         return null;
