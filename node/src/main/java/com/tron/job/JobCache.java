@@ -131,9 +131,11 @@ public class JobCache {
           taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
         break;
       }
+      log.info("{} Task executing: {}", jobId, taskSpec.getType());
 
       BaseAdapter adapter = AdapterManager.getAdapter(taskSpec);
       R r = adapter.perform(preTaskResult);
+      log.info("{} Task executed: {} | Result: {}", jobId, taskSpec.getType(), r);
       if (r.get("code").equals(0)) {
         preTaskResult.replace("result", r.get("result"));
       } else {

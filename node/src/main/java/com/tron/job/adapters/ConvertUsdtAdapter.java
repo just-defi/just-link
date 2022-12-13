@@ -35,7 +35,7 @@ public class ConvertUsdtAdapter extends BaseAdapter {
       result.replace("msg", "convert USDT failed");
       log.error("convert USDT failed, msg: {}", e.getMessage());
     }
-
+    log.info("Convert USDT result: {}", result);
     return result;
   }
 }
