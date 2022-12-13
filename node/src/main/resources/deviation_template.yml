@@ -14,8 +14,4 @@ pairs:
 
 
 nodeServer:
-  - {host: @{ip}, port: @{port} }
-
-jobs:
-  TRX-USD:
-    - @{jobid}
+  - {host: @{ip}, port: @{port}，alias: @{node name}}

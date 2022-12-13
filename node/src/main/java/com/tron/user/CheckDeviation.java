@@ -24,6 +24,8 @@ import java.net.URISyntaxException;
 import java.util.*;
 import java.util.concurrent.*;
 
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
@@ -46,6 +48,8 @@ public class CheckDeviation {
   private static boolean updateFlag = false;
   private static HashMap<String, Long> updateTimeMap;
 
+  private static HashMap<String, PairInfo> pairInfoMap;
+
   public static void main(String[] args) {
     Args argv = new Args();
     JCommander jct = JCommander.newBuilder()
@@ -65,6 +69,9 @@ public class CheckDeviation {
       }
       if (!Strings.isNullOrEmpty(config.getFullnode())) {
         fullnode = config.getFullnode();
+      }
+      if (!config.getPairs().isEmpty()) {
+        pairInfoMap = config.getPairs().stream().collect(Collectors.toMap(PairInfo::getName, Function.identity(), (prev, next) -> next, HashMap::new));
       }
       start();
     } catch (FileNotFoundException e) {
@@ -154,22 +161,25 @@ public class CheckDeviation {
   }
 
   private static long getAggPrice(String pair) {
-    List<String> jobs = config.getJobs().get(pair);
-    if (jobs == null) {
-      log.error("can not get jobUrls, pair: {}", pair);
-      throw new RuntimeException("can get jobUrls");
-    }
     List<Long> priceList = Lists.newArrayList();
-    for (int i = 0; i < jobs.size(); i++) {
-      Map<String, Object> server = config.getNodeServer().get(i);
-      priceList.add(getPrice(
-          String.format("http://%s:%d/job/result/%s",
-              server.get("host"), server.get("port"), jobs.get(i))
-      ));
+    List<String> hostPriceList = Lists.newArrayList();
+    for (int i = 0; i < config.getNodeServer().size(); i++) {
+      Object host = config.getNodeServer().get(i).get("host");
+      Object port = config.getNodeServer().get(i).get("port");
+      String alias = String.valueOf(config.getNodeServer().get(i).get("alias"));
+      String jobId = getJobId(String.format("http://%s:%d/job/active/%s", host, port, pairInfoMap.get(pair).getContract()), alias);
+      if (jobId == null) {
+        log.error("can not get jobUrls, pair: {}", pair);
+        throw new RuntimeException("can get jobUrls");
+      }
+      Long price = getPrice(String.format("http://%s:%d/job/result/%s", host, port, jobId), alias);
+      priceList.add(price);
+      hostPriceList.add(getHostWithPrice(alias, price));
     }
-    Long[] priceArr = priceList.toArray(new Long[priceList.size()]);
+
+    Long[] priceArr = priceList.toArray(new Long[0]);
     Arrays.sort(priceArr);
-    log.info("pair: {}, price: {}", pair, priceArr);
+    log.info("pair: {}, price: {}", pair, hostPriceList.toArray(new String[0]));
     return priceArr[priceArr.length / 2];
   }
 
@@ -197,10 +207,11 @@ public class CheckDeviation {
     }
   }
 
-  private static long getPrice(String jobUrl) {
+  private static long getPrice(String jobUrl, String alias) {
     long price = 0;
     try {
       String response = HttpUtil.getByUri(jobUrl);
+      log.info("Get price from {} | {}, response = {}", alias, jobUrl, response);
       if (!Strings.isNullOrEmpty(response)) {
         JsonObject data = (JsonObject) JsonParser.parseString(response);
         return data.getAsJsonPrimitive("data").getAsLong();
@@ -280,6 +291,27 @@ public class CheckDeviation {
     for (PairInfo pairInfo : config.getPairs()) {
       deviationMap.put(pairInfo.getContract(), pairInfo.getDeviation());
     }
+  }
+
+  private static String getHostWithPrice(Object host, Long price) {
+    return String.format("%s - %d", host, price);
+  }
+
+  private static String getJobId(String uri, String alias) {
+    String jobId = null;
+    try {
+      String response = HttpUtil.getByUri(uri);
+      log.info("Get jobId from {} | {}, response = {}", alias, uri, response);
+      if (!Strings.isNullOrEmpty(response)) {
+        JsonObject data = (JsonObject) JsonParser.parseString(response);
+        return data.getAsJsonPrimitive("data").getAsString();
+      } else {
+        log.error("[alarm]getJobId fail. contract=" + uri);
+      }
+    } catch (Exception e) {
+      e.printStackTrace();
+    }
+    return jobId;
   }
 
   static class Args {

@@ -20,8 +20,6 @@ public class DeviationConfig {
   private BigInteger feelimit;
   private List<PairInfo> pairs;
   private List<Map<String, Object>> nodeServer;
-  private Map<String, List<String>> jobs;
-
   private static DeviationConfig config = null;
 
   public static DeviationConfig loadConfig(String confPath) throws FileNotFoundException {
