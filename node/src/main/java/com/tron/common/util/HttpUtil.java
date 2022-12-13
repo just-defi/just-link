@@ -129,13 +129,12 @@ public class HttpUtil {
       HttpGet httpGet = new HttpGet(uri);
       httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
       HttpResponse response = client.execute(httpGet);
-      log.info("HttpGet Request: {} | Response: {}", url, response);
       if (response == null) {
         log.error("Http response is null");
         return null;
       }
       int status = response.getStatusLine().getStatusCode();
-      log.debug("Call Url={} , status={}", url, status);
+      log.info("Call Url={} , status={}, raw response={}", url, status, response);
       if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
         int retry = 1;
         while (true) {

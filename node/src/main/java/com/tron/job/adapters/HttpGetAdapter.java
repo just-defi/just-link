@@ -40,6 +40,7 @@ public class HttpGetAdapter extends BaseAdapter {
     String response = null;
     try {
       response = HttpUtil.requestWithRetry(url);
+      log.info("HttpGet Request: {} | Response: {}", url, response);
     } catch (IOException e) {
       log.error("Http Request failed, err:" + e.getMessage(), e);
     }
