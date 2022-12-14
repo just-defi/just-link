@@ -5,6 +5,7 @@ import static com.tron.common.Constant.HTTP_MAX_RETRY_TIME;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tron.common.Config;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
@@ -125,46 +126,78 @@ public class HttpUtil {
     CloseableHttpClient client =
       HttpClientBuilder.create().setDefaultRequestConfig(requestConfig).build();
     try {
-      URI uri = new URI(url);
-      HttpGet httpGet = new HttpGet(uri);
-      httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
-      HttpResponse response = client.execute(httpGet);
-      if (response == null) {
-        log.error("Http response is null");
-        return null;
-      }
-      int status = response.getStatusLine().getStatusCode();
-      log.info("Call Url={} , status={}, raw response={}", url, status, response);
-      if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
-        int retry = 1;
-        while (true) {
-          if (retry > HTTP_MAX_RETRY_TIME) {
-            break;
-          }
-          try {
-            Thread.sleep(100 * retry);
-          } catch (InterruptedException e) {
-            log.error("InterruptedException: {}", e.getMessage(), e);
-          }
-          response = client.execute(httpGet);
-          if (response == null) {
-            log.error("Http response is null");
-            break;
-          }
-          retry++;
-          status = response.getStatusLine().getStatusCode();
-          if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
-            break;
-          }
-        }
-      }
-      return EntityUtils.toString(response.getEntity());
+      return requestHandleTimeout(client, url);
     } catch (Exception e) {
       log.error("Http Exception: {}", e.getMessage(), e);
       return null;
     } finally {
       client.close();
     }
+  }
+
+  private static String requestHandleTimeout(CloseableHttpClient client, String url) throws Exception {
+    URI uri = new URI(url);
+    HttpGet httpGet = new HttpGet(uri);
+    httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
+    String response = null;
+    int retry = 0;
+
+    try {
+      response = serverUnavailableRetry(client, httpGet, url);
+    } catch (SocketTimeoutException socketTimeoutException) {
+      //Catch read time out and retry
+      log.info("Socket timeout entering retry {}", url);
+      retry++;
+      while (true) {
+        if (retry > HTTP_MAX_RETRY_TIME) {
+          log.error("Max http retry reached");
+          break;
+        }
+        try {
+          response = serverUnavailableRetry(client, httpGet, url);
+          log.info("Number {} retry for {}, response = {}", retry, url, response);
+          break;
+        } catch (SocketTimeoutException ste) {
+          retry++;
+        }
+      }
+    }
+    log.info("{} returned result with {} socket timeout retry", url, retry);
+    return response;
+  }
+
+  private static String serverUnavailableRetry(CloseableHttpClient client, HttpGet httpGet, String url) throws Exception {
+    HttpResponse response = client.execute(httpGet);
+    if (response == null) {
+      log.error("Http response is null");
+      return null;
+    }
+    int status = response.getStatusLine().getStatusCode();
+    log.info("Call Url={} , status={}, raw response={}", url, status, response);
+    if (status == HttpStatus.SC_SERVICE_UNAVAILABLE) {
+      int retry = 1;
+      while (true) {
+        if (retry > HTTP_MAX_RETRY_TIME) {
+          break;
+        }
+        try {
+          Thread.sleep(100 * retry);
+        } catch (InterruptedException e) {
+          log.error("InterruptedException: {}", e.getMessage(), e);
+        }
+        response = client.execute(httpGet);
+        if (response == null) {
+          log.error("Http response is null");
+          break;
+        }
+        retry++;
+        status = response.getStatusLine().getStatusCode();
+        if (status != HttpStatus.SC_SERVICE_UNAVAILABLE) {
+          break;
+        }
+      }
+    }
+    return EntityUtils.toString(response.getEntity());
   }
 
 }
