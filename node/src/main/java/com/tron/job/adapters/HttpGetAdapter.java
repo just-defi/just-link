@@ -44,9 +44,9 @@ public class HttpGetAdapter extends BaseAdapter {
     if (!Strings.isNullOrEmpty(response)) {
       try {
         result.put("result", parseResponse(response));
-      } catch (NullPointerException | MalformedJsonException ex) {
+      } catch (Exception e) {
         //Catch exception during response parsing and retry
-        log.info("{} when parsing response {} from {}", ex.getClass().getSimpleName(), response, url);
+        log.info("{} when parsing response {} from {}", e.getClass().getSimpleName(), response, url);
         retry++;
         while (true) {
           if (retry > HTTP_MAX_RETRY_TIME) {
@@ -58,15 +58,11 @@ public class HttpGetAdapter extends BaseAdapter {
             result.put("result", parseResponse(response));
             log.info("Number {} retry for {}, parsed response = {}", retry, url, result.get("result"));
             break;
-          } catch (Exception exception) {
-            log.info("{} encountered during retry", exception.getClass().getSimpleName());
+          } catch (Exception ex) {
+            log.info("{} encountered during retry", ex.getClass().getSimpleName());
             retry++;
           }
         }
-      } catch (Exception e) {
-        result.replace("code", 1);
-        result.replace("msg", "parse response failed, url:" + url);
-        log.error("parse response failed, url:" + url, e);
       }
     } else {
       result.replace("code", 1);

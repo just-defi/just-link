@@ -145,9 +145,9 @@ public class HttpUtil {
 
     try {
       response = serverUnavailableRetry(client, httpGet, url);
-    } catch (SocketTimeoutException | ConnectTimeoutException ex) {
+    } catch (SocketTimeoutException | ConnectTimeoutException e) {
       //Catch read time out and retry
-      log.info("{} entering retry {}", ex.getClass().getSimpleName(), url);
+      log.info("{} entering retry {}", e.getClass().getSimpleName(), url);
       retry++;
       while (true) {
         if (retry > HTTP_MAX_RETRY_TIME) {
@@ -158,8 +158,8 @@ public class HttpUtil {
           response = serverUnavailableRetry(client, httpGet, url);
           log.info("Number {} retry for {}, response = {}", retry, url, response);
           break;
-        } catch (SocketTimeoutException | ConnectTimeoutException exception) {
-          log.error("{} encountered during retry", exception.getClass().getSimpleName());
+        } catch (SocketTimeoutException | ConnectTimeoutException ex) {
+          log.error("{} encountered during retry", ex.getClass().getSimpleName());
           retry++;
         }
       }
