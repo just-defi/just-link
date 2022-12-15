@@ -20,6 +20,7 @@ import org.apache.http.client.methods.CloseableHttpResponse;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.conn.ConnectTimeoutException;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
@@ -144,9 +145,9 @@ public class HttpUtil {
 
     try {
       response = serverUnavailableRetry(client, httpGet, url);
-    } catch (SocketTimeoutException socketTimeoutException) {
+    } catch (SocketTimeoutException | ConnectTimeoutException ex) {
       //Catch read time out and retry
-      log.info("Socket timeout entering retry {}", url);
+      log.info("{} entering retry {}", ex.getClass().getSimpleName(), url);
       retry++;
       while (true) {
         if (retry > HTTP_MAX_RETRY_TIME) {
@@ -157,7 +158,8 @@ public class HttpUtil {
           response = serverUnavailableRetry(client, httpGet, url);
           log.info("Number {} retry for {}, response = {}", retry, url, response);
           break;
-        } catch (SocketTimeoutException ste) {
+        } catch (SocketTimeoutException | ConnectTimeoutException exception) {
+          log.error("{} encountered during retry", exception.getClass().getSimpleName());
           retry++;
         }
       }
