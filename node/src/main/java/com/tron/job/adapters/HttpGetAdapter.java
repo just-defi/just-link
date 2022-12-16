@@ -39,7 +39,7 @@ public class HttpGetAdapter extends BaseAdapter {
   public R perform(R input) {
     R result  = new R();
     String response = getByUrl();
-    int retry = 0;
+    int retry = 1;
 
     if (!Strings.isNullOrEmpty(response)) {
       try {
@@ -47,7 +47,6 @@ public class HttpGetAdapter extends BaseAdapter {
       } catch (Exception e) {
         //Catch exception during response parsing and retry
         log.info("{} when parsing response {} from {}", e.getClass().getSimpleName(), response, url);
-        retry++;
         while (true) {
           if (retry > HTTP_MAX_RETRY_TIME) {
             log.error("Max parse response retry reached");
@@ -69,7 +68,7 @@ public class HttpGetAdapter extends BaseAdapter {
       result.replace("msg", "request failed, url:" + url);
       log.error("request failed, url:" + url);
     }
-    log.info("{} result parsed with {} parsing retry", url, retry);
+    log.info("{} result parsed with {} parsing retry", url, retry-1);
     return result;
   }
 

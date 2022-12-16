@@ -141,14 +141,13 @@ public class HttpUtil {
     HttpGet httpGet = new HttpGet(uri);
     httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     String response = null;
-    int retry = 0;
+    int retry = 1;
 
     try {
       response = serverUnavailableRetry(client, httpGet, url);
     } catch (SocketTimeoutException | ConnectTimeoutException e) {
       //Catch read time out and retry
       log.info("{} entering retry {}", e.getClass().getSimpleName(), url);
-      retry++;
       while (true) {
         if (retry > HTTP_MAX_RETRY_TIME) {
           log.error("Max http retry reached");
@@ -164,7 +163,7 @@ public class HttpUtil {
         }
       }
     }
-    log.info("{} returned result with {} socket timeout retry", url, retry);
+    log.info("{} returned result with {} socket timeout retry", url, retry-1);
     return response;
   }
 
