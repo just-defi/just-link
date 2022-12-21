@@ -42,7 +42,7 @@ const columns = [
 ];
 
 const merge = (target, source, key) => {
-    return target.filter(targetEle => !source.some(sourceEle => targetEle[key] === sourceEle[key])).concat(source);
+  return target.filter(targetEle => !source.some(sourceEle => targetEle[key] === sourceEle[key])).concat(source);
 }
 
 
@@ -170,6 +170,7 @@ class Jobs extends Component {
     this.setState({
       visible: false,
     });
+    delete this.props.location.state;
   };
 
   onTextChange = (e) => {
@@ -279,22 +280,20 @@ class Jobs extends Component {
           ]}
       >
         <div>
-            <span>Host Node</span>
-            <Select
-                defaultValue={{ key: API_URL }}
-                autoFocus={true}
-                onSelect={this.onSelectChange}
-                optionLabelProp='label'
-                style={{ width: '100%', marginBottom: 16 }}
-                labelInValue={true}
-                disabled={!!textValue}
-            >
-                {API_URLS.map((url, idx) => (
-                    <Option key={url.value} value={url.value} label={url.text + " - " + url.value}>{url.text + " - " + url.value}</Option>
-                ))}
-            </Select>
-          <span>{JSON.stringify(Object.keys(this.state))}</span>
-          <span>{JSON.stringify(this.props)}</span>
+          <span>Host Node</span>
+          <Select
+              defaultValue={{ key: API_URL }}
+              autoFocus={true}
+              onSelect={this.onSelectChange}
+              optionLabelProp='label'
+              style={{ width: '100%', marginBottom: 16 }}
+              labelInValue={true}
+              disabled={!!this.props.location.state}
+          >
+            {API_URLS.map((url, idx) => (
+                <Option key={url.value} value={url.value} label={url.text + " - " + url.value}>{url.text + " - " + url.value}</Option>
+            ))}
+          </Select>
         </div>
         <TextArea
             label="JSON Blob"
