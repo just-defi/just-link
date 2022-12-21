@@ -294,7 +294,7 @@ class Jobs extends Component {
                 ))}
             </Select>
           <span>{JSON.stringify(Object.keys(this.state))}</span>
-          <span>{JSON.stringify((this.props.history))}</span>
+          <span>{JSON.stringify(this.props)}</span>
         </div>
         <TextArea
             label="JSON Blob"
