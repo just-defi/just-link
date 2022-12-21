@@ -53,7 +53,10 @@ function getClientEnvironment(publicUrl) {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PUBLIC_URL: publicUrl,
         API_URL: process.env.API_URL || `http://localhost:8080`,
-        API_URLS: process.env.API_URLS || [{text:"winklink-price-001" ,value:"http://localhost:8080"}, {text:"winklink-price-002", value:"http://localhost:8081"}],
+        API_URLS: process.env.API_URLS || [
+            {text:"winklink-price-001" ,value:"http://localhost:8080"},
+            {text:"winklink-price-002", value:"http://localhost:8081"}
+        ],
       }
     );
   console.log("Raw : ", raw);

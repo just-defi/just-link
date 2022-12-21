@@ -147,7 +147,7 @@ class JobDetail extends Component {
       if (result.error) {
         this.error(result.error)
       }
-      if(result.data.msg=='success'){
+      if(result.data.msg === 'success'){
         this.success()
       } else{
         this.error(result.data.msg)
@@ -161,7 +161,7 @@ class JobDetail extends Component {
     this.setState({taskList:task})
   }
 
-  duplicate = () => {
+  edit = () => {
     let {code} = this.state;
     this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true } })
   }
@@ -199,7 +199,7 @@ class JobDetail extends Component {
             <Button onClick={this.delete}>Archive</Button>
           </div>
           <div style={{float:'right',marginLeft:'10px'}}>
-            <Button onClick={this.duplicate}>Duplicate</Button>
+            <Button onClick={this.edit}>Edit</Button>
           </div>
           <div style={{float:'right',marginLeft:'10px'}}>
             <CopyToClipboard text={JSON.stringify(code)}>

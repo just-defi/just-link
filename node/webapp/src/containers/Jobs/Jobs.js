@@ -1,5 +1,5 @@
 import React, {Component, Fragment} from 'react';
-import {Table, Row, PageHeader, Button, Modal, Input, Tabs} from 'antd';
+import {Table, Row, PageHeader, Button, Modal, Input, Tabs, Select} from 'antd';
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
@@ -8,6 +8,7 @@ import {getNonVrfFromDataSource} from "../../utils/getNonVrfFromDataSource";
 
 const {TextArea} = Input;
 const {TabPane} = Tabs;
+const { Option } = Select;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
@@ -40,6 +41,11 @@ const columns = [
   },
 ];
 
+const merge = (target, source, key) => {
+    return target.filter(targetEle => !source.some(sourceEle => targetEle[key] === sourceEle[key])).concat(source);
+}
+
+
 class Jobs extends Component {
 
   constructor() {
@@ -55,6 +61,7 @@ class Jobs extends Component {
       size: 10,
       total: 50,
       vrfTotal: 50,
+      jobURL: API_URL,
     };
   }
 
@@ -98,26 +105,30 @@ class Jobs extends Component {
 
   getJobs = (page) => {
     this.setState({loading: true});
-    let priceServiceJobsInNodes = [];
     try {
       API_URLS.forEach((node) => {
         xhr.get(node.value + "/job/specs?page=" + page + "&size=10").then(
             (result) => {
-              let data = result.data.data;
-              priceServiceJobsInNodes = getNonVrfFromDataSource(data, node).concat(priceServiceJobsInNodes);
-              this.setState({
-                node: priceServiceJobsInNodes,
-                total: priceServiceJobsInNodes.length,
-              });
-            });
+              if (result.status === 200) {
+                const results = merge(getNonVrfFromDataSource(result.data.data, node), this.state.node, "ID");
+                this.setState({
+                  node: results,
+                  total: results.length,
+                })
+              }
+            }
+        )
       });
-      this.setState({
-        loading: false,
-      });
+      this.setState({loading: false});
     } catch (e) {
 
     }
   }
+
+  onSelectChange = (e) => {
+    this.setState({jobURL: e.key});
+  }
+
 
   onChange = (pageNumber) => {
     this.setState({currentPage: pageNumber.current})
@@ -139,20 +150,20 @@ class Jobs extends Component {
     }
     this.setState({warning: false, visible: false});
 
-    await xhr.post(API_URL + "/job/specs",
-        JSON.parse(this.state.textValue)).then((result) => {
+    await xhr.post(this.state.jobURL + "/job/specs",
+       JSON.parse(this.state.textValue)).then((result) => {
 
-      if (result.error) {
-        this.error(result.error)
-      }
-      if (result.data.msg == 'success') {
-        this.success()
-      } else {
-        this.error(result.data.msg)
-      }
-    }).catch((e) => {
-      this.error(e.toString())
-    });
+     if (result.error) {
+       this.error(result.error)
+     }
+     if (result.data.msg === 'success') {
+       this.success()
+     } else {
+       this.error(result.data.msg)
+     }
+   }).catch((e) => {
+     this.error(e.toString())
+   });
   };
 
   handleCancel = e => {
@@ -267,6 +278,24 @@ class Jobs extends Component {
             </Button>
           ]}
       >
+        <div>
+            <span>Host Node</span>
+            <Select
+                defaultValue={{ key: API_URL }}
+                autoFocus={true}
+                onSelect={this.onSelectChange}
+                optionLabelProp='label'
+                style={{ width: '100%', marginBottom: 16 }}
+                labelInValue={true}
+                disabled={!!textValue}
+            >
+                {API_URLS.map((url, idx) => (
+                    <Option key={url.value} value={url.value} label={url.text + " - " + url.value}>{url.text + " - " + url.value}</Option>
+                ))}
+            </Select>
+          <span>{JSON.stringify(Object.keys(this.state))}</span>
+          <span>{JSON.stringify((this.props.history))}</span>
+        </div>
         <TextArea
             label="JSON Blob"
             rows={10}
