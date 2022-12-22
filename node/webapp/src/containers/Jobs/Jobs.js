@@ -1,14 +1,12 @@
 import React, {Component, Fragment} from 'react';
-import {Table, Row, PageHeader, Button, Modal, Input, Tabs, Select} from 'antd';
+import {Button, Input, Modal, PageHeader, Row, Select, Table} from 'antd';
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
-import {getVrfFromDataSource} from "../../utils/getVrfFromDataSource";
-import {getNonVrfFromDataSource} from "../../utils/getNonVrfFromDataSource";
+import {extractTaskHttpGet} from "../../utils/extractTaskHttpGet";
 
 const {TextArea} = Input;
-const {TabPane} = Tabs;
-const { Option } = Select;
+const {Option} = Select;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
@@ -22,7 +20,10 @@ const columns = [
   {
     title: 'Initiator',
     dataIndex: 'Initiator',
+    filters: [{text: 'Price Service', value:'runlog'}, {text:'VRF', value:'randomnesslog'}],
+    onFilter: (record, value)=> value.Initiator === record,
     key: 'Initiator',
+    ellipsis: true,
   },
   {
     title: 'Created',
@@ -52,23 +53,18 @@ class Jobs extends Component {
     super();
     this.state = {
       loading: false,
-      vrfLoading: false,
       warning: false,
       visible: false,
-      node: [],
-      vrfNode: [],
+      dataSource: [],
       currentPage: 1,
       size: 10,
       total: 50,
-      vrfTotal: 50,
       jobURL: API_URL,
     };
   }
 
   componentDidMount() {
-    console.log("API_URLS: ", API_URLS);
     this.getJobs(1);
-    this.getVrfs(1);
     if (this.props.location.state && this.props.location.state.create) {
       this.showModal();
       let input = eval('(' + this.props.location.state.code + ')');
@@ -76,51 +72,35 @@ class Jobs extends Component {
     }
   }
 
-  componentWillReceiveProps() {
-  }
+  componentWillReceiveProps() {}
 
-  getVrfs = (page) => {
-    this.setState({vrfLoading: true});
-    let vrfJobsInNodes = [];
+  getJobs = (page) => {
+    this.setState({loading:true});
     try {
-      API_URLS.forEach((node)=> {
-        console.log("Node: ", node);
-        xhr.get(node.value + "/job/specs?page=" + page + "&size=10").then(
-            (result) => {
-              let data = result.data.data;
-              vrfJobsInNodes = getVrfFromDataSource(data, node).concat(vrfJobsInNodes);
+      API_URLS.forEach((api) => {
+        xhr.get(api.value + "/job/specs?page=" + page + "&size=10").then(
+            (response) => {
+              let data = response.data.data;
+              let dataSource = [];
+              data.forEach((item, index) => {
+                let type = item.initiators[0].type;
+                dataSource[index] = {
+                  key: index,
+                  ID: item.id,
+                  Initiator: type,
+                  Created: item.createdAt,
+                  Node: api.text,
+                  DataSource: type === "randomnesslog" ? "VRF" : extractTaskHttpGet(item),
+                }
+              })
               this.setState({
-                vrfNode: vrfJobsInNodes,
-                vrfTotal: vrfJobsInNodes.length,
+                loading: false,
+                dataSource: dataSource,
+                total: response.data.count
               });
             });
       });
-      this.setState({
-        vrfLoading: false,
-      });
-    } catch (e) {
-
-    }
-  }
-
-  getJobs = (page) => {
-    this.setState({loading: true});
-    try {
-      API_URLS.forEach((node) => {
-        xhr.get(node.value + "/job/specs?page=" + page + "&size=10").then(
-            (result) => {
-              if (result.status === 200) {
-                const results = merge(getNonVrfFromDataSource(result.data.data, node), this.state.node, "ID");
-                this.setState({
-                  node: results,
-                  total: results.length,
-                })
-              }
-            }
-        )
-      });
-      this.setState({loading: false});
-    } catch (e) {
+    } catch(e) {
 
     }
   }
@@ -128,7 +108,6 @@ class Jobs extends Component {
   onSelectChange = (e) => {
     this.setState({jobURL: e.key});
   }
-
 
   onChange = (pageNumber) => {
     this.setState({currentPage: pageNumber.current})
@@ -150,8 +129,7 @@ class Jobs extends Component {
     }
     this.setState({warning: false, visible: false});
 
-    await xhr.post(this.state.jobURL + "/job/specs",
-       JSON.parse(this.state.textValue)).then((result) => {
+    await xhr.post(API_URL+"/job/specs", JSON.parse(this.state.textValue)).then((result) => {
 
      if (result.error) {
        this.error(result.error)
@@ -192,15 +170,12 @@ class Jobs extends Component {
   render() {
     let {
       visible,
-      vrfLoading,
       loading,
       textValue,
       warning,
-      node,
-      vrfNode,
+      dataSource,
       currentPage,
-      total,
-      vrfTotal,
+      total
     } = this.state;
     return <Fragment>
 
@@ -210,60 +185,31 @@ class Jobs extends Component {
           Job</Button>
 
       </PageHeader>
+
+
       <Row gutter={16}>
-        <Tabs type="line">
-          <TabPane tab="Price Service" key="1">
 
-            <Table dataSource={node}
-                   columns={columns}
-                   loading={loading}
-                   pagination={{
-                     current: currentPage,
-                     total: total,
-                   }}
-                   onChange={this.onChange}
-                   onRow={record => {
-                     return {
-                       onClick: event => {
-                         this.props.history.push("/jobs/" + record.ID);
-                       },
-                       onMouseEnter: (event) => {
-                         $(event.target).css('cursor', 'pointer');
-                       },
-                     };
-                   }}
+        <Table
+            dataSource={dataSource}
+            columns={columns}
+            loading={loading}
+            pagination={{current: currentPage, total: total}}
+            onChange={this.onChange}
+            onRow={record => {
+              return {
+                onClick: event => {
+                  this.props.history.push("/jobs/" + record.ID);
+                },
+                onMouseEnter: (event) => {
+                  $(event.target).css('cursor', 'pointer');
+                },
+              };
+            }}
 
-            />
+        />
 
 
-          </TabPane>
-          <TabPane tab="VRF" key="2">
-
-            <Table dataSource={vrfNode}
-                   columns={columns}
-                   loading={vrfLoading}
-                   pagination={{
-                     current: currentPage,
-                     total: vrfTotal,
-                   }}
-                   onChange={this.onChange}
-                   onRow={record => {
-                     return {
-                       onClick: event => {
-                         this.props.history.push("/jobs/" + record.ID);
-                       },
-                       onMouseEnter: (event) => {
-                         $(event.target).css('cursor', 'pointer');
-                       },
-                     };
-                   }}
-            />
-
-          </TabPane>
-
-        </Tabs>
       </Row>
-
 
       <Modal
           visible={visible}
