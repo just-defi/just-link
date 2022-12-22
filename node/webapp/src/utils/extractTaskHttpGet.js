@@ -1,8 +1,9 @@
-export function extractTaskHttpGet(data) {
+export function extractTaskHttpGet(data, dataSourceArr) {
   let task = JSON.parse(data.params).tasks[0];
   if(task.type === "httpget") {
-    return task.params.get;
+    let httpGetUrl = task.params.get
+    return dataSourceArr.find(obj => httpGetUrl.includes(obj.value)).value.toUpperCase();
   } else if(task.type === "justswap") {
-    return  task.params.pool;
+    return  task.type.toUpperCase();
   }
 }

@@ -1,5 +1,5 @@
 import React, {Component, Fragment} from 'react';
-import {Button, Input, Modal, PageHeader, Row, Select, Table} from 'antd';
+import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag} from 'antd';
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
@@ -10,25 +10,26 @@ const {Option} = Select;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
+const DS_LIST = process.env.LIST_OF_DATASOURCE;
+const RANDOMNESS_LOG = 'randomnesslog';
+const VRF = 'VRF';
 
 const columns = [
   {
-    title: 'ID',
-    dataIndex: 'ID',
-    key: 'ID',
+    title: 'Contract Address',
+    dataIndex: 'Contract',
+    key: 'Contract',
   },
   {
-    title: 'Initiator',
-    dataIndex: 'Initiator',
-    filters: [{text: 'Price Service', value:'runlog'}, {text:'VRF', value:'randomnesslog'}],
-    onFilter: (record, value)=> value.Initiator === record,
-    key: 'Initiator',
-    ellipsis: true,
+    title: 'Job ID',
+    dataIndex: 'ID',
+    key: 'ID',
   },
   {
     title: 'Created',
     dataIndex: 'Created',
     key: 'Created',
+    sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
   },
   {
     title: 'Node',
@@ -36,14 +37,25 @@ const columns = [
     key: 'Node',
   },
   {
-    title: 'DataSource',
+    title: 'Data Source',
     dataIndex: 'DataSource',
     key: 'DataSource',
+    filters: DS_LIST,
+    onFilter: (record, value) => value.DataSource.toLowerCase().includes(record),
+    render: DataSource => (
+      <span>
+        <Tag color={DataSource === VRF ? 'red' : DataSource === 'JUSTSWAP' ? 'green' : 'blue'}>
+          {DataSource}
+        </Tag>
+       </span>
+
+    ),
   },
 ];
 
 const merge = (target, source, key) => {
-  return target.filter(targetEle => !source.some(sourceEle => targetEle[key] === sourceEle[key])).concat(source);
+  return target.filter(targetEle => !source.some(
+      sourceEle => targetEle[key] === sourceEle[key])).concat(source);
 }
 
 
@@ -59,60 +71,78 @@ class Jobs extends Component {
       currentPage: 1,
       size: 10,
       total: 50,
+      pagination: {
+        current: 1,
+        total: 50,
+        size: 10,
+      },
       jobURL: API_URL,
     };
-  }
+  };
 
   componentDidMount() {
-    this.getJobs(1);
+    this.getJobs(this.state.pagination);
     if (this.props.location.state && this.props.location.state.create) {
       this.showModal();
       let input = eval('(' + this.props.location.state.code + ')');
       this.setState({textValue: JSON.stringify(input, null, 4)});
     }
-  }
+  };
 
-  componentWillReceiveProps() {}
+  componentWillReceiveProps() {
+  };
 
-  getJobs = (page) => {
-    this.setState({loading:true});
+  getJobs = ({current, size}) => {
+    this.setState({loading: true});
     try {
       API_URLS.forEach((api) => {
-        xhr.get(api.value + "/job/specs?page=" + page + "&size=10").then(
+        let url = api.value + "/job/specs?page=" + current + "&size=10";
+        xhr.get(url).then(
             (response) => {
               let data = response.data.data;
               let dataSource = [];
               data.forEach((item, index) => {
                 let type = item.initiators[0].type;
+                let contractAddr = item.initiators[0].address;
                 dataSource[index] = {
-                  key: index,
+                  key: Date.now() + index,
+                  Contract: contractAddr,
                   ID: item.id,
                   Initiator: type,
                   Created: item.createdAt,
                   Node: api.text,
-                  DataSource: type === "randomnesslog" ? "VRF" : extractTaskHttpGet(item),
+                  DataSource: type === RANDOMNESS_LOG ? VRF : extractTaskHttpGet(item, DS_LIST),
                 }
               })
               this.setState({
                 loading: false,
-                dataSource: dataSource,
-                total: response.data.count
+                dataSource: merge(dataSource, this.state.dataSource, 'ID'),
+                pagination: {
+                  current: current,
+                  total: response.data.count,
+                  size: size
+                },
               });
             });
       });
     } catch(e) {
 
     }
-  }
+  };
 
   onSelectChange = (e) => {
     this.setState({jobURL: e.key});
-  }
+  };
 
   onChange = (pageNumber) => {
-    this.setState({currentPage: pageNumber.current})
-    this.getJobs(pageNumber.current);
-  }
+    const page = {
+      current: pageNumber.current,
+      total: pageNumber.total,
+      pageSize: pageNumber.pageSize,
+    };
+    this.setState({pagination: page});
+    this.getJobs(page);
+  };
 
   showModal = () => {
     this.setState({
@@ -153,19 +183,19 @@ class Jobs extends Component {
 
   onTextChange = (e) => {
     this.setState({textValue: e.target.value})
-  }
+  };
 
   success = (message) => {
     Modal.success({
       content: 'Successful!',
     });
-  }
+  };
 
   error = (message) => {
     Modal.error({
       content: message,
     });
-  }
+  };
 
   render() {
     let {
@@ -174,15 +204,15 @@ class Jobs extends Component {
       textValue,
       warning,
       dataSource,
-      currentPage,
-      total
+      pagination,
     } = this.state;
     return <Fragment>
 
       <PageHeader title="Jobs">
 
-        <Button size='large' onClick={this.showModal} style={{float: 'right'}}>Create
-          Job</Button>
+        <Button size='large' onClick={this.showModal} style={{float: 'right'}}>
+          Create Job
+        </Button>
 
       </PageHeader>
 
@@ -193,7 +223,7 @@ class Jobs extends Component {
             dataSource={dataSource}
             columns={columns}
             loading={loading}
-            pagination={{current: currentPage, total: total}}
+            pagination={{current: pagination.current, total: pagination.total}}
             onChange={this.onChange}
             onRow={record => {
               return {
@@ -205,7 +235,6 @@ class Jobs extends Component {
                 },
               };
             }}
-
         />
 
 
