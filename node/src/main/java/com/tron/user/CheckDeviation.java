@@ -169,8 +169,8 @@ public class CheckDeviation {
       String alias = String.valueOf(config.getNodeServer().get(i).get("alias"));
       String jobId = getJobId(String.format("http://%s:%d/job/active/%s", host, port, pairInfoMap.get(pair).getContract()), alias);
       if (jobId == null) {
-        log.error("can not get jobUrls, pair: {}", pair);
-        throw new RuntimeException("can get jobUrls");
+        log.error("unable to get job id from host {}, contract {}, pair: {}", host + String.valueOf(port), pairInfoMap.get(pair).getContract(), pair);
+        throw new RuntimeException("unable to get job id");
       }
       Long price = getPrice(String.format("http://%s:%d/job/result/%s", host, port, jobId), alias);
       priceList.add(price);
