@@ -72,6 +72,7 @@ function getClientEnvironment(publicUrl) {
             {text: "VRF", value: "vrf"},
             {text: "JustSwap", value:"justswap"},
         ],
+        DATASOURCE_SIZE_PER_RETRIEVAL: process.env.DATASOURCE_SIZE_PER_RETRIEVAL || 100,
       }
     );
   console.log("Raw : ", raw);

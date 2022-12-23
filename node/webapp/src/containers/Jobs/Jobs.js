@@ -1,5 +1,5 @@
 import React, {Component, Fragment} from 'react';
-import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag} from 'antd';
+import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs} from 'antd';
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
@@ -7,56 +7,16 @@ import {extractTaskHttpGet} from "../../utils/extractTaskHttpGet";
 
 const {TextArea} = Input;
 const {Option} = Select;
+const {TabPane} = Tabs;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
 const DS_LIST = process.env.LIST_OF_DATASOURCE;
+const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
 const RANDOMNESS_LOG = 'randomnesslog';
 const VRF = 'VRF';
 
-const columns = [
-  {
-    title: 'Contract Address',
-    dataIndex: 'Contract',
-    key: 'Contract',
-  },
-  {
-    title: 'Job ID',
-    dataIndex: 'ID',
-    key: 'ID',
-  },
-  {
-    title: 'Created',
-    dataIndex: 'Created',
-    key: 'Created',
-    sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
-  },
-  {
-    title: 'Node',
-    dataIndex: 'Node',
-    key: 'Node',
-  },
-  {
-    title: 'Data Source',
-    dataIndex: 'DataSource',
-    key: 'DataSource',
-    filters: DS_LIST,
-    onFilter: (record, value) => value.DataSource.toLowerCase().includes(record),
-    render: DataSource => (
-      <span>
-        <Tag color={DataSource === VRF ? 'red' : DataSource === 'JUSTSWAP' ? 'green' : 'blue'}>
-          {DataSource}
-        </Tag>
-       </span>
 
-    ),
-  },
-];
-
-const merge = (target, source, key) => {
-  return target.filter(targetEle => !source.some(
-      sourceEle => targetEle[key] === sourceEle[key])).concat(source);
-}
 
 
 class Jobs extends Component {
@@ -67,21 +27,17 @@ class Jobs extends Component {
       loading: false,
       warning: false,
       visible: false,
+      vrfDataSource: [],
       dataSource: [],
-      currentPage: 1,
-      size: 10,
-      total: 50,
-      pagination: {
-        current: 1,
-        total: 50,
-        size: 10,
-      },
+      searchText: '',
+      searchedColumn:'',
+      size: DS_SIZE,
       jobURL: API_URL,
     };
   };
 
   componentDidMount() {
-    this.getJobs(this.state.pagination);
+    this.getJobs(this.state.size);
     if (this.props.location.state && this.props.location.state.create) {
       this.showModal();
       let input = eval('(' + this.props.location.state.code + ')');
@@ -92,56 +48,113 @@ class Jobs extends Component {
   componentWillReceiveProps() {
   };
 
-  getJobs = ({current, size}) => {
+  getColumnSearchProps = dataIndex => ({
+    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
+        <div style={{ padding: 8 }}>
+          <Input
+              ref={ node => {
+                this.searchInput = node;
+              }}
+              placeholder={`Search ${dataIndex}`}
+              value={selectedKeys[0]}
+              onChange={e => setSelectedKeys(e.target.value ? [e.target.value]: [])}
+              onPressEnter={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
+              style={{ width: 188, marginBottom: 8, display: 'block' }}
+          />
+          <Button
+              type = 'primary'
+              onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
+              icon="search"
+              size="small"
+              style={{ width: 90, marginRight: 8 }}
+          >
+            Search
+          </Button>
+          <Button
+              onClick={() => this.handleReset(clearFilters)}
+              size="small"
+              style={{ width: 90 }}
+          >
+            Reset
+          </Button>
+        </div>
+    ),
+    filterIcon: filtered => (
+        <Icon type="search" style={{ color: filtered ? '#1890ff' : undefined }}/>
+    ),
+    onFilter: (value, record) => record[dataIndex].toString().includes(value),
+    onFilterDropdownVisibleChange: visible => {
+      if(visible) {
+        setTimeout(() => this.searchInput.select());
+      }
+    },
+    render(text) {
+      return text;
+    },
+  });
+
+  handleSearch = (selectedKeys, confirm, dataIndex) => {
+    confirm();
+    this.setState({
+      searchText: selectedKeys[0],
+      searchedColumn: dataIndex,
+    });
+  }
+
+  handleReset = clearFilters => {
+    clearFilters();
+    this.setState({ searchText: '' });
+  };
+
+  getJobs = (size) => {
     this.setState({loading: true});
     try {
       API_URLS.forEach((api) => {
-        let url = api.value + "/job/specs?page=" + current + "&size=10";
+        let url = api.value + "/job/specs?size=" + size;
         xhr.get(url).then(
             (response) => {
               let data = response.data.data;
-              let dataSource = [];
-              data.forEach((item, index) => {
-                let type = item.initiators[0].type;
-                let contractAddr = item.initiators[0].address;
-                dataSource[index] = {
-                  key: Date.now() + index,
-                  Contract: contractAddr,
-                  ID: item.id,
-                  Initiator: type,
-                  Created: item.createdAt,
-                  Node: api.text,
-                  DataSource: type === RANDOMNESS_LOG ? VRF : extractTaskHttpGet(item, DS_LIST),
-                }
+              data.forEach((item) => {
+                let job = this.createJob(item, api.text);
+                this.filterJobsAndSetToState(job);
               })
               this.setState({
                 loading: false,
-                dataSource: merge(dataSource, this.state.dataSource, 'ID'),
-                pagination: {
-                  current: current,
-                  total: response.data.count,
-                  size: size
-                },
               });
             });
       });
-    } catch(e) {
+    } catch (e) {
 
     }
   };
 
+  createJob = (data, api) => {
+    let type = data.initiators[0].type;
+    let contractAddr = data.initiators[0].address;
+    return {
+      key: crypto.randomUUID(),
+      Contract: contractAddr,
+      ID: data.id,
+      Initiator: type,
+      Created: data.createdAt,
+      Node: api,
+      DataSource: type === RANDOMNESS_LOG ? VRF : extractTaskHttpGet(data, DS_LIST)
+    };
+  }
+  filterJobsAndSetToState = (job) => {
+    if (job.Initiator === RANDOMNESS_LOG) {
+      this.setState({
+        vrfDataSource: [...this.state.vrfDataSource, job],
+      });
+    } else {
+      this.setState({
+        dataSource: [...this.state.dataSource, job],
+      });
+    }
+  }
+
   onSelectChange = (e) => {
     this.setState({jobURL: e.key});
-  };
-
-  onChange = (pageNumber) => {
-    const page = {
-      current: pageNumber.current,
-      total: pageNumber.total,
-      pageSize: pageNumber.pageSize,
-    };
-    this.setState({pagination: page});
-    this.getJobs(page);
   };
 
   showModal = () => {
@@ -197,6 +210,16 @@ class Jobs extends Component {
     });
   };
 
+  generateTagColor(DataSource) {
+    if (DataSource === VRF) {
+      return 'red'
+    } else if (DataSource === 'JUSTSWAP') {
+      return 'green'
+    } else {
+      return 'blue'
+    }
+  }
+
   render() {
     let {
       visible,
@@ -204,8 +227,50 @@ class Jobs extends Component {
       textValue,
       warning,
       dataSource,
-      pagination,
+      size,
+      vrfDataSource,
     } = this.state;
+
+    const columns = [
+      {
+        title: 'Contract Address',
+        dataIndex: 'Contract',
+        key: 'Contract',
+        ...this.getColumnSearchProps('Contract'),
+      },
+      {
+        title: 'Job ID',
+        dataIndex: 'ID',
+        key: 'ID',
+      },
+      {
+        title: 'Created',
+        dataIndex: 'Created',
+        key: 'Created',
+        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+      },
+      {
+        title: 'Node',
+        dataIndex: 'Node',
+        key: 'Node',
+      },
+      {
+        title: 'Data Source',
+        dataIndex: 'DataSource',
+        key: 'DataSource',
+        filters: DS_LIST,
+        onFilter: (record, value) => value.DataSource.toLowerCase().includes(record),
+        render: DataSource => (
+            <span>
+              <Tag color={this.generateTagColor(DataSource)}>
+                {DataSource}
+              </Tag>
+            </span>
+        ),
+      },
+    ];
+    const pageSizeOption = ['10','20','30','40',size.toString()];
+
     return <Fragment>
 
       <PageHeader title="Jobs">
@@ -216,15 +281,20 @@ class Jobs extends Component {
 
       </PageHeader>
 
-
+      <Tabs defaultActiveKey="1" >
+      <TabPane tab="Price Feed Jobs" key="1">
       <Row gutter={16}>
 
         <Table
             dataSource={dataSource}
             columns={columns}
             loading={loading}
-            pagination={{current: pagination.current, total: pagination.total}}
-            onChange={this.onChange}
+            pagination={{
+              pageSizeOptions: pageSizeOption,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              hideOnSinglePage: true,
+            }}
             onRow={record => {
               return {
                 onClick: event => {
@@ -239,7 +309,33 @@ class Jobs extends Component {
 
 
       </Row>
+      </TabPane>
+      <TabPane tab="VRF" key="2">
 
+        <Table
+            dataSource={vrfDataSource}
+            columns={columns}
+            loading={loading}
+            pagination={{
+              pageSizeOptions: pageSizeOption,
+              showSizeChanger: true,
+              showQuickJumper: true,
+              hideOnSinglePage: true,
+            }}
+            onRow={record => {
+              return {
+                onClick: event => {
+                  this.props.history.push("/jobs/" + record.ID);
+                },
+                onMouseEnter: (event) => {
+                  $(event.target).css('cursor', 'pointer');
+                },
+              };
+            }}
+        />
+
+      </TabPane>
+      </Tabs>
       <Modal
           visible={visible}
           title="Create Job"
