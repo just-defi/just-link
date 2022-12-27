@@ -293,7 +293,7 @@ class Jobs extends Component {
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
               showQuickJumper: true,
-              hideOnSinglePage: true,
+              hideOnSinglePage: false,
             }}
             onRow={record => {
               return {
@@ -320,7 +320,7 @@ class Jobs extends Component {
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
               showQuickJumper: true,
-              hideOnSinglePage: true,
+              hideOnSinglePage: false,
             }}
             onRow={record => {
               return {
