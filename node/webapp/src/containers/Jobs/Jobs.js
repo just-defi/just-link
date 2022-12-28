@@ -32,13 +32,14 @@ class Jobs extends Component {
       searchText: '',
       searchedColumn:'',
       size: DS_SIZE,
-      jobURL: API_URL,
+      jobUrl: API_URL,
     };
   };
 
   componentDidMount() {
     this.getJobs(this.state.size);
     if (this.props.location.state && this.props.location.state.create) {
+      this.setState({jobUrl: this.props.location.state.jobUrl});
       this.showModal();
       let input = eval('(' + this.props.location.state.code + ')');
       this.setState({textValue: JSON.stringify(input, null, 4)});
@@ -154,7 +155,7 @@ class Jobs extends Component {
   }
 
   onSelectChange = (e) => {
-    this.setState({jobURL: e.key});
+    this.setState({jobUrl: e.key});
   };
 
   showModal = () => {
@@ -172,7 +173,7 @@ class Jobs extends Component {
     }
     this.setState({warning: false, visible: false});
 
-    await xhr.post(API_URL+"/job/specs", JSON.parse(this.state.textValue)).then((result) => {
+    await xhr.post(this.state.jobUrl+"/job/specs", JSON.parse(this.state.textValue)).then((result) => {
 
      if (result.error) {
        this.error(result.error)
@@ -219,6 +220,13 @@ class Jobs extends Component {
       return 'blue'
     }
   }
+
+  getDefaultValue = () => {
+    if(this.props.location.state && this.props.location.state.jobUrl) {
+      return {key:this.props.location.state.jobUrl};
+    }
+    return {key:API_URL};
+}
 
   render() {
     let {
@@ -298,7 +306,8 @@ class Jobs extends Component {
             onRow={record => {
               return {
                 onClick: event => {
-                  this.props.history.push("/jobs/" + record.ID);
+                  let selectedNode = API_URLS.find(url => url.text === record.Node).value
+                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});
                 },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
@@ -325,7 +334,8 @@ class Jobs extends Component {
             onRow={record => {
               return {
                 onClick: event => {
-                  this.props.history.push("/jobs/" + record.ID);
+                  let selectedNode = API_URLS.find(url => url.text === record.Node).value
+                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});;
                 },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
@@ -353,7 +363,7 @@ class Jobs extends Component {
         <div>
           <span>Host Node</span>
           <Select
-              defaultValue={{ key: API_URL }}
+              defaultValue={this.getDefaultValue()}
               autoFocus={true}
               onSelect={this.onSelectChange}
               optionLabelProp='label'

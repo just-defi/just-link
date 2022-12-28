@@ -1,7 +1,6 @@
 import React, {Component, Fragment} from 'react';
-import {Table, Row, PageHeader, Card, Button, Col, Input, Steps} from 'antd';
+import {Table, Row, PageHeader, Card, Button, Col, Input, Steps, Tabs, Select, Space} from 'antd';
 import xhr from "axios/index";
-import {Tabs, Select, Space} from 'antd';
 import $ from "jquery";
 import {JsonFormat} from "../../utils/JsonFormat";
 import {Modal} from "antd/lib/index";
@@ -9,8 +8,6 @@ import {CopyToClipboard} from "react-copy-to-clipboard";
 
 const { Step } = Steps;
 const {TabPane} = Tabs;
-
-const API_URL = process.env.API_URL;
 
 const status = {0:'init', 1:'processing', 2:'complete', 3:'error'};
 const ant_status = {0: 'wait', 1: 'process', 2: 'finish', 3: 'error'};
@@ -86,6 +83,7 @@ class JobDetail extends Component {
       total:50,
       minPayment: null,
       taskList:[],
+      jobUrl: "",
     };
   }
 
@@ -110,21 +108,25 @@ class JobDetail extends Component {
 
   getJob = () => {
     let id = this.props.location.pathname.split('/')[2];
-    xhr.get(API_URL+"/job/specs/"+id).then((result) => {
+    let url = this.props.location.state.jobUrl;
+    xhr.get(url+"/job/specs/"+id).then((result) => {
       let data = result.data.data;
       this.setState({
         createdAt:data.createdAt,
         code:JSON.parse(data.params)
       });
-      var formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
+      let formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
       this.setState({formattedCode});
       this.setState({minPayment:data.minPayment});
+      this.setState({jobUrl: url});
     })
   }
 
   getRuns = (page) => {
     let id = this.props.location.pathname.split('/')[2];
-    xhr.get(API_URL+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
+    let url = this.props.location.state.jobUrl;
+    xhr.get(url+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
+      console.log("Get Runs :", result.data.data);
       let data = result.data.data;
       let dataSource = [];
       data.forEach((item, index) => {
@@ -142,7 +144,8 @@ class JobDetail extends Component {
 
   delete = () => {
     let id = this.props.location.pathname.split('/')[2];
-    xhr.delete(API_URL+"/job/specs/"+id).then((result) => {
+    let url = this.props.location.state.jobUrl;
+    xhr.delete(url+"/job/specs/"+id).then((result) => {
       console.log(result);
       if (result.error) {
         this.error(result.error)
@@ -163,7 +166,7 @@ class JobDetail extends Component {
 
   edit = () => {
     let {code} = this.state;
-    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true } })
+    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true, jobUrl: this.props.location.state.jobUrl } })
   }
 
   copy = () => {}
@@ -190,7 +193,7 @@ class JobDetail extends Component {
 
       <div>
         <div style={{marginBottom: 16}}>
-          {path}
+          Job ID: {path}
         </div>
         <div>
           Created at {createdAt}
