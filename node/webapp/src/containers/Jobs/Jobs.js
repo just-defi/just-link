@@ -261,6 +261,10 @@ class Jobs extends Component {
         title: 'Node',
         dataIndex: 'Node',
         key: 'Node',
+        filters: API_URLS,
+        onFilter: (record, {Node}) => {
+          return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
+        },
       },
       {
         title: 'Data Source',
