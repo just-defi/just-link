@@ -213,6 +213,7 @@ public class OracleClient {
       }
       // handle events
       for (EventData eventData : events) {
+        log.info("Event received: {} | {}", eventData.getTransactionId(), eventData.getEventName());
         // update consumeIndexMap
         updateConsumeMap(addr, eventData.getBlockTimestamp());
 
@@ -487,6 +488,7 @@ public class OracleClient {
     } else {
       consumeIndexMap.put(addr, timestamp);
     }
+    log.info("Update consumeIndexMap: {} | {}", addr, timestamp);
   }
 
   public static boolean getMinBlockTimestamp(String addr, String eventName, Map<String, String> params)
@@ -499,6 +501,7 @@ public class OracleClient {
         } else {
           params.put("min_block_timestamp", Long.toString(System.currentTimeMillis() - ONE_MINUTE));
         }
+        log.info("New Round getMinBlockTimestamp: {} | {}", addr, params.get("min_block_timestamp"));
         break;
       case VRF_EVENT_NAME:
         if (consumeIndexMap.containsKey(addr)) {
@@ -511,6 +514,7 @@ public class OracleClient {
             params.put("min_block_timestamp", Long.toString(hisHead.get(0).getBlockTimestamp()));
           }
         }
+        log.info("VRF getMinBlockTimestamp: {} | {}", addr, params.get("min_block_timestamp"));
         break;
       default:
         log.warn("unexpected event:{}", eventName);
