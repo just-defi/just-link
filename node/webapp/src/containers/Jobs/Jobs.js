@@ -332,8 +332,10 @@ class Jobs extends Component {
             onRow={record => {
               return {
                 onClick: event => {
-                  let selectedNode = API_URLS.find(url => url.text === record.Node).value
-                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});
+                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                  window.sessionStorage.setItem('jobUrl', selectedNode);
+                  window.sessionStorage.setItem('nodeName', record.Node);
+                  this.props.history.push({pathname: "/jobs/" +record.ID, jobUrl: selectedNode, nodeName: record.Node});
                 },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
