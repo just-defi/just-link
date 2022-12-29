@@ -16,9 +16,6 @@ const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
 const RANDOMNESS_LOG = 'randomnesslog';
 const VRF = 'VRF';
 
-
-
-
 class Jobs extends Component {
 
   constructor() {
@@ -44,6 +41,8 @@ class Jobs extends Component {
       let input = eval('(' + this.props.location.state.code + ')');
       this.setState({textValue: JSON.stringify(input, null, 4)});
     }
+    window.sessionStorage.removeItem('jobUrl');
+    window.sessionStorage.removeItem('nodeName:q');
   };
 
   componentWillReceiveProps() {
@@ -221,13 +220,6 @@ class Jobs extends Component {
     }
   }
 
-  getDefaultValue = () => {
-    if(this.props.location.state && this.props.location.state.jobUrl) {
-      return {key:this.props.location.state.jobUrl};
-    }
-    return {key:API_URL};
-}
-
   render() {
     let {
       visible,
@@ -310,8 +302,10 @@ class Jobs extends Component {
             onRow={record => {
               return {
                 onClick: event => {
-                  let selectedNode = API_URLS.find(url => url.text === record.Node).value
-                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});
+                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                  window.sessionStorage.setItem('jobUrl', selectedNode);
+                  window.sessionStorage.setItem('nodeName', record.Node);
+                  this.props.history.push({pathname: "/jobs/" +record.ID, jobUrl: selectedNode, nodeName: record.Node});
                 },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
@@ -339,7 +333,7 @@ class Jobs extends Component {
               return {
                 onClick: event => {
                   let selectedNode = API_URLS.find(url => url.text === record.Node).value
-                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});;
+                  this.props.history.push({pathname: "/jobs/" +record.ID, state: {jobUrl: selectedNode}});
                 },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
@@ -367,15 +361,15 @@ class Jobs extends Component {
         <div>
           <span>Host Node</span>
           <Select
-              defaultValue={this.getDefaultValue()}
+              defaultActiveFirstOption={true}
+              defaultValue={this.state.jobUrl}
               autoFocus={true}
               onSelect={this.onSelectChange}
               optionLabelProp='label'
               style={{ width: '100%', marginBottom: 16 }}
-              labelInValue={true}
               disabled={!!this.props.location.state}
           >
-            {API_URLS.map((url, idx) => (
+            {API_URLS.map(url => (
                 <Option key={url.value} value={url.value} label={url.text + " - " + url.value}>{url.text + " - " + url.value}</Option>
             ))}
           </Select>

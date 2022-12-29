@@ -1,5 +1,5 @@
 import React, {Component, Fragment} from 'react';
-import {Table, Row, PageHeader, Card, Button, Col, Input, Steps, Tabs, Select, Space} from 'antd';
+import {Table, Row, PageHeader, Card, Button, Col, Input, Steps, Tabs, Select, Space, Tag} from 'antd';
 import xhr from "axios/index";
 import $ from "jquery";
 import {JsonFormat} from "../../utils/JsonFormat";
@@ -83,7 +83,8 @@ class JobDetail extends Component {
       total:50,
       minPayment: null,
       taskList:[],
-      jobUrl: "",
+      jobUrl: '',
+      nodeName: '',
     };
   }
 
@@ -101,32 +102,42 @@ class JobDetail extends Component {
   }
 
   componentDidMount() {
-    this.getJob();
-    this.getRuns(1);
-    this.setState({path: this.props.location.pathname.split('/')[2]});
+    const path = this.props.location.pathname.split('/')[2];
+    const jobUrl = window.sessionStorage.getItem('jobUrl');
+    const nodeName = window.sessionStorage.getItem('nodeName');
+
+    if (jobUrl) {
+      this.getJob(jobUrl, path);
+      this.getRuns(jobUrl, path, 1);
+    } else {
+      this.props.history.push({ pathname: "/jobs" })
+    }
+    this.setState({path: path, custom: this.props, jobUrl: jobUrl, nodeName: nodeName});
   }
 
-  getJob = () => {
-    let id = this.props.location.pathname.split('/')[2];
-    let url = this.props.location.state.jobUrl;
-    xhr.get(url+"/job/specs/"+id).then((result) => {
-      let data = result.data.data;
-      this.setState({
-        createdAt:data.createdAt,
-        code:JSON.parse(data.params)
-      });
-      let formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
-      this.setState({formattedCode});
-      this.setState({minPayment:data.minPayment});
-      this.setState({jobUrl: url});
+  getJob = (jobUrl, id) => {
+    xhr.get(jobUrl+"/job/specs/"+id).then((result) => {
+      if (result.data.hasOwnProperty('data')) {
+        let data = result.data.data;
+        this.setState({
+          createdAt:data.createdAt,
+          code:JSON.parse(data.params)
+        });
+        let formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
+        this.setState({formattedCode});
+        this.setState({minPayment:data.minPayment});
+      } else {
+        this.setState({
+          createdAt: 'Unknown',
+          code: null,
+          minPayment: null,
+        });
+      }
     })
   }
 
-  getRuns = (page) => {
-    let id = this.props.location.pathname.split('/')[2];
-    let url = this.props.location.state.jobUrl;
-    xhr.get(url+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
-      console.log("Get Runs :", result.data.data);
+  getRuns = (jobUrl, id, page) => {
+    xhr.get(jobUrl+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
       let data = result.data.data;
       let dataSource = [];
       data.forEach((item, index) => {
@@ -166,7 +177,9 @@ class JobDetail extends Component {
 
   edit = () => {
     let {code} = this.state;
-    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true, jobUrl: this.props.location.state.jobUrl } })
+    window.sessionStorage.removeItem('jobUrl');
+    window.sessionStorage.removeItem('nodeName');
+    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true, jobUrl: this.state.jobUrl } })
   }
 
   copy = () => {}
@@ -188,16 +201,16 @@ class JobDetail extends Component {
 
     return <Fragment>
 
-      <PageHeader title="Job Details"/>
+      <PageHeader
+          title="Job Details"
+          subTitle={path}
+          tags={<Tag color="blue">{this.state.nodeName}</Tag>}
+      />
 
 
       <div>
-        <div style={{marginBottom: 16}}>
-          Job ID: {path}
-        </div>
         <div>
           Created at {createdAt}
-
           <div style={{float:'right',marginLeft:'10px'}}>
             <Button onClick={this.delete}>Archive</Button>
           </div>
@@ -209,9 +222,7 @@ class JobDetail extends Component {
               <Button onClick={this.copy}>Copy</Button>
             </CopyToClipboard>
           </div>
-
         </div>
-
 
         <Tabs tabPosition={this.state.tabPosition} animated={false} style={{marginTop: '30px'}}>
           <TabPane tab="Overview" key="1">
