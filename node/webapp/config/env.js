@@ -57,21 +57,6 @@ function getClientEnvironment(publicUrl) {
             {text:"winklink-price-001" ,value:"http://localhost:8080"},
             {text:"winklink-price-002", value:"http://localhost:8081"}
         ],
-        LIST_OF_DATASOURCE: process.env.LIST_OF_DATASOURCE || [
-            {text: 'Kucoin', value:"kucoin"},
-            {text: 'Kraken', value: "kraken"},
-            {text: 'Huobi', value: 'huobi'},
-            {text: "Bitrex", value: "bittrex"},
-            {text: "OKX", value: "okex"},
-            {text: "Poloniex", value: "poloniex"},
-            {text: "Gate.io", value: "gateio"},
-            {text: "bitfinex", value: "bitfinex"},
-            {text: "Bitmart", value: "bitmart"},
-            {text: "coingecko", value: "coingecko"},
-            {text: "coinbase", value: "coinbase"},
-            {text: "VRF", value: "vrf"},
-            {text: "JustSwap", value:"justswap"},
-        ],
         DATASOURCE_SIZE_PER_RETRIEVAL: process.env.DATASOURCE_SIZE_PER_RETRIEVAL || 100,
       }
     );
