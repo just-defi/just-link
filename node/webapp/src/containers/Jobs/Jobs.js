@@ -3,7 +3,6 @@ import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs} f
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
-import {extractTaskHttpGet} from "../../utils/extractTaskHttpGet";
 
 const {TextArea} = Input;
 const {Option} = Select;
@@ -11,11 +10,9 @@ const {TabPane} = Tabs;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
-const DS_LIST = process.env.LIST_OF_DATASOURCE;
 const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
+// let providerList = [];
 const RANDOMNESS_LOG = 'randomnesslog';
-const VRF = 'VRF';
-
 class Jobs extends Component {
 
   constructor() {
@@ -30,6 +27,7 @@ class Jobs extends Component {
       searchedColumn:'',
       size: DS_SIZE,
       jobUrl: API_URL,
+      providerList: [],
     };
   };
 
@@ -129,8 +127,10 @@ class Jobs extends Component {
   };
 
   createJob = (data, api) => {
-    let type = data.initiators[0].type;
-    let contractAddr = data.initiators[0].address;
+    const type = data.initiators[0].type;
+    const contractAddr = data.initiators[0].address;
+    const dataSource = this.generateTagColor(JSON.parse(data.params).tasks[0]);
+
     return {
       key: crypto.randomUUID(),
       Contract: contractAddr,
@@ -138,9 +138,10 @@ class Jobs extends Component {
       Initiator: type,
       Created: data.createdAt,
       Node: api,
-      DataSource: type === RANDOMNESS_LOG ? VRF : extractTaskHttpGet(data, DS_LIST)
+      DataSource: dataSource,
     };
   }
+
   filterJobsAndSetToState = (job) => {
     if (job.Initiator === RANDOMNESS_LOG) {
       this.setState({
@@ -210,14 +211,46 @@ class Jobs extends Component {
     });
   };
 
-  generateTagColor(DataSource) {
-    if (DataSource === VRF) {
-      return 'red'
-    } else if (DataSource === 'JUSTSWAP') {
-      return 'green'
-    } else {
-      return 'blue'
+  generateTagColor = (task) => {
+    let url, tag, color = "";
+
+    url = (task.type === "httpget" || task.type === "converttrx") ? task.params.get : task.type;
+
+    try {
+      const host = new URL(url).host;
+      tag = host.split(".").at(-2).toUpperCase();
+      color = "blue";
+    } catch (e) {
+      if (e instanceof TypeError) {
+        tag = url.toUpperCase();
+        switch (tag) {
+          case "JUSTSWAP":
+            color = "cyan";
+            break;
+          case "RANDOM":
+            tag = "VRF";
+            color = "green";
+            break;
+          default:
+            tag = "UNKNOWN";
+            color = "orange";
+        }
+      } else {
+        tag = "UNKNOWN";
+        color = 'red';
+      }
     }
+
+    let exists = this.state.providerList.findIndex(o => o.text === tag);
+
+    if (exists === -1) {
+      this.setState({
+        providerList: [...this.state.providerList, {text: tag, value: tag}],
+      });
+      // providerList.push({text: tag, value: tag});
+    }
+
+    return { tag: tag,color: color};
   }
 
   render() {
@@ -229,6 +262,7 @@ class Jobs extends Component {
       dataSource,
       size,
       vrfDataSource,
+      providerList,
     } = this.state;
 
     const columns = [
@@ -262,12 +296,12 @@ class Jobs extends Component {
         title: 'Data Source',
         dataIndex: 'DataSource',
         key: 'DataSource',
-        filters: DS_LIST,
-        onFilter: (record, value) => value.DataSource.toLowerCase().includes(record),
-        render: DataSource => (
+        filters: providerList,
+        onFilter: (value, record) => value.toUpperCase().includes(record.DataSource.tag.toUpperCase()),
+        render: dataSource => (
             <span>
-              <Tag color={this.generateTagColor(DataSource)}>
-                {DataSource}
+              <Tag color = {dataSource.color}>
+                {dataSource.tag}
               </Tag>
             </span>
         ),
