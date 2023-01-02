@@ -11,7 +11,6 @@ const {TabPane} = Tabs;
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
 const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
-// let providerList = [];
 const RANDOMNESS_LOG = 'randomnesslog';
 class Jobs extends Component {
 
@@ -112,9 +111,9 @@ class Jobs extends Component {
         xhr.get(url).then(
             (response) => {
               let data = response.data.data;
+              console.log(data);
               data.forEach((item) => {
-                let job = this.createJob(item, api.text);
-                this.filterJobsAndSetToState(job);
+                this.createJob(item, api);
               })
               this.setState({
                 loading: false,
@@ -126,23 +125,42 @@ class Jobs extends Component {
     }
   };
 
+  getLatestResultAndSetToSourceArr(jobId, api, job) {
+      let url = api.value + "/job/result/" + jobId;
+      console.log("GLR- URL: ", url);
+      xhr.get(url).then((response) => {
+        if (response.status === 200) {
+          job.LastRunResult = response.data.data;
+          job.CurrentResultUrl = url;
+          this.filterJobsAndSetToState(job);
+        } else {
+          job.LastRunResult = 0;
+          job.CurrentResultUrl = url;
+          this.filterJobsAndSetToState(job);
+        }
+      });
+  }
+
   createJob = (data, api) => {
     const type = data.initiators[0].type;
     const contractAddr = data.initiators[0].address;
     const dataSource = this.generateTagColor(JSON.parse(data.params).tasks[0]);
-
-    return {
+    let job = {
       key: crypto.randomUUID(),
       Contract: contractAddr,
       ID: data.id,
       Initiator: type,
       Created: data.createdAt,
-      Node: api,
+      Updated: data.updatedAt,
+      Node: api.text,
       DataSource: dataSource,
     };
+    this.getLatestResultAndSetToSourceArr(data.id, api, job);
+
   }
 
   filterJobsAndSetToState = (job) => {
+    console.log("JOB IN FILTER: ", job);
     if (job.Initiator === RANDOMNESS_LOG) {
       this.setState({
         vrfDataSource: [...this.state.vrfDataSource, job],
@@ -264,7 +282,7 @@ class Jobs extends Component {
       vrfDataSource,
       providerList,
     } = this.state;
-
+    //TODO change from using onRow to go to job Details and use ViewDetail button in the next commit
     const columns = [
       {
         title: 'Contract Address',
@@ -278,12 +296,6 @@ class Jobs extends Component {
         key: 'ID',
       },
       {
-        title: 'Created',
-        dataIndex: 'Created',
-        key: 'Created',
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
-      },
-      {
         title: 'Node',
         dataIndex: 'Node',
         key: 'Node',
@@ -291,6 +303,29 @@ class Jobs extends Component {
         onFilter: (record, {Node}) => {
           return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
         },
+      },
+      {
+        title: 'Created',
+        dataIndex: 'Created',
+        key: 'Created',
+        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+      },
+      {
+        title: 'Last Updated',
+        dataIndex: 'Updated',
+        key: 'Updated',
+        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+      },
+      {
+        title: 'Last Run Result',
+        dataIndex: 'LastRunResult',
+        key: 'LastRunResult',
+      },
+      {
+        title: 'Last Run Result URL',
+        dataIndex: 'CurrentResultUrl',
+        key: 'CurrentResultUrl',
+        render: url => (<a href={url}>{url}</a>),
       },
       {
         title: 'Data Source',
