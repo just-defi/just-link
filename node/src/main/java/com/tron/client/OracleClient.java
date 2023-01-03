@@ -213,6 +213,7 @@ public class OracleClient {
       }
       // handle events
       for (EventData eventData : events) {
+        log.info("Event received: {} | {}", eventData.getTransactionId(), eventData.getEventName());
         // update consumeIndexMap
         updateConsumeMap(addr, eventData.getBlockTimestamp());
 
@@ -487,6 +488,7 @@ public class OracleClient {
     } else {
       consumeIndexMap.put(addr, timestamp);
     }
+    log.info("Update consumeIndexMap: {} | {}", addr, timestamp);
   }
 
   public static boolean getMinBlockTimestamp(String addr, String eventName, Map<String, String> params)

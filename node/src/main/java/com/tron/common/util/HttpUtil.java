@@ -58,7 +58,9 @@ public class HttpUtil {
     HttpGet httpGet = new HttpGet(uri);
     httpGet.setHeader("TRON_PRO_API_KEY", Config.getApiKey());
     try (CloseableHttpResponse response = client.execute(httpGet)) {
-      return EntityUtils.toString(response.getEntity());
+      String result = EntityUtils.toString(response.getEntity());
+      log.info("Get event from trongrid: {} | {}", uri, result);
+      return result;
     } catch (IOException e) {
       e.printStackTrace();
       throw e;
