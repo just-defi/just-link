@@ -54,7 +54,7 @@ class Jobs extends Component {
       this.setState({textValue: JSON.stringify(input, null, 4)});
     }
     window.sessionStorage.removeItem('jobUrl');
-    window.sessionStorage.removeItem('nodeName:q');
+    window.sessionStorage.removeItem('nodeName');
   };
 
   componentWillReceiveProps() {
