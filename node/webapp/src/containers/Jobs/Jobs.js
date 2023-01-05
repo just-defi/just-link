@@ -1,17 +1,5 @@
 import React, {Component, Fragment} from 'react';
-import {
-  Button,
-  Input,
-  Modal,
-  PageHeader,
-  Row,
-  Select,
-  Table,
-  Tag,
-  Icon,
-  Tabs,
-  Tooltip
-} from 'antd';
+import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs, Tooltip} from 'antd';
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
@@ -19,6 +7,7 @@ import {isJSON} from "../../utils/isJson";
 const {TextArea} = Input;
 const {Option} = Select;
 const {TabPane} = Tabs;
+const {confirm} = Modal;
 
 const API_URL = process.env.API_URL;
 const API_URLS = process.env.API_URLS;
@@ -34,14 +23,11 @@ class Jobs extends Component {
       visible: false,
       vrfDataSource: [],
       dataSource: [],
-      nestedDataSource: [],
       searchText: '',
       searchedColumn:'',
       size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
-      filteredInfo: null,
-      sortedInfo: null,
     };
   };
 
@@ -94,67 +80,7 @@ class Jobs extends Component {
     filterIcon: filtered => (
         <Icon type="search" style={{ color: filtered ? '#1890ff' : undefined }}/>
     ),
-    onFilter: (value, record) => {
-      if (dataIndex === "Contract") {
-      return  record[dataIndex].toString().includes(value)
-      } else {
-        const arr = [];
-        console.log(record);
-        console.log(value);
-        record.children.forEach((item)=>{
-          return item[dataIndex].toString().includes(value);
-
-        });
-      }
-
-    },
-    onFilterDropdownVisibleChange: visible => {
-      if(visible) {
-        setTimeout(() => this.searchInput.select());
-      }
-    },
-    render(text) {
-      return text;
-    },
-  });
-
-  getColumnSearchPropsChildren = dataIndex => ({
-    filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
-        <div style={{ padding: 8 }}>
-          <Input
-              ref={ node => {
-                this.searchInput = node;
-              }}
-              placeholder={`Search ${dataIndex}`}
-              value={selectedKeys[0]}
-              onChange={e => setSelectedKeys(e.target.value ? [e.target.value]: [])}
-              onPressEnter={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-              style={{ width: 188, marginBottom: 8, display: 'block' }}
-          />
-          <Button
-              type = 'primary'
-              onClick={() => this.handleSearch(selectedKeys, confirm, dataIndex)}
-              icon="search"
-              size="small"
-              style={{ width: 90, marginRight: 8 }}
-          >
-            Search
-          </Button>
-          <Button
-              onClick={() => this.handleReset(clearFilters)}
-              size="small"
-              style={{ width: 90 }}
-          >
-            Reset
-          </Button>
-        </div>
-    ),
-    filterIcon: filtered => (
-        <Icon type="search" style={{ color: filtered ? '#1890ff' : undefined }}/>
-    ),
-    onFilter: (value, record) => {
-
-    },
+    onFilter: (value, record) => record[dataIndex].toString().includes(value),
     onFilterDropdownVisibleChange: visible => {
       if(visible) {
         setTimeout(() => this.searchInput.select());
@@ -185,10 +111,11 @@ class Jobs extends Component {
         let url = api.value + "/job/specs?size=" + size;
         xhr.get(url).then(
             (response) => {
-              console.log("GJ: ", response.data.data);
               let data = response.data.data;
               data.forEach((item) => {
-                this.createJob(item, api);
+                let job = this.createJob(item, api);
+
+                this.filterJobsAndSetToState(job);
               })
               this.setState({
                 loading: false,
@@ -223,6 +150,10 @@ class Jobs extends Component {
     const jobId = data.id;
     const createdDate = data.createdAt;
     const updatedDate = data.updatedAt;
+    let publicKey = "";
+    if (type === RANDOMNESS_LOG) {
+       publicKey = JSON.parse(data.params).tasks[0].params.publicKey;
+    }
     let job = {
       key: crypto.randomUUID(),
       Contract: contractAddr,
@@ -233,54 +164,26 @@ class Jobs extends Component {
       Node: api.text,
       DataSource: {task: tasks, ...dataSourceEndPoint},
       LastRunResult: {value: "", url:""},
+      Code: JSON.stringify(JSON.parse(data.params), null, 2),
+      PublicKey: publicKey? publicKey:null,
     };
     this.getLatestResultAndSetToSourceArr(data.id, api, job);
 
   }
 
   filterJobsAndSetToState = (job) => {
-    if (job.Initiator === RANDOMNESS_LOG) {
+    if (job && job.Initiator === RANDOMNESS_LOG) {
       this.setState({
         vrfDataSource: [...this.state.vrfDataSource, job],
       });
-    } else {
-      // this.setState({
-      //   dataSource: [...this.state.dataSource, job],
-      // });
-      const nestedData = {
-        Contract: job.Contract,
-        children: [{
-          key: job.key,
-          Contract: null,
-          ID: job.ID,
-          Initiator: job.Initiator,
-          Created: job.Created,
-          Updated: job.Updated,
-          Node: job.Node,
-          DataSource: job.DataSource,
-          LastRunResult: job.LastRunResult,
-        }],
-      }
-
-      if(this.state.nestedDataSource.length <= 0) {
-        this.state.nestedDataSource.push(nestedData);
-      } else {
-        let result = this.state.nestedDataSource.findIndex(item => {
-          return item.Contract === nestedData.Contract
-        });
-        if (result < 0) {
-          this.state.nestedDataSource.push(nestedData);
-        }else {
-          this.state.nestedDataSource[result].children = [...this.state.nestedDataSource[result].children, ...nestedData.children];
-
-          this.setState({dataSource: JSON.parse(JSON.stringify(this.state.nestedDataSource))});
-        }
-      }
+    } else if(job){
+      this.setState({
+        dataSource: [...this.state.dataSource, job],
+      });
     }
   }
 
   onSelectChange = (e) => {
-    console.log(this.state);
     this.setState({jobUrl: e});
   };
 
@@ -378,40 +281,37 @@ class Jobs extends Component {
     return { tag: tag,color: color};
   }
 
-  getCurrenRunResultUrl = (lastRunResult) => {
-    if (lastRunResult) {
-      return <a href={lastRunResult}>Current Run Result</a>;
-    }
+  showDeleteConfirm = (record) => {
+    confirm({
+      title: 'Confirm job spec deletion?',
+      content: 'Job spec will be archived',
+      okText: 'Confirm',
+      okType: 'danger',
+      cancelText: 'Cancel',
+      onOk() {
+        const selectedNode = API_URLS.find(url => url.text === record.Node).value;
+        const url = selectedNode + "/job/specs/" + record.ID;
+        console.log(url);
+        xhr.delete(url).then((result) => {
+          console.log(result);
+          if (result.error) {
+            Modal.error({content: result.error})
+          }
+          if(result.data && result.data.msg && result.data.msg === 'success'){
+            Modal.success({content: result.data.msg});
+          } else{
+            Modal.error({content: result.data.msg});
+          }
+        }).catch((e) => {
+          Modal.error({content: e})
+        });
+      },
+      onCancel() {
+      },
+    });
   }
 
-  getDatasourceTag = (dataSource) => {
 
-    if (dataSource) {
-      return <span>
-                <Tooltip title={dataSource.task} overlayStyle={{'white-space': 'nowrap', maxWidth: '500px'}} >
-                  <Tag color={dataSource.color}>
-                    {dataSource.tag}
-                  </Tag>
-                </Tooltip>
-             </span>
-    }
-  }
-
-  viewDetailOnClick = (record) => {
-    console.log("VDOC: ",record);
-    let selectedNode = API_URLS.find(url => url.text === record.Node).value;
-    window.sessionStorage.setItem('jobUrl', selectedNode);
-    window.sessionStorage.setItem('nodeName', record.Node);
-    this.props.history.push({pathname: "/jobs/" +record.ID, jobUrl: selectedNode, nodeName: record.Node});
-  }
-
-  handleChange = (pagination, filters, sorter) => {
-    this.setState({
-      filteredInfo: filters,
-      sortedInfo: sorter,
-      dataSource: JSON.parse(JSON.stringify(this.state.dataSource))
-    })
-  }
 
   render() {
     let {
@@ -420,87 +320,38 @@ class Jobs extends Component {
       textValue,
       warning,
       dataSource,
-      nestedDataSource,
       size,
       vrfDataSource,
       providerList,
-      filteredInfo,
-      sortedInfo,
     } = this.state;
 
-    sortedInfo = sortedInfo || {};
-    filteredInfo = filteredInfo || {};
-
-    //TODO change from using onRow to go to job Details and use ViewDetail button in the next commit
     const columns = [
       {
         title: 'Contract Address',
         dataIndex: 'Contract',
         key: 'Contract',
+        width: 250,
         ...this.getColumnSearchProps('Contract'),
-        sorter: (a, b) => a.Contract > b.Contract ,
-        render: (text, row, index) => {
-          return {
-            children: text,
-            props: {
-              colSpan: 1
-            }
-          };
-        }
+        sorter: (a,b) => a.Contract.localeCompare(b.Contract)
       },
       {
         title: 'Node',
         dataIndex: 'Node',
         key: 'Node',
         filters: API_URLS,
-        filteredValue: filteredInfo.Node || null,
-        onFilter: (value, record) => {
-          this.state.nestedDataSource.forEach((item) => {
-            //value = API_URLS.text
-            //citem.Node = API_URLS.value
-            item.children.forEach((citem, cindex, cobject) => {
-              console.log("STATE :", this.state);
-              let result = API_URLS.find(item => item.text == citem.Node);
-              console.log("AFTER MAPPING: ", result.value + " filteredInfo ", filteredInfo.Node);
-
-              if (filteredInfo &&
-                  filteredInfo.Node
-                  && filteredInfo.Node.indexOf(result.value) === -1) {
-                console.log(filteredInfo.Node.indexOf(result.value) === -1);
-                cobject.splice(cindex,1);
-                console.log("After Slice: ", JSON.stringify(cobject) + " Length: ", cobject.length);
-              }
-            });
-
-            //   if (
-            //       filteredInfo &&
-            //       filteredInfo.Node &&
-            //       filteredInfo.Node.indexOf(citem.Node) === -1
-            //   ) {
-            //     cobject.forEach((item)=> console.log("COBJECT ITEMS: ", item))
-            //     cobject.splice(cindex, 1);
-            //     console.log("After: ",cobject);
-            //   }
-            });
-          return true;
+        onFilter: (record, {Node}) => {
+          return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
         },
-        render: (text, row, index) => {
-          return {
-            children: text,
-            props:{
-              //colSpan: 1,
-            }
-          };
-        }
-        // onFilter: (record, {Node}) => {
-        //   return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
-        // },
+        sorter: (a,b) => a.Node.localeCompare(b.Node),
+
       },
       {
         title: 'Job ID',
         dataIndex: 'ID',
+        width: 250,
         ...this.getColumnSearchProps('ID'),
         key: 'ID',
+        sorter: (a, b) => a.ID > b.ID,
       },
       {
         title: 'Last Updated time',
@@ -517,36 +368,190 @@ class Jobs extends Component {
       {
         title: 'Last Run Result',
         dataIndex: 'LastRunResult.value',
-        key: 'LastRunResult',
+        key: 'LastRunResult'+crypto.randomUUID(),
       },
       {
         title: 'Current Result',
         dataIndex: 'LastRunResult.url',
-        key: 'LastRunResult',
-        render: this.getCurrenRunResultUrl
+        key: 'LastRunResult'+crypto.randomUUID(),
+        render: lastRunResult => {
+          if (lastRunResult) {
+            return <a href={lastRunResult}>Current Run Result</a>;
+          }
+        }
       },
       {
         title: 'Data Source',
         dataIndex: 'DataSource',
         key: 'DataSource',
+        width: 150,
         filters: providerList,
         onFilter: (value, record) => value.toUpperCase().includes(record.DataSource.tag.toUpperCase()),
-        render: this.getDatasourceTag
+        render: dataSource => (
+            <span>
+                <Tooltip title={dataSource.task} overlayStyle={{'whiteSpace': 'nowrap', maxWidth: '500px'}} >
+                  <Tag color={dataSource.color}>
+                    {dataSource.tag}
+                  </Tag>
+                </Tooltip>
+             </span>
+        ),
       },
       {
-        title: 'View & Edit',
-        render: () => {<a onClick={this.showModal}>View and Edit</a>}
-      },
-      {
-        title: 'View Detail',
-        // render: (record) => {
-        //   {
-        //     return <a onClick={this.viewDetailOnClick(record)}>View Detail</a>;
-        //   }
-        // }
-
+        title: 'Actions',
+        width: 110,
+        render: (record) => {
+          return <div>
+            <Button.Group size={'small'}>
+              <Tooltip title={'view'}>
+                <Button icon='select'
+                        className={'wink-btn-success'}
+                        onClick={event => {
+                                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                                  window.sessionStorage.setItem('jobUrl', selectedNode);
+                                  window.sessionStorage.setItem('nodeName', record.Node);
+                                  this.props.history.push({pathname: "/jobs/" + record.ID, state: {jobUrl: selectedNode, nodeName: record.Node}});
+                }} />
+              </Tooltip>
+              <Tooltip title={'edit'}>
+                <Button icon='edit'
+                        className={'wink-btn-primary'}
+                        onClick={event => {
+                          const selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                          this.setState({code:JSON.stringify(JSON.parse(record.Code)), create:true, edit:true, jobUrl: selectedNode }, () => {
+                            this.showModal();
+                            let input = eval('(' + this.state.code + ')');
+                            this.setState({textValue: JSON.stringify(input, null, 4),  jobUrl: selectedNode});
+                          });
+                        }}
+                />
+              </Tooltip>
+            </Button.Group>
+            &nbsp;
+            <Button.Group size={'small'}>
+              <Tooltip title={'delete'}>
+                <Button type='danger'
+                        icon='delete'
+                        onClick={ event => this.showDeleteConfirm(record)}
+                />
+              </Tooltip>
+            </Button.Group>
+          </div>
+        }
       }
     ];
+
+    const vrfColumns = [
+      {
+        title: 'Contract Address',
+        dataIndex: 'Contract',
+        key: 'Contract',
+        width: 250,
+        ...this.getColumnSearchProps('Contract'),
+        sorter: (a, b) =>  a.Contract.localeCompare(b.Contract) ,
+      },
+      {
+        title: 'Node',
+        dataIndex: 'Node',
+        key: 'Node',
+        filters: API_URLS,
+        onFilter: (record, {Node}) => {
+          return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
+        },
+        sorter: (a,b) => a.Node.localeCompare(b.Node),
+
+      },
+      {
+        title: 'Job ID',
+        dataIndex: 'ID',
+        ...this.getColumnSearchProps('ID'),
+        key: 'ID',
+        width: 250,
+        sorter: (a, b) => a.ID > b.ID,
+      },
+      {
+        title: 'Last Updated time',
+        dataIndex: 'Updated',
+        key: 'Updated',
+        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+      },
+      {
+        title: 'Last Run Time',
+        dataIndex: 'Created',
+        key: 'Created',
+        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+      },
+      {
+        title: 'Last Run Result',
+        dataIndex: 'LastRunResult.value',
+        key: 'LastRunResult'+crypto.randomUUID(),
+      },
+      {
+        title: 'Current Result',
+        dataIndex: 'LastRunResult.url',
+        key: 'LastRunResult'+crypto.randomUUID(),
+        render: lastRunResult => {
+          if (lastRunResult) {
+            return <a href={lastRunResult}>Current Run Result</a>;
+          }
+        }
+      },
+      {
+        title: 'Public Key',
+        dataIndex: 'PublicKey',
+        key: 'PublicKey',
+        width: 200,
+        ...this.getColumnSearchProps('PublicKey'),
+      },
+      {
+        title: 'Actions',
+        width: 110,
+        render: (record) => {
+          return <div>
+            <Button.Group size={'small'}>
+              <Tooltip title={'view'}>
+                <Button icon='select'
+                        className={'wink-btn-success'}
+                        onClick={event => {
+                          let selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                          window.sessionStorage.setItem('jobUrl', selectedNode);
+                          window.sessionStorage.setItem('nodeName', record.Node);
+                          this.props.history.push({
+                            pathname: "/jobs/" + record.ID,
+                            jobUrl: selectedNode,
+                            nodeName: record.Node
+                          });
+                        }} />
+              </Tooltip>
+              <Tooltip title={'edit'}>
+                <Button icon='edit'
+                        className={'wink-btn-primary'}
+                        onClick={event => {
+                          const selectedNode = API_URLS.find(url => url.text === record.Node).value;
+                          this.setState({code:JSON.stringify(JSON.parse(record.Code)), create:true, edit:true, jobUrl: selectedNode }, () => {
+                            this.showModal();
+                            let input = eval('(' + this.state.code + ')');
+                            this.setState({textValue: JSON.stringify(input, null, 4),  jobUrl: selectedNode});
+                          });
+                        }}
+                />
+              </Tooltip>
+            </Button.Group>
+            &nbsp;
+            <Button.Group size={'small'}>
+              <Tooltip title={'delete'}>
+                <Button type='danger'
+                        icon='delete'
+                        onClick={ event => this.showDeleteConfirm(record)}
+                />
+              </Tooltip>
+            </Button.Group>
+          </div>
+        }
+      }
+    ];
+
+
     const pageSizeOption = ['10','20','30','40',size.toString()];
 
     return <Fragment>
@@ -563,27 +568,18 @@ class Jobs extends Component {
       <Row gutter={16}>
 
         <Table
-            dataSource={nestedDataSource}
+            dataSource={dataSource}
             columns={columns}
             loading={loading}
-            onChange={this.handleChange}
-            defaultExpandAllRows={true}
             pagination={{
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
-            scroll={{ y: "calc(100vh - 380px)" }}
+            scroll={{ y: "calc(100vh - 400px)" }}
             onRow={record => {
               return {
-                onClick: event => {
-                  console.log(record);
-                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
-                  window.sessionStorage.setItem('jobUrl', selectedNode);
-                  window.sessionStorage.setItem('nodeName', record.Node);
-                  this.props.history.push({pathname: "/jobs/" +record.ID, jobUrl: selectedNode, nodeName: record.Node});
-                },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
                 },
@@ -598,23 +594,17 @@ class Jobs extends Component {
 
         <Table
             dataSource={vrfDataSource}
-            columns={columns}
+            columns={vrfColumns}
             loading={loading}
-
             pagination={{
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
+            scroll={{ y: "calc(100vh - 400px)" }}
             onRow={record => {
               return {
-                onClick: event => {
-                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
-                  window.sessionStorage.setItem('jobUrl', selectedNode);
-                  window.sessionStorage.setItem('nodeName', record.Node);
-                  this.props.history.push({pathname: "/jobs/" +record.ID, jobUrl: selectedNode, nodeName: record.Node});
-                },
                 onMouseEnter: (event) => {
                   $(event.target).css('cursor', 'pointer');
                 },
@@ -648,7 +638,7 @@ class Jobs extends Component {
               onSelect={this.onSelectChange}
               optionLabelProp='label'
               style={{ width: '100%', marginBottom: 16 }}
-              disabled={!!this.props.location.state}
+              disabled={!!this.props.location.state || !!this.state.edit}
           >
             {API_URLS.map(url => (
                 <Option key={url.value} value={url.value} label={url.text + " - " + url.value}>{url.text + " - " + url.value}</Option>
