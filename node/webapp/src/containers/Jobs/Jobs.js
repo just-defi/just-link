@@ -220,6 +220,9 @@ class Jobs extends Component {
   handleCancel = e => {
     this.setState({
       visible: false,
+      jobUrl: '',
+      edit: '',
+      create: '',
     });
     delete this.props.location.state;
   };
