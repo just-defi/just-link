@@ -108,7 +108,7 @@ class Jobs extends Component {
     this.setState({loading: true});
     try {
       API_URLS.forEach((api) => {
-        let url = api.value + "/job/specs?size=" + size;
+        let url = api.value + "/job/specs?page=1&size=" + size;
         xhr.get(url).then(
             (response) => {
               let data = response.data.data;
@@ -328,12 +328,12 @@ class Jobs extends Component {
       providerList,
     } = this.state;
 
-    const columns = [
+    const commonColumns = [
       {
         title: 'Contract Address',
         dataIndex: 'Contract',
         key: 'Contract',
-        width: 250,
+        ellipsis: true,
         ...this.getColumnSearchProps('Contract'),
         sorter: (a,b) => a.Contract.localeCompare(b.Contract)
       },
@@ -341,17 +341,18 @@ class Jobs extends Component {
         title: 'Node',
         dataIndex: 'Node',
         key: 'Node',
+        ellipsis: true,
+        width: 170,
         filters: API_URLS,
         onFilter: (record, {Node}) => {
           return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
         },
         sorter: (a,b) => a.Node.localeCompare(b.Node),
-
       },
       {
         title: 'Job ID',
         dataIndex: 'ID',
-        width: 250,
+        ellipsis: true,
         ...this.getColumnSearchProps('ID'),
         key: 'ID',
         sorter: (a, b) => a.ID > b.ID,
@@ -360,152 +361,38 @@ class Jobs extends Component {
         title: 'Last Updated time',
         dataIndex: 'Updated',
         key: 'Updated',
+        ellipsis: true,
         sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
       },
       {
         title: 'Last Run Time',
         dataIndex: 'Created',
         key: 'Created',
+        ellipsis: true,
         sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
       },
       {
         title: 'Last Run Result',
         dataIndex: 'LastRunResult.value',
-        key: 'LastRunResult'+crypto.randomUUID(),
-      },
-      {
-        title: 'Current Result',
-        dataIndex: 'LastRunResult.url',
-        key: 'LastRunResult'+crypto.randomUUID(),
-        render: lastRunResult => {
-          if (lastRunResult) {
-            return <a href={lastRunResult}>Current Run Result</a>;
-          }
-        }
-      },
-      {
-        title: 'Data Source',
-        dataIndex: 'DataSource',
-        key: 'DataSource',
-        width: 150,
-        filters: providerList,
-        onFilter: (value, record) => value.toUpperCase().includes(record.DataSource.tag.toUpperCase()),
-        render: dataSource => (
-            <span>
-                <Tooltip title={dataSource.task} overlayStyle={{'whiteSpace': 'nowrap', maxWidth: '500px'}} >
-                  <Tag color={dataSource.color}>
-                    {dataSource.tag}
-                  </Tag>
-                </Tooltip>
-             </span>
-        ),
-      },
-      {
-        title: 'Actions',
+        key: 'LastRunResultValue',
+        ellipsis: true,
         width: 110,
-        render: (record) => {
-          return <div>
-            <Button.Group size={'small'}>
-              <Tooltip title={'view'}>
-                <Button icon='select'
-                        className={'wink-btn-success'}
-                        onClick={event => {
-                                  let selectedNode = API_URLS.find(url => url.text === record.Node).value;
-                                  window.sessionStorage.setItem('jobUrl', selectedNode);
-                                  window.sessionStorage.setItem('nodeName', record.Node);
-                                  this.props.history.push({pathname: "/jobs/" + record.ID, state: {jobUrl: selectedNode, nodeName: record.Node}});
-                }} />
-              </Tooltip>
-              <Tooltip title={'edit'}>
-                <Button icon='edit'
-                        className={'wink-btn-primary'}
-                        onClick={event => {
-                          const selectedNode = API_URLS.find(url => url.text === record.Node).value;
-                          this.setState({code:JSON.stringify(JSON.parse(record.Code)), create:true, edit:true, jobUrl: selectedNode }, () => {
-                            this.showModal();
-                            let input = eval('(' + this.state.code + ')');
-                            this.setState({textValue: JSON.stringify(input, null, 4),  jobUrl: selectedNode});
-                          });
-                        }}
-                />
-              </Tooltip>
-            </Button.Group>
-            &nbsp;
-            <Button.Group size={'small'}>
-              <Tooltip title={'delete'}>
-                <Button type='danger'
-                        icon='delete'
-                        onClick={ event => this.showDeleteConfirm(record)}
-                />
-              </Tooltip>
-            </Button.Group>
-          </div>
-        }
-      }
-    ];
-
-    const vrfColumns = [
-      {
-        title: 'Contract Address',
-        dataIndex: 'Contract',
-        key: 'Contract',
-        width: 250,
-        ...this.getColumnSearchProps('Contract'),
-        sorter: (a, b) =>  a.Contract.localeCompare(b.Contract) ,
-      },
-      {
-        title: 'Node',
-        dataIndex: 'Node',
-        key: 'Node',
-        filters: API_URLS,
-        onFilter: (record, {Node}) => {
-          return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
-        },
-        sorter: (a,b) => a.Node.localeCompare(b.Node),
-
-      },
-      {
-        title: 'Job ID',
-        dataIndex: 'ID',
-        ...this.getColumnSearchProps('ID'),
-        key: 'ID',
-        width: 250,
-        sorter: (a, b) => a.ID > b.ID,
-      },
-      {
-        title: 'Last Updated time',
-        dataIndex: 'Updated',
-        key: 'Updated',
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
-      },
-      {
-        title: 'Last Run Time',
-        dataIndex: 'Created',
-        key: 'Created',
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
-      },
-      {
-        title: 'Last Run Result',
-        dataIndex: 'LastRunResult.value',
-        key: 'LastRunResult'+crypto.randomUUID(),
       },
       {
         title: 'Current Result',
         dataIndex: 'LastRunResult.url',
-        key: 'LastRunResult'+crypto.randomUUID(),
+        key: 'LastRunResultURL',
+        width: 100,
+        ellipsis: true,
         render: lastRunResult => {
           if (lastRunResult) {
-            return <a href={lastRunResult}>Current Run Result</a>;
+            return <a href={lastRunResult}>Result</a>;
           }
         }
       },
-      {
-        title: 'Public Key',
-        dataIndex: 'PublicKey',
-        key: 'PublicKey',
-        width: 200,
-        ...this.getColumnSearchProps('PublicKey'),
-      },
+    ]
+
+    const commonActions = [
       {
         title: 'Actions',
         width: 110,
@@ -519,11 +406,7 @@ class Jobs extends Component {
                           let selectedNode = API_URLS.find(url => url.text === record.Node).value;
                           window.sessionStorage.setItem('jobUrl', selectedNode);
                           window.sessionStorage.setItem('nodeName', record.Node);
-                          this.props.history.push({
-                            pathname: "/jobs/" + record.ID,
-                            jobUrl: selectedNode,
-                            nodeName: record.Node
-                          });
+                          this.props.history.push({pathname: "/jobs/" + record.ID, state: {jobUrl: selectedNode, nodeName: record.Node}});
                         }} />
               </Tooltip>
               <Tooltip title={'edit'}>
@@ -554,6 +437,39 @@ class Jobs extends Component {
       }
     ];
 
+    const columns = [
+        ...commonColumns,
+      {
+        title: 'Data Source',
+        dataIndex: 'DataSource',
+        key: 'DataSource',
+        width: 130,
+        filters: providerList,
+        onFilter: (value, record) => value.toUpperCase().includes(record.DataSource.tag.toUpperCase()),
+        render: dataSource => (
+            <span>
+                <Tooltip title={dataSource.task} overlayStyle={{'whiteSpace': 'nowrap', maxWidth: '500px'}} >
+                  <Tag color={dataSource.color}>
+                    {dataSource.tag}
+                  </Tag>
+                </Tooltip>
+             </span>
+        ),
+      },
+        ...commonActions
+    ];
+
+    const vrfColumns = [
+        ...commonColumns,
+      {
+        title: 'Public Key',
+        dataIndex: 'PublicKey',
+        key: 'PublicKey',
+        width: 200,
+        ...this.getColumnSearchProps('PublicKey'),
+      },
+        ...commonActions
+    ];
 
     const pageSizeOption = ['10','20','30','40',size.toString()];
 
@@ -636,7 +552,8 @@ class Jobs extends Component {
           <span>Host Node</span>
           <Select
               defaultActiveFirstOption={true}
-              defaultValue={this.state.jobUrl}
+              defaultValue={this.state.jobUrl || API_URL}
+              value={this.state.jobUrl || API_URL}
               autoFocus={true}
               onSelect={this.onSelectChange}
               optionLabelProp='label'
