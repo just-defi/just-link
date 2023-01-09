@@ -23,8 +23,6 @@ class Jobs extends Component {
       visible: false,
       vrfDataSource: [],
       dataSource: [],
-      searchText: '',
-      searchedColumn:'',
       size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
@@ -32,8 +30,8 @@ class Jobs extends Component {
   };
 
   componentDidMount() {
-    this.getJobs(this.state.size);
-    if (this.props.location.state && this.props.location.state.create) {
+    this.getJobs(this.state.size).then(() => this.setState({loading: false}));
+    if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
       this.showModal();
       let input = eval('(' + this.props.location.state.code + ')');
@@ -93,26 +91,21 @@ class Jobs extends Component {
 
   handleSearch = (selectedKeys, confirm, dataIndex) => {
     confirm();
-    this.setState({
-      searchText: selectedKeys[0],
-      searchedColumn: dataIndex,
-    });
   }
 
   handleReset = clearFilters => {
     clearFilters();
-    this.setState({ searchText: '' });
   };
 
-  getJobs = (size) => {
+  getJobs = async (size) => {
     this.setState({loading: true});
-    API_URLS.forEach(async (api) => {
+
+    await API_URLS.map(api => {
       let url = api.value + "/job/specs?page=1&size=" + size;
-      await xhr.get(url).then(response => {
+      xhr.get(url).then(response => {
         response.data.data.forEach((item) => {
           this.createJob(item, api).then(job => this.filterJobsAndSetToState(job));
         });
-        this.setState({loading: false,});
       }).catch(e => {
         console.log(e.toString());
       });
@@ -166,6 +159,7 @@ class Jobs extends Component {
   };
 
   showModal = () => {
+    if (!this.state.jobUrl) { this.setState({jobUrl: API_URL}); }
     this.setState({
       visible: true,
       textValue: ''
@@ -447,7 +441,7 @@ class Jobs extends Component {
         ...commonActions
     ];
 
-    const pageSizeOption = ['10','25','50','100',size.toString()];
+    const pageSizeOption = ['2', '10','25','50','100'];
 
     return <Fragment>
       <PageHeader title="Jobs">
