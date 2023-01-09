@@ -106,77 +106,55 @@ class Jobs extends Component {
 
   getJobs = (size) => {
     this.setState({loading: true});
-    try {
-      API_URLS.forEach((api) => {
-        let url = api.value + "/job/specs?page=1&size=" + size;
-        xhr.get(url).then(
-            (response) => {
-              let data = response.data.data;
-              data.forEach((item) => {
-                let job = this.createJob(item, api);
-
-                this.filterJobsAndSetToState(job);
-              })
-              this.setState({
-                loading: false,
-              });
-            });
+    API_URLS.forEach(async (api) => {
+      let url = api.value + "/job/specs?page=1&size=" + size;
+      await xhr.get(url).then(response => {
+        response.data.data.forEach((item) => {
+          this.createJob(item, api).then(job => this.filterJobsAndSetToState(job));
+        });
+        this.setState({loading: false,});
+      }).catch(e => {
+        console.log(e.toString());
       });
-    } catch (e) {
-
-    }
+    });
   };
 
-  getLatestResultAndSetToSourceArr(jobId, api, job) {
-      let url = api.value + "/job/result/" + jobId;
-      xhr.get(url).then((response) => {
-        if (response.status === 200) {
-          job.LastRunResult.value = response.data.data;
-          job.LastRunResult.url = url;
-          this.filterJobsAndSetToState(job);
-        } else {
-          job.LastRunResult.value = 0;
-          job.LastRunResult.url = url;
-          this.filterJobsAndSetToState(job);
-        }
-      });
+  createJob = async (data, api) => {
+    const initiators = data.initiators[0];
+    return {
+      key: initiators.address + data.id + api.text,
+      Contract: initiators.address,
+      ID: data.id,
+      Initiator: initiators.type,
+      Created: data.createdAt,
+      Updated: data.updatedAt,
+      Node: api.text,
+      DataSource: {
+        task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
+        ...(this.generateTagColor(JSON.parse(data.params).tasks[0]))
+      },
+      LastRunResult: await this.getLatestResultAndSetToSourceArr(data.id, api),
+      Code: JSON.stringify(JSON.parse(data.params), null, 2),
+      PublicKey: (initiators.type === RANDOMNESS_LOG) ?
+          JSON.parse(data.params).tasks[0].params.publicKey : null,
+    };
   }
 
-  createJob = (data, api) => {
-    const type = data.initiators[0].type;
-    const contractAddr = data.initiators[0].address;
-    let tasks = JSON.parse(data.params).tasks.map(task => task.type).join(" / ");
-    const dataSourceEndPoint = this.generateTagColor(JSON.parse(data.params).tasks[0]);
-    const jobId = data.id;
-    const createdDate = data.createdAt;
-    const updatedDate = data.updatedAt;
-    let publicKey = "";
-    if (type === RANDOMNESS_LOG) {
-       publicKey = JSON.parse(data.params).tasks[0].params.publicKey;
-    }
-    let job = {
-      key: crypto.randomUUID(),
-      Contract: contractAddr,
-      ID: jobId,
-      Initiator: type,
-      Created: createdDate,
-      Updated: updatedDate,
-      Node: api.text,
-      DataSource: {task: tasks, ...dataSourceEndPoint},
-      LastRunResult: {value: "", url:""},
-      Code: JSON.stringify(JSON.parse(data.params), null, 2),
-      PublicKey: publicKey? publicKey:null,
-    };
-    this.getLatestResultAndSetToSourceArr(data.id, api, job);
-
+  getLatestResultAndSetToSourceArr = async (jobId, api) => {
+    const url = api.value + "/job/result/" + jobId;
+    let lastRunResult = { value: '', url: url };
+    await xhr.get(url).then(response => {
+        lastRunResult.value = (response.status === 200) ? response.data.data : 0
+    });
+    return lastRunResult;
   }
 
   filterJobsAndSetToState = (job) => {
-    if (job && job.Initiator === RANDOMNESS_LOG) {
+    if (job.Initiator === RANDOMNESS_LOG) {
       this.setState({
         vrfDataSource: [...this.state.vrfDataSource, job],
       });
-    } else if(job){
+    } else {
       this.setState({
         dataSource: [...this.state.dataSource, job],
       });
@@ -313,8 +291,6 @@ class Jobs extends Component {
       },
     });
   }
-
-
 
   render() {
     let {
@@ -471,7 +447,7 @@ class Jobs extends Component {
         ...commonActions
     ];
 
-    const pageSizeOption = ['10','20','30','40',size.toString()];
+    const pageSizeOption = ['10','25','50','100',size.toString()];
 
     return <Fragment>
       <PageHeader title="Jobs">
