@@ -97,9 +97,6 @@ class JobDetail extends Component {
     this.setState({currentPage:pageNumber.current})
   }
 
-  onChangeError = (pageNumber) => {
-    console.log('Page: ', pageNumber);
-  }
 
   componentDidMount() {
     const path = this.props.location.pathname.split('/')[2];
@@ -157,7 +154,6 @@ class JobDetail extends Component {
     let id = this.props.location.pathname.split('/')[2];
     let url = this.props.location.state.jobUrl;
     xhr.delete(url+"/job/specs/"+id).then((result) => {
-      console.log(result);
       if (result.error) {
         this.error(result.error)
       }
@@ -187,6 +183,7 @@ class JobDetail extends Component {
   success = () => {
     Modal.success({
       content: 'Successful!',
+      onOk: () => {  this.props.history.push({ pathname: "/jobs" })}
     });
   }
 
@@ -241,7 +238,6 @@ class JobDetail extends Component {
                          onRow={record => {
                            return {
                              onClick: event => {
-                               console.log(record);
                                this.getRunDetail(record.taskRuns)
                              },
                              onMouseEnter: (event) => {

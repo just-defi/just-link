@@ -31,7 +31,7 @@ class Jobs extends Component {
   };
 
   componentDidMount() {
-    this.getJobs(this.state.page, this.state.size).then(() => this.setState({loading: false})).then(() =>  console.log(this.state.dataSource));
+    this.getJobs(this.state.page, this.state.size).then(() => this.setState({loading: false}));
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -262,15 +262,12 @@ class Jobs extends Component {
       onOk() {
         const selectedNode = API_URLS.find(url => url.text === record.Node).value;
         const url = `${selectedNode}/job/specs/${record.ID}`;
-        console.log(url);
         xhr.delete(url).then((result) => {
-          console.log(result);
           if (result.error) {
             Modal.error({content: result.error})
           }
           if(result.data && result.data.msg && result.data.msg === 'success'){
-            Modal.success({content: result.data.msg});
-            window.location.reload(true);
+            Modal.success({content: result.data.msg, onOk: () => window.location.reload(true)});
           } else{
             Modal.error({content: result.data.msg});
           }
