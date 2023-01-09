@@ -138,9 +138,9 @@ class Jobs extends Component {
   getLatestResultAndSetToSourceArr = async (jobId, api) => {
     const url = `${api.value}/job/result/${jobId}`;
     let lastRunResult = { value: '', url: url };
-    await xhr.get(url).then(response => {
+    await xhr.get(url, {timeout: 2000}).then(response => {
         lastRunResult.value = (response.status === 200) ? response.data.data : 0
-    });
+    }).catch(e => lastRunResult.value = 0);
     return lastRunResult;
   }
 
