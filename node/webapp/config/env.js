@@ -60,14 +60,12 @@ function getClientEnvironment(publicUrl) {
         DATASOURCE_SIZE_PER_RETRIEVAL: process.env.DATASOURCE_SIZE_PER_RETRIEVAL || 100,
       }
     );
-  console.log("Raw : ", raw);
   const stringified = {
     'process.env': Object.keys(raw).reduce((env, key) => {
       env[key] = JSON.stringify(raw[key]);
       return env;
     }, {}),
   };
-  console.log("Stringified: ", stringified);
   return { raw, stringified };
 }
 
