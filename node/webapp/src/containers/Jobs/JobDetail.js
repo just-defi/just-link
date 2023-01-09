@@ -1,7 +1,6 @@
 import React, {Component, Fragment} from 'react';
-import {Table, Row, PageHeader, Card, Button, Col, Input, Steps} from 'antd';
+import {Table, Row, PageHeader, Card, Button, Col, Input, Steps, Tabs, Select, Space, Tag} from 'antd';
 import xhr from "axios/index";
-import {Tabs, Select, Space} from 'antd';
 import $ from "jquery";
 import {JsonFormat} from "../../utils/JsonFormat";
 import {Modal} from "antd/lib/index";
@@ -9,8 +8,6 @@ import {CopyToClipboard} from "react-copy-to-clipboard";
 
 const { Step } = Steps;
 const {TabPane} = Tabs;
-
-const API_URL = process.env.API_URL;
 
 const status = {0:'init', 1:'processing', 2:'complete', 3:'error'};
 const ant_status = {0: 'wait', 1: 'process', 2: 'finish', 3: 'error'};
@@ -86,6 +83,8 @@ class JobDetail extends Component {
       total:50,
       minPayment: null,
       taskList:[],
+      jobUrl: '',
+      nodeName: '',
     };
   }
 
@@ -98,33 +97,44 @@ class JobDetail extends Component {
     this.setState({currentPage:pageNumber.current})
   }
 
-  onChangeError = (pageNumber) => {
-    console.log('Page: ', pageNumber);
-  }
 
   componentDidMount() {
-    this.getJob();
-    this.getRuns(1);
-    this.setState({path: this.props.location.pathname.split('/')[2]});
+    const path = this.props.location.pathname.split('/')[2];
+    const jobUrl = window.sessionStorage.getItem('jobUrl');
+    const nodeName = window.sessionStorage.getItem('nodeName');
+
+    if (jobUrl) {
+      this.getJob(jobUrl, path);
+      this.getRuns(jobUrl, path, 1);
+    } else {
+      this.props.history.push({ pathname: "/jobs" })
+    }
+    this.setState({path: path, custom: this.props, jobUrl: jobUrl, nodeName: nodeName});
   }
 
-  getJob = () => {
-    let id = this.props.location.pathname.split('/')[2];
-    xhr.get(API_URL+"/job/specs/"+id).then((result) => {
-      let data = result.data.data;
-      this.setState({
-        createdAt:data.createdAt,
-        code:JSON.parse(data.params)
-      });
-      var formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
-      this.setState({formattedCode});
-      this.setState({minPayment:data.minPayment});
+  getJob = (jobUrl, id) => {
+    xhr.get(jobUrl+"/job/specs/"+id).then((result) => {
+      if (result.data.hasOwnProperty('data')) {
+        let data = result.data.data;
+        this.setState({
+          createdAt:data.createdAt,
+          code:JSON.parse(data.params)
+        });
+        let formattedCode = JSON.stringify(JSON.parse(data.params), null, 2);
+        this.setState({formattedCode});
+        this.setState({minPayment:data.minPayment});
+      } else {
+        this.setState({
+          createdAt: 'Unknown',
+          code: null,
+          minPayment: null,
+        });
+      }
     })
   }
 
-  getRuns = (page) => {
-    let id = this.props.location.pathname.split('/')[2];
-    xhr.get(API_URL+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
+  getRuns = (jobUrl, id, page) => {
+    xhr.get(jobUrl+"/job/runs?page="+page+"&size=10&id="+id).then((result) => {
       let data = result.data.data;
       let dataSource = [];
       data.forEach((item, index) => {
@@ -142,12 +152,12 @@ class JobDetail extends Component {
 
   delete = () => {
     let id = this.props.location.pathname.split('/')[2];
-    xhr.delete(API_URL+"/job/specs/"+id).then((result) => {
-      console.log(result);
+    let url = this.props.location.state.jobUrl;
+    xhr.delete(url+"/job/specs/"+id).then((result) => {
       if (result.error) {
         this.error(result.error)
       }
-      if(result.data.msg=='success'){
+      if(result.data.msg === 'success'){
         this.success()
       } else{
         this.error(result.data.msg)
@@ -161,9 +171,11 @@ class JobDetail extends Component {
     this.setState({taskList:task})
   }
 
-  duplicate = () => {
+  edit = () => {
     let {code} = this.state;
-    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true } })
+    window.sessionStorage.removeItem('jobUrl');
+    window.sessionStorage.removeItem('nodeName');
+    this.props.history.push({ pathname: "/jobs", state: { code:JSON.stringify(code), create:true, jobUrl: this.state.jobUrl } })
   }
 
   copy = () => {}
@@ -171,6 +183,7 @@ class JobDetail extends Component {
   success = () => {
     Modal.success({
       content: 'Successful!',
+      onOk: () => {  this.props.history.push({ pathname: "/jobs" })}
     });
   }
 
@@ -185,30 +198,28 @@ class JobDetail extends Component {
 
     return <Fragment>
 
-      <PageHeader title="Job Details"/>
+      <PageHeader
+          title="Job Details"
+          subTitle={path}
+          tags={<Tag color="blue">{this.state.nodeName}</Tag>}
+      />
 
 
       <div>
-        <div style={{marginBottom: 16}}>
-          {path}
-        </div>
         <div>
           Created at {createdAt}
-
           <div style={{float:'right',marginLeft:'10px'}}>
             <Button onClick={this.delete}>Archive</Button>
           </div>
           <div style={{float:'right',marginLeft:'10px'}}>
-            <Button onClick={this.duplicate}>Duplicate</Button>
+            <Button onClick={this.edit}>Edit</Button>
           </div>
           <div style={{float:'right',marginLeft:'10px'}}>
             <CopyToClipboard text={JSON.stringify(code)}>
               <Button onClick={this.copy}>Copy</Button>
             </CopyToClipboard>
           </div>
-
         </div>
-
 
         <Tabs tabPosition={this.state.tabPosition} animated={false} style={{marginTop: '30px'}}>
           <TabPane tab="Overview" key="1">
@@ -227,7 +238,6 @@ class JobDetail extends Component {
                          onRow={record => {
                            return {
                              onClick: event => {
-                               console.log(record);
                                this.getRunDetail(record.taskRuns)
                              },
                              onMouseEnter: (event) => {
