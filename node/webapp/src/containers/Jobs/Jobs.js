@@ -26,11 +26,13 @@ class Jobs extends Component {
       size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
+      page: 1,
     };
   };
 
   componentDidMount() {
-    this.getJobs(this.state.size).then(() => this.setState({loading: false}));
+    this.getJobs(this.state.page, this.state.size).then(() => this.setState({loading: false})).then(() =>  console.log(this.state.dataSource));
+
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
       this.showModal();
@@ -97,11 +99,11 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = async (size) => {
+  getJobs = async (page, size) => {
     this.setState({loading: true});
 
     await API_URLS.map(api => {
-      let url = api.value + "/job/specs?page=1&size=" + size;
+      let url = `${api.value}/job/specs?page=${page}&size=${size}`;
       xhr.get(url).then(response => {
         response.data.data.forEach((item) => {
           this.createJob(item, api).then(job => this.filterJobsAndSetToState(job));
@@ -134,7 +136,7 @@ class Jobs extends Component {
   }
 
   getLatestResultAndSetToSourceArr = async (jobId, api) => {
-    const url = api.value + "/job/result/" + jobId;
+    const url = `${api.value}/job/result/${jobId}`;
     let lastRunResult = { value: '', url: url };
     await xhr.get(url).then(response => {
         lastRunResult.value = (response.status === 200) ? response.data.data : 0
@@ -173,8 +175,7 @@ class Jobs extends Component {
       return;
     }
     this.setState({warning: false, visible: false});
-
-    await xhr.post(this.state.jobUrl+"/job/specs", JSON.parse(this.state.textValue)).then((result) => {
+    await xhr.post(`${this.state.jobUrl}/job/specs`, JSON.parse(this.state.textValue)).then((result) => {
 
      if (result.error) {
        this.error(result.error)
@@ -265,7 +266,7 @@ class Jobs extends Component {
       cancelText: 'Cancel',
       onOk() {
         const selectedNode = API_URLS.find(url => url.text === record.Node).value;
-        const url = selectedNode + "/job/specs/" + record.ID;
+        const url = `${selectedNode}/job/specs/${record.ID}`;
         console.log(url);
         xhr.delete(url).then((result) => {
           console.log(result);
@@ -274,6 +275,7 @@ class Jobs extends Component {
           }
           if(result.data && result.data.msg && result.data.msg === 'success'){
             Modal.success({content: result.data.msg});
+            window.location.reload(true);
           } else{
             Modal.error({content: result.data.msg});
           }
@@ -305,7 +307,7 @@ class Jobs extends Component {
         key: 'Contract',
         ellipsis: true,
         ...this.getColumnSearchProps('Contract'),
-        sorter: (a,b) => a.Contract.localeCompare(b.Contract)
+        sorter: (a,b) => a.Contract.localeCompare(b.Contract),
       },
       {
         title: 'Node',
@@ -340,6 +342,7 @@ class Jobs extends Component {
         key: 'Created',
         ellipsis: true,
         sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+        defaultSortOrder: 'descend',
       },
       {
         title: 'Last Run Result',
@@ -441,7 +444,7 @@ class Jobs extends Component {
         ...commonActions
     ];
 
-    const pageSizeOption = ['2', '10','25','50','100'];
+    const pageSizeOption = ['10','25','50','100'];
 
     return <Fragment>
       <PageHeader title="Jobs">
