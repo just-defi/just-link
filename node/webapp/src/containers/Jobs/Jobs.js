@@ -102,16 +102,11 @@ class Jobs extends Component {
   getJobs = async (page, size) => {
     this.setState({loading: true});
 
-    await API_URLS.map(api => {
+    for (const api of API_URLS) {
       let url = `${api.value}/job/specs?page=${page}&size=${size}`;
-      xhr.get(url).then(response => {
-        response.data.data.forEach((item) => {
-          this.createJob(item, api).then(job => this.filterJobsAndSetToState(job));
-        });
-      }).catch(e => {
-        console.log(e.toString());
-      });
-    });
+      const jobSpecs = await xhr.get(url).then(response => response.data.data).catch(e => console.log(e));
+      await Promise.all(jobSpecs.map(async item => await this.createJob(item, api).then(job => this.filterJobsAndSetToState(job))));
+    }
   };
 
   createJob = async (data, api) => {
@@ -140,7 +135,7 @@ class Jobs extends Component {
     let lastRunResult = { value: '', url: url };
     await xhr.get(url, {timeout: 2000}).then(response => {
         lastRunResult.value = (response.status === 200) ? response.data.data : 0
-    }).catch(e => lastRunResult.value = 0);
+    }).catch(e => lastRunResult.value = '-');
     return lastRunResult;
   }
 
