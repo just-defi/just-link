@@ -31,3 +31,4 @@ node/out/
 !**/src/test/**/out/
 
 *.log
+.direnv/
