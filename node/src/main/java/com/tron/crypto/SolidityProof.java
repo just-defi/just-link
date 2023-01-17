@@ -3,7 +3,7 @@ package com.tron.crypto;
 import java.math.BigInteger;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
-import org.spongycastle.math.ec.ECPoint;
+import org.bouncycastle.math.ec.ECPoint;
 import org.tron.common.utils.ByteArray;
 
 @AllArgsConstructor
