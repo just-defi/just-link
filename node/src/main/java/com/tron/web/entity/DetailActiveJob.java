@@ -8,7 +8,6 @@ import lombok.*;
 
 //@Data
 @NoArgsConstructor
-@RequiredArgsConstructor
 @ToString
 @EqualsAndHashCode
 @Getter
@@ -32,7 +31,7 @@ public class DetailActiveJob extends JobSpec implements Serializable {
   }
 
   public DetailActiveJob(JobSpec jobSpec, Long result) {
-    this.id = id;
+    this.id = jobSpec.getId();
     this.createdAt = jobSpec.getCreatedAt();
     this.initiators = jobSpec.getInitiators();
     this.taskSpecs = jobSpec.getTaskSpecs();

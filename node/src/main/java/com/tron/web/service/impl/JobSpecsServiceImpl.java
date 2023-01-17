@@ -77,24 +77,6 @@ public class JobSpecsServiceImpl implements JobSpecsService {
               return new DetailActiveJob(job, result);
             })
             .collect(Collectors.toList());
-
-//    List<Initiator> jobInitiators = new ArrayList<>();
-//
-//    jobSpecsMapper.getAllActive().forEach( jobSpec -> jobInitiators.add(getInitiatorsByJobId(jobSpec.getId()).get(0)));
-//
-//    Set<String> addresses = jobInitiators.stream().map(Initiator::getAddress).collect(Collectors.toSet());
-//
-//    List<DetailActiveJob> detailActiveJobs = new ArrayList<>();
-//    addresses.forEach(address -> {
-//      Initiator initiator = initiatorMapper.getByAddress(address);
-//      if (initiator != null) {
-//        JobSpec job = getById(initiator.getJobSpecID());
-//        Long result = JobSubscriber.getJobResultById(job.getId());
-//        detailActiveJobs.add(createDetailActiveJob(job, result));
-//      }
-//    });
-//
-//    return detailActiveJobs;
   }
 
   public long getJobCount() {
@@ -237,23 +219,5 @@ public class JobSpecsServiceImpl implements JobSpecsService {
       default:
         throw new TronException("Task type " + taskSpec.getType() + " dose dot support");
     }
-  }
-
-  private DetailActiveJob createDetailActiveJob(JobSpec jobSpec, Long result) {
-    DetailActiveJob activeJob = new DetailActiveJob();
-
-    activeJob.setId(jobSpec.getId());
-    activeJob.setCreatedAt(jobSpec.getCreatedAt());
-    activeJob.setInitiators(jobSpec.getInitiators());
-    activeJob.setTaskSpecs(jobSpec.getTaskSpecs());
-    activeJob.setMinPayment(jobSpec.getMinPayment());
-    activeJob.setStartAt(jobSpec.getStartAt());
-    activeJob.setEndAt(jobSpec.getEndAt());
-    activeJob.setUpdatedAt(jobSpec.getUpdatedAt());
-    activeJob.setDeletedAt(jobSpec.getDeletedAt());
-    activeJob.setParams(jobSpec.getParams());
-    activeJob.setResult(result);
-
-    return  activeJob;
   }
 }
