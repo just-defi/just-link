@@ -3,9 +3,16 @@ package com.tron.web.entity;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
-import lombok.Data;
 
-@Data
+import lombok.*;
+
+//@Data
+@NoArgsConstructor
+@RequiredArgsConstructor
+@ToString
+@EqualsAndHashCode
+@Getter
+@Setter
 public class DetailActiveJob extends JobSpec implements Serializable {
   private String id;
   private Date createdAt;
@@ -22,5 +29,19 @@ public class DetailActiveJob extends JobSpec implements Serializable {
   @Override
   public boolean archived() {
     return deletedAt != null;
+  }
+
+  public DetailActiveJob(JobSpec jobSpec, Long result) {
+    this.id = id;
+    this.createdAt = jobSpec.getCreatedAt();
+    this.initiators = jobSpec.getInitiators();
+    this.taskSpecs = jobSpec.getTaskSpecs();
+    this.minPayment = jobSpec.getMinPayment();
+    this.startAt = jobSpec.getStartAt();
+    this.endAt = jobSpec.getEndAt();
+    this.updatedAt = jobSpec.getUpdatedAt();
+    this.deletedAt = jobSpec.getDeletedAt();
+    this.params = jobSpec.getParams();
+    this.result = result;
   }
 }

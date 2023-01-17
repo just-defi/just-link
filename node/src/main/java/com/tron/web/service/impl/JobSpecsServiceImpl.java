@@ -20,11 +20,8 @@ import com.tron.web.mapper.InitiatorMapper;
 import com.tron.web.mapper.JobSpecsMapper;
 import com.tron.web.mapper.TaskSpecsMapper;
 import com.tron.web.service.JobSpecsService;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.Set;
-import java.util.UUID;
+
+import java.util.*;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Lazy;
@@ -69,23 +66,35 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   }
 
   public List<DetailActiveJob> getActiveJobListWithResults() {
-    List<Initiator> jobInitiators = new ArrayList<>();
+    return jobSpecsMapper.getAllActive().stream()
+            .map(jobSpec -> getInitiatorsByJobId(jobSpec.getId()).get(0).getAddress())
+            .distinct()
+            .map(address -> initiatorMapper.getByAddress(address))
+            .filter(Objects::nonNull)
+            .map(initiator -> {
+              JobSpec job = getById(initiator.getJobSpecID());
+              Long result = JobSubscriber.getJobResultById(job.getId());
+              return new DetailActiveJob(job, result);
+            })
+            .collect(Collectors.toList());
 
-    jobSpecsMapper.getAllActive().forEach( jobSpec -> jobInitiators.add(getInitiatorsByJobId(jobSpec.getId()).get(0)));
-
-    Set<String> addresses = jobInitiators.stream().map(Initiator::getAddress).collect(Collectors.toSet());
-
-    List<DetailActiveJob> detailActiveJobs = new ArrayList<>();
-    addresses.forEach(address -> {
-      Initiator initiator = initiatorMapper.getByAddress(address);
-      if (initiator != null) {
-        JobSpec job = getById(initiator.getJobSpecID());
-        Long result = JobSubscriber.getJobResultById(job.getId());
-        detailActiveJobs.add(createDetailActiveJob(job, result));
-      }
-    });
-
-    return detailActiveJobs;
+//    List<Initiator> jobInitiators = new ArrayList<>();
+//
+//    jobSpecsMapper.getAllActive().forEach( jobSpec -> jobInitiators.add(getInitiatorsByJobId(jobSpec.getId()).get(0)));
+//
+//    Set<String> addresses = jobInitiators.stream().map(Initiator::getAddress).collect(Collectors.toSet());
+//
+//    List<DetailActiveJob> detailActiveJobs = new ArrayList<>();
+//    addresses.forEach(address -> {
+//      Initiator initiator = initiatorMapper.getByAddress(address);
+//      if (initiator != null) {
+//        JobSpec job = getById(initiator.getJobSpecID());
+//        Long result = JobSubscriber.getJobResultById(job.getId());
+//        detailActiveJobs.add(createDetailActiveJob(job, result));
+//      }
+//    });
+//
+//    return detailActiveJobs;
   }
 
   public long getJobCount() {
