@@ -357,7 +357,7 @@ class Jobs extends Component {
         width: 90,
         render: lastRunResult => {
           if (lastRunResult) {
-            return <a href={lastRunResult}>Result</a>;
+            return <a href={lastRunResult} target="_blank" rel="noopener noreferrer">Result</a>;
           }
         }
       },
