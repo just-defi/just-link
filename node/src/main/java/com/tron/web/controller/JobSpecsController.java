@@ -59,6 +59,14 @@ public class JobSpecsController {
     }
   }
 
+  @GetMapping(value="/specs/active")
+  public R getDetailActiveJobs() {
+
+    List<DetailActiveJob> jobs = jobSpecsService.getActiveJobListWithResults();
+
+    return R.ok().put("data", jobs);
+  }
+
   @PostMapping("/specs")
   public R create(@RequestBody JobSpecRequest jobSpecRequest) {
     try {
@@ -171,11 +179,5 @@ public class JobSpecsController {
     return R.ok().put("data", jobIds);
   }
 
-  @GetMapping(value="/actives")
-  public R getDetailActiveJobs() {
 
-    List<DetailActiveJob> jobs = jobSpecsService.getActiveJobListWithResults();
-
-    return R.ok().put("data", jobs);
-  }
 }

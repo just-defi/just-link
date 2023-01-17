@@ -3,6 +3,8 @@ import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs, T
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
+import moment from "moment";
+import {Sorter as sorterUtil} from "../../utils/sorterUtil";
 
 const {TextArea} = Input;
 const {Option} = Select;
@@ -105,7 +107,7 @@ class Jobs extends Component {
     this.setState({loading: true});
 
     for(const api of API_URLS) {
-      let url = `${api.value}/job/actives`;
+      let url = `${api.value}/job/specs/active`;
       await xhr.get(url)
       .then(response => {
         let jobList = response.data.data;
@@ -123,8 +125,14 @@ class Jobs extends Component {
       Contract: initiators.address,
       ID: data.id,
       Initiator: initiators.type,
-      Created: new Date(data.createdAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
-      Updated: new Date(data.updatedAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
+      Created: {
+        date: new Date(data.createdAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
+        epoch: moment(data.createdAt).unix(),
+      },
+      Updated: {
+        date: new Date(data.updatedAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
+        epoch: moment(data.updatedAt).unix(),
+      },
       Node: api.text,
       DataSource: {
         task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
@@ -299,7 +307,7 @@ class Jobs extends Component {
         key: 'Contract',
         ellipsis: true,
         ...this.getColumnSearchProps('Contract'),
-        sorter: (a,b) => a.Contract.localeCompare(b.Contract),
+        sorter: (a,b, sortOrder) => sorterUtil.STRING(a.Contract, b.Contract, sortOrder),
       },
       {
         title: 'Node',
@@ -310,7 +318,7 @@ class Jobs extends Component {
         onFilter: (record, {Node}) => {
           return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
         },
-        sorter: (a,b) => a.Node.localeCompare(b.Node),
+        sorter: (a,b, sortOrder) => sorterUtil.STRING(a.Node, b.Node, sortOrder),
       },
       {
         title: 'Job ID',
@@ -318,22 +326,24 @@ class Jobs extends Component {
         ellipsis: true,
         ...this.getColumnSearchProps('ID'),
         key: 'ID',
-        sorter: (a, b) => a.ID > b.ID,
+        sorter: (a, b) => sorterUtil.DEFAULT(a.ID, b.ID),
       },
       {
         title: 'Last Updated time',
-        dataIndex: 'Updated',
+        dataIndex: 'Updated.date',
         key: 'Updated',
         ellipsis: true,
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+        sorter: (a, b, sortOrder) => sorterUtil.DATE(a.Updated.epoch, b.Updated.epoch, sortOrder),
+        sortDirection: ['descend', 'ascend'],
       },
       {
         title: 'Last Run Time',
-        dataIndex: 'Created',
+        dataIndex: 'Created.date',
         key: 'Created',
         ellipsis: true,
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+        sorter: (a, b, sortOrder) => sorterUtil.DATE(a.Created.epoch, b.Created.epoch, sortOrder),
         defaultSortOrder: 'descend',
+        sortDirection: ['descend', 'ascend'],
       },
       {
         title: 'Last Run Result',
@@ -457,7 +467,7 @@ class Jobs extends Component {
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
-            scroll={{ y: "calc(100vh - 400px)" }}
+            // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
 
@@ -475,7 +485,7 @@ class Jobs extends Component {
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
-            scroll={{ y: "calc(100vh - 400px)" }}
+            // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
       </TabPane>
