@@ -6,6 +6,7 @@ import com.tron.job.JobCache;
 import com.tron.job.JobSubscriber;
 import com.tron.web.common.ResultStatus;
 import com.tron.web.common.util.R;
+import com.tron.web.entity.DetailActiveJob;
 import com.tron.web.entity.Initiator;
 import com.tron.web.entity.JobSpec;
 import com.tron.web.entity.JobSpecRequest;
@@ -56,6 +57,14 @@ public class JobSpecsController {
       log.error("get job list failed, error : " + e.getMessage());
       return R.error(ResultStatus.GET_JOB_LIST_FAILED);
     }
+  }
+
+  @GetMapping(value="/specs/active")
+  public R getDetailActiveJobs() {
+
+    List<DetailActiveJob> jobs = jobSpecsService.getActiveJobListWithResults();
+
+    return R.ok().put("data", jobs);
   }
 
   @PostMapping("/specs")
@@ -133,7 +142,6 @@ public class JobSpecsController {
           for (TaskSpec taskSpec : jobSpec.getTaskSpecs()) {
             if (taskSpec.getType().equals(Constant.TASK_TYPE_CACHE)) {
               jobCache.addToCacheList(jobId);
-              //System.out.println("add to cache list");
             }
           }
         }
@@ -170,4 +178,6 @@ public class JobSpecsController {
 
     return R.ok().put("data", jobIds);
   }
+
+
 }

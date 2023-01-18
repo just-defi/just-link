@@ -3,6 +3,8 @@ import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs, T
 import xhr from "axios/index";
 import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
+import moment from "moment";
+import {Sorter as sorterUtil} from "../../utils/sorterUtil";
 
 const {TextArea} = Input;
 const {Option} = Select;
@@ -10,8 +12,10 @@ const {TabPane} = Tabs;
 const {confirm} = Modal;
 
 const API_URL = process.env.API_URL;
-const API_URLS = process.env.API_URLS;
+const API_URLS = JSON.parse(process.env.API_URLS);
 const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
+const LOCALE = process.env.LOCALE;
+const TIMEZONE = process.env.TIMEZONE;
 const RANDOMNESS_LOG = 'randomnesslog';
 class Jobs extends Component {
 
@@ -31,7 +35,7 @@ class Jobs extends Component {
   };
 
   componentDidMount() {
-    this.getJobs(this.state.page, this.state.size).then(() => this.setState({loading: false}));
+    this.getJobs().then(() => this.setState({loading: false}));
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -99,44 +103,46 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = async (page, size) => {
+  getJobs = async () => {
     this.setState({loading: true});
 
-    for (const api of API_URLS) {
-      let url = `${api.value}/job/specs?page=${page}&size=${size}`;
-      const jobSpecs = await xhr.get(url).then(response => response.data.data).catch(e => console.log(e));
-      await Promise.all(jobSpecs.map(async item => await this.createJob(item, api).then(job => this.filterJobsAndSetToState(job))));
+    for(const api of API_URLS) {
+      let url = `${api.value}/job/specs/active`;
+      await xhr.get(url)
+      .then(response => {
+        let jobList = response.data.data;
+        jobList.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
+      })
+      .catch(e => console.log(e));
     }
-  };
 
-  createJob = async (data, api) => {
+  }
+
+  createJob = (data, api) => {
     const initiators = data.initiators[0];
     return {
       key: initiators.address + data.id + api.text,
       Contract: initiators.address,
       ID: data.id,
       Initiator: initiators.type,
-      Created: data.createdAt,
-      Updated: data.updatedAt,
+      Created: {
+        date: new Date(data.createdAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
+        epoch: moment(data.createdAt).unix(),
+      },
+      Updated: {
+        date: new Date(data.updatedAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
+        epoch: moment(data.updatedAt).unix(),
+      },
       Node: api.text,
       DataSource: {
         task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
         ...(this.generateTagColor(JSON.parse(data.params).tasks[0]))
       },
-      LastRunResult: await this.getLatestResultAndSetToSourceArr(data.id, api),
+      LastRunResult: { value: data.result, url: `${api.value}/job/result/${data.id}` },
       Code: JSON.stringify(JSON.parse(data.params), null, 2),
       PublicKey: (initiators.type === RANDOMNESS_LOG) ?
           JSON.parse(data.params).tasks[0].params.publicKey : null,
     };
-  }
-
-  getLatestResultAndSetToSourceArr = async (jobId, api) => {
-    const url = `${api.value}/job/result/${jobId}`;
-    let lastRunResult = { value: '', url: url };
-    await xhr.get(url, {timeout: 2000}).then(response => {
-        lastRunResult.value = (response.status === 200) ? response.data.data : 0
-    }).catch(e => lastRunResult.value = '-');
-    return lastRunResult;
   }
 
   filterJobsAndSetToState = (job) => {
@@ -191,6 +197,7 @@ class Jobs extends Component {
       jobUrl: '',
       edit: '',
       create: '',
+      warning: false,
     });
     delete this.props.location.state;
   };
@@ -202,6 +209,7 @@ class Jobs extends Component {
   success = (message) => {
     Modal.success({
       content: 'Successful!',
+      onOk: () => window.location.reload(true),
     });
   };
 
@@ -299,19 +307,18 @@ class Jobs extends Component {
         key: 'Contract',
         ellipsis: true,
         ...this.getColumnSearchProps('Contract'),
-        sorter: (a,b) => a.Contract.localeCompare(b.Contract),
+        sorter: (a,b, sortOrder) => sorterUtil.STRING(a.Contract, b.Contract, sortOrder),
       },
       {
         title: 'Node',
         dataIndex: 'Node',
         key: 'Node',
         ellipsis: true,
-        width: 170,
         filters: API_URLS,
         onFilter: (record, {Node}) => {
           return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
         },
-        sorter: (a,b) => a.Node.localeCompare(b.Node),
+        sorter: (a,b, sortOrder) => sorterUtil.STRING(a.Node, b.Node, sortOrder),
       },
       {
         title: 'Job ID',
@@ -319,39 +326,38 @@ class Jobs extends Component {
         ellipsis: true,
         ...this.getColumnSearchProps('ID'),
         key: 'ID',
-        sorter: (a, b) => a.ID > b.ID,
+        sorter: (a, b) => sorterUtil.DEFAULT(a.ID, b.ID),
       },
       {
         title: 'Last Updated time',
-        dataIndex: 'Updated',
+        dataIndex: 'Updated.date',
         key: 'Updated',
         ellipsis: true,
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+        sorter: (a, b, sortOrder) => sorterUtil.DATE(a.Updated.epoch, b.Updated.epoch, sortOrder),
+        sortDirection: ['descend', 'ascend'],
       },
       {
         title: 'Last Run Time',
-        dataIndex: 'Created',
+        dataIndex: 'Created.date',
         key: 'Created',
         ellipsis: true,
-        sorter: (a, b) => new Date(a.Created) - new Date(b.Created),
+        sorter: (a, b, sortOrder) => sorterUtil.DATE(a.Created.epoch, b.Created.epoch, sortOrder),
         defaultSortOrder: 'descend',
+        sortDirection: ['descend', 'ascend'],
       },
       {
         title: 'Last Run Result',
         dataIndex: 'LastRunResult.value',
         key: 'LastRunResultValue',
-        ellipsis: true,
-        width: 110,
       },
       {
         title: 'Current Result',
         dataIndex: 'LastRunResult.url',
         key: 'LastRunResultURL',
-        width: 100,
-        ellipsis: true,
+        width: 90,
         render: lastRunResult => {
           if (lastRunResult) {
-            return <a href={lastRunResult}>Result</a>;
+            return <a href={lastRunResult} target="_blank" rel="noopener noreferrer">Result</a>;
           }
         }
       },
@@ -461,14 +467,7 @@ class Jobs extends Component {
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
-            scroll={{ y: "calc(100vh - 400px)" }}
-            onRow={record => {
-              return {
-                onMouseEnter: (event) => {
-                  $(event.target).css('cursor', 'pointer');
-                },
-              };
-            }}
+            // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
 
@@ -486,14 +485,7 @@ class Jobs extends Component {
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
-            scroll={{ y: "calc(100vh - 400px)" }}
-            onRow={record => {
-              return {
-                onMouseEnter: (event) => {
-                  $(event.target).css('cursor', 'pointer');
-                },
-              };
-            }}
+            // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
       </TabPane>
