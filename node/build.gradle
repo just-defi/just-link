@@ -77,7 +77,7 @@ dependencies {
 	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
 	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.4'
 
-	compile group: 'com.alibaba', name: 'fastjson', version: '1.2.83'
+	implementation group: 'com.alibaba', name: 'fastjson', version: '1.2.83'
 
 
 	testImplementation group: 'junit', name: 'junit', version: '4.13'
