@@ -2,7 +2,7 @@ name: Notify  Slack on push
 on:
   push:
     branches:
-      -  'omolade-ci'  
+      -  'develop'  
 
 jobs:
   notify_slack_push:
