@@ -44,9 +44,12 @@
 	</select>
 
 	<select id="getAllActive" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
-		select id, `start_at`, `end_at`, `min_payment`, `params`, created_at, updated_at, deleted_at
+		select max(initiators.id) as id, initiators.address, job_specs.id as job_specs_id, initiators.type, job_specs.params, job_specs.created_at, job_specs.updated_at, job_specs.deleted_at
 		from job_specs
-		where `deleted_at` is null
+				 inner join initiators
+							on job_specs.id = initiators.job_spec_id
+		where job_specs.deleted_at is null
+		group by address;
 	</select>
 
 	<select id="getList" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
