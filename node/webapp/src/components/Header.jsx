@@ -34,6 +34,8 @@ class Header extends React.Component {
       currentPath: e.key,
     });
     localStorage.setItem('PersistPath', e.key);
+    sessionStorage.removeItem('jobUrl');
+    sessionStorage.removeItem('nodeName');
   };
 
   onMenuVisibleChange = menuVisible => {

@@ -24,7 +24,6 @@ sourceCompatibility = 1.8
 
 repositories {
 	mavenCentral()
-	jcenter()
 	mavenLocal()
 	maven { url "https://repo1.maven.org/maven2" }
 	maven {
@@ -40,39 +39,50 @@ repositories {
 }
 
 dependencies {
-	compile project(':node:webapp')
-
-	testCompile group: 'junit', name: 'junit', version: '4.12'
+        
+	implementation project(':node:webapp')
+        
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.mybatis.spring.boot:mybatis-spring-boot-starter:2.1.3'
 	runtimeOnly 'mysql:mysql-connector-java'
 	testImplementation('org.springframework.boot:spring-boot-starter-test') {
 		exclude group: 'org.junit.vintage', module: 'junit-vintage-engine'
 	}
-	compile group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: '2.3.3.RELEASE'
+        
+	implementation group: 'org.springframework.boot', name: 'spring-boot-starter-actuator', version: '2.3.3.RELEASE'
+        
 	annotationProcessor 'org.projectlombok:lombok:1.18.2'
 	compileOnly 'org.projectlombok:lombok:1.18.2'
 	testAnnotationProcessor 'org.projectlombok:lombok:1.18.2'
 	testCompileOnly 'org.projectlombok:lombok:1.18.2'
-	compile group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
-	compile group: 'org.apache.httpcomponents', name: 'httpcore', version: '4.4.13'
-	compile group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
-	compile group: 'org.mybatis.spring.boot', name: 'mybatis-spring-boot-starter', version: '2.1.3'
-	compile group: 'org.flywaydb', name: 'flyway-core', version: '6.3.3'
-	compile group: 'org.yaml', name: 'snakeyaml', version: '1.26'
-	compile group: 'com.google.guava', name: 'guava', version: '29.0-jre'
-	compile group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.12'
-	compile group: 'org.apache.commons', name: 'commons-lang3', version: '3.9'
-	compile group: 'com.madgag.spongycastle', name: 'core', version: '1.58.0.0'
-	compile group: 'com.madgag.spongycastle', name: 'prov', version: '1.58.0.0'
-	compile('com.github.tronprotocol:java-tron:GreatVoyage-v4.2.2') {
-		exclude group: 'com.alibaba', module: 'fastjson'
-	}
-	compile group: 'com.alibaba', name: 'fastjson', version: '1.2.83'
 
-	testCompile group: 'junit', name: 'junit', version: '4.13'
-	compile group: 'com.google.code.gson', name: 'gson', version: '2.8.6'
-	compile group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
+	implementation group: 'javax.validation', name: 'validation-api', version: '2.0.1.Final'
+	implementation group: 'org.apache.httpcomponents', name: 'httpcore', version: '4.4.13'
+	implementation group: 'ch.qos.logback', name: 'logback-classic', version: '1.2.3'
+	implementation group: 'org.mybatis.spring.boot', name: 'mybatis-spring-boot-starter', version: '2.1.3'
+	implementation group: 'org.flywaydb', name: 'flyway-core', version: '6.3.3'
+	implementation group: 'org.yaml', name: 'snakeyaml', version: '1.26'
+	implementation group: 'com.google.guava', name: 'guava', version: '29.0-jre'
+	implementation group: 'org.apache.httpcomponents', name: 'httpclient', version: '4.5.12'
+	implementation group: 'org.apache.commons', name: 'commons-lang3', version: '3.9'
+	implementation group: 'com.madgag.spongycastle', name: 'core', version: '1.58.0.0'
+	implementation group: 'com.madgag.spongycastle', name: 'prov', version: '1.58.0.0'
+
+	implementation('com.github.tronprotocol:java-tron:release_v4.7.0-SNAPSHOT'){
+		exclude group: 'org.springframework', module: 'spring-tx'
+		exclude group: 'org.slf4j', module: '*'
+		exclude group: 'ch.qos.logback', module: '*'
+	}
+	implementation 'com.fasterxml.jackson:jackson-bom:2.13.4'
+	implementation 'com.fasterxml.jackson.core:jackson-databind:2.13.4.2'
+	implementation 'com.fasterxml.jackson.core:jackson-annotations:2.13.4'
+
+	implementation group: 'com.alibaba', name: 'fastjson', version: '1.2.83'
+
+
+	testImplementation group: 'junit', name: 'junit', version: '4.13'
+	implementation group: 'com.google.code.gson', name: 'gson', version: '2.8.6'
+	implementation group: 'org.slf4j', name: 'slf4j-api', version: '1.7.25'
 
 	implementation 'com.google.protobuf:protobuf-java:3.11.0'
 	implementation 'io.grpc:grpc-netty-shaded:1.31.0'
@@ -86,14 +96,14 @@ dependencies {
 
 def binaryRelease(taskName, jarName, mainClass) {
 	return tasks.create("${taskName}", Jar) {
-		baseName = jarName
-		version = null
+		archiveBaseName = jarName
+		archiveVersion = null
 		from(sourceSets.main.output) {
 			include "/**"
 		}
 
 		from {
-			configurations.compile.collect {
+			configurations.runtimeClasspath.collect {
 				it.isDirectory() ? it : zipTree(it)
 			}
 		}
@@ -105,6 +115,8 @@ def binaryRelease(taskName, jarName, mainClass) {
 			attributes "Spring-Boot-Classes": "BOOT-INF/classes/"
 			attributes "Spring-Boot-Lib": "BOOT-INF/lib/"
 		}
+                
+                duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 	}
 }
 

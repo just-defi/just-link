@@ -2,12 +2,14 @@ package com.tron.web.service.impl;
 
 import com.tron.common.Constant;
 import com.tron.common.TronException;
+import com.tron.job.JobSubscriber;
 import com.tron.job.adapters.AdapterManager;
 import com.tron.job.adapters.BaseAdapter;
 import com.tron.job.adapters.HttpGetAdapter;
 import com.tron.job.adapters.JustSwapAdapter;
 import com.tron.job.adapters.MultiplyAdapter;
 import com.tron.web.common.util.JsonUtil;
+import com.tron.web.entity.DetailActiveJob;
 import com.tron.web.entity.Initiator;
 import com.tron.web.entity.InitiatorRequest;
 import com.tron.web.entity.JobSpec;
@@ -18,10 +20,9 @@ import com.tron.web.mapper.InitiatorMapper;
 import com.tron.web.mapper.JobSpecsMapper;
 import com.tron.web.mapper.TaskSpecsMapper;
 import com.tron.web.service.JobSpecsService;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import java.util.UUID;
+
+import java.util.*;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
@@ -62,6 +63,20 @@ public class JobSpecsServiceImpl implements JobSpecsService {
     }
 
     return jobSpecs;
+  }
+
+  public List<DetailActiveJob> getActiveJobListWithResults() {
+    return jobSpecsMapper.getAllActive().stream()
+            .map(jobSpec -> getInitiatorsByJobId(jobSpec.getId()).get(0).getAddress())
+            .distinct()
+            .map(address -> initiatorMapper.getByAddress(address))
+            .filter(Objects::nonNull)
+            .map(initiator -> {
+              JobSpec job = getById(initiator.getJobSpecID());
+              Long result = JobSubscriber.getJobResultById(job.getId());
+              return new DetailActiveJob(job, result);
+            })
+            .collect(Collectors.toList());
   }
 
   public long getJobCount() {

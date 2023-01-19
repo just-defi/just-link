@@ -15,6 +15,8 @@ public interface JobSpecsMapper {
 
   List<JobSpec> getAll();
 
+  List<JobSpec> getAllActive();
+
   List<JobSpec> getList(@Param("offset") int offset, @Param("limit") int limit);
 
   int deleteJob(@Param("id") String id, @Param("deletedAt") Date deletedAt);
