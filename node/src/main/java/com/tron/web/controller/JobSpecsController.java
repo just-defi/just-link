@@ -13,13 +13,11 @@ import com.tron.web.entity.JobSpecRequest;
 import com.tron.web.entity.TaskSpec;
 import com.tron.web.mapper.InitiatorMapper;
 import com.tron.web.service.JobSpecsService;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -29,7 +27,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -60,11 +57,19 @@ public class JobSpecsController {
   }
 
   @GetMapping(value="/specs/active")
-  public R getDetailActiveJobs() {
+  public R getDetailActiveJobs(
+      @RequestParam(required = false, defaultValue = "runlog") String type,
+      @RequestParam(required = false, defaultValue = "1") int page,
+      @RequestParam(required = false, defaultValue = "10") int size) {
+    try {
+      List<DetailActiveJob> jobs = jobSpecsService.getActiveJobListWithResults( type, page, size);
+      long count = jobSpecsService.getActiveJobCount(type);
+      return R.ok().put("data", jobs).put("count", count);
+    } catch (Exception e) {
+      log.error("get job list failed, error: " + e.getMessage());
+      return R.error(ResultStatus.GET_JOB_DETAIL_FAILED);
 
-    List<DetailActiveJob> jobs = jobSpecsService.getActiveJobListWithResults();
-
-    return R.ok().put("data", jobs);
+    }
   }
 
   @PostMapping("/specs")
@@ -94,7 +99,7 @@ public class JobSpecsController {
     }
   }
 
-  @RequestMapping(value = "/specs/{jobId}", method = RequestMethod.GET)
+  @GetMapping(value = "/specs/{jobId}")
   public R getJobById(@PathVariable("jobId") String jobId) {
     try {
       JobSpec jobSpec = jobSpecsService.getById(jobId);

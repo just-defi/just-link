@@ -13,6 +13,18 @@
 		<result column="params" property="params" jdbcType="LONGVARCHAR"/>
 	</resultMap>
 
+
+	<resultMap id="DetailJobResultMap" type="com.tron.web.entity.DetailActiveJob">
+		<result property="initiatorId" column="id" jdbcType="BIGINT"/>
+		<result property="address" column="address" jdbcType="VARCHAR"/>
+			<result property="jobSpecsId" column="job_specs_id" jdbcType="VARCHAR"/>
+			<result property="type" column="type" jdbcType="VARCHAR" />
+			<result property="createdAt" column="created_at" jdbcType="TIMESTAMP"/>
+			<result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
+			<result property="deletedAt" column="deleted_at" jdbcType="TIMESTAMP"/>
+			<result property="params" column="params" jdbcType="LONGVARCHAR"/>
+	</resultMap>
+
   <insert id="insert" parameterType="com.tron.web.entity.JobSpec">
 		insert into job_specs
 		(
@@ -43,13 +55,8 @@
 		from job_specs
 	</select>
 
-	<select id="getAllActive" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
-		select max(initiators.id) as id, initiators.address, job_specs.id as job_specs_id, initiators.type, job_specs.params, job_specs.created_at, job_specs.updated_at, job_specs.deleted_at
-		from job_specs
-				 inner join initiators
-							on job_specs.id = initiators.job_spec_id
-		where job_specs.deleted_at is null
-		group by address;
+	<select id="getAllActive" resultType="com.tron.web.entity.DetailActiveJob" resultMap="DetailJobResultMap">
+		select i.id, i.address, i.job_spec_id job_specs_id, js.params, js.created_at, js.updated_at from (select job_spec_id, address, max(id) as id from initiators where type = #{type} group by address limit #{offset},#{limit}) ii inner join initiators i using (address, id) inner join job_specs js on i.job_spec_id = js.id
 	</select>
 
 	<select id="getList" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
@@ -64,6 +71,10 @@
 		select count(1)
 		from job_specs
 		where `deleted_at` is null
+	</select>
+
+	<select id="getActiveJobCount" resultType="long" >
+		select count(1) from (select job_spec_id, address, max(id) as id from initiators where type = #{type} group by address) ii inner join initiators i using (address, id) inner join job_specs js on i.job_spec_id = js.id;
 	</select>
 
 	<update id="deleteJob">
