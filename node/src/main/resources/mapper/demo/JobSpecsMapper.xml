@@ -83,7 +83,7 @@
 	</select>
 
 	<select id="getActiveJobCount" resultType="long" >
-		select i.id, i.address, i.job_spec_id job_specs_id, i.type, js.created_at, js.updated_at, js.deleted_at, js.params from
+		select count(1) from
 			(select job_spec_id, address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi
 				inner join initiators i using (address, id)
 				inner join job_specs js on i.job_spec_id = js.id
