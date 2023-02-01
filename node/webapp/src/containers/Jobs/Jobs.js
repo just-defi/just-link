@@ -40,7 +40,6 @@ class Jobs extends Component {
 
   componentDidMount() {
     this.setState({loading: true});
-
     this.getJobs(this.state.currentPage, DS_SIZE);
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
@@ -112,12 +111,12 @@ class Jobs extends Component {
   getJobs = (page, size) => {
     this.setState({loading: true});
     let promises = [];
-    API_URLS.forEach(api => {
+    API_URLS.map(api => {
       const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
-      promises.push(xhr.get(url(PRICE_FEED))
+      promises.push(xhr.get(url(PRICE_FEED), {timeout: 1000 * 10})
           .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
           .catch(e => console.log(e)));
-      promises.push(xhr.get(url(RANDOMNESS_LOG))
+      promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
           .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
           .catch(e => console.log(e)));
     });
@@ -130,7 +129,7 @@ class Jobs extends Component {
       key: data.address + data.jobSpecsId + api.text,
       Contract: data.address,
       ID: data.jobSpecsId,
-      Initiator: params.initiators[0].type,
+      Initiator: data.type,
       Created: {
         date: new Date(data.createdAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
         epoch: moment(data.createdAt).unix(),
