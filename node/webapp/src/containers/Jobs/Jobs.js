@@ -23,7 +23,7 @@ class Jobs extends Component {
   constructor() {
     super();
     this.state = {
-      loading: false,
+      loading: true,
       warning: false,
       visible: false,
       currentPage: 1,
@@ -39,8 +39,10 @@ class Jobs extends Component {
   };
 
   componentDidMount() {
-    this.getJobs(PRICE_FEED,this.state.currentPage, DS_SIZE);
-    this.getJobs(RANDOMNESS_LOG,this.state.currentPage, DS_SIZE).then(() => this.setState({loading: false}));
+    this.setState({loading: true});
+
+    this.getJobs(this.state.currentPage, DS_SIZE);
+
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
       this.showModal();
@@ -107,18 +109,19 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = async (type, page, size) => {
+  getJobs = (page, size) => {
     this.setState({loading: true});
-
-   API_URLS.map(api => {
-      let url = `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
-      xhr.get(url)
-      .then(response => {
-        let jobList = response.data.data;
-        jobList.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
-      })
-      .catch(e => console.log(e));
+    let promises = [];
+    API_URLS.forEach(api => {
+      const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
+      promises.push(xhr.get(url(PRICE_FEED))
+          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .catch(e => console.log(e)));
+      promises.push(xhr.get(url(RANDOMNESS_LOG))
+          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .catch(e => console.log(e)));
     });
+    Promise.all(promises).then(() => this.setState({loading: false}));
   }
 
   createJob = (data, api) => {
