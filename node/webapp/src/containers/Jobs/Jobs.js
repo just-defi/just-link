@@ -4,6 +4,7 @@ import xhr from "axios/index";
 import {isJSON} from "../../utils/isJson";
 import moment from "moment";
 import {Sorter as sorterUtil} from "../../utils/sorterUtil";
+import {isEmpty} from "lodash";
 
 const {TextArea} = Input;
 const {Option} = Select;
@@ -31,10 +32,11 @@ class Jobs extends Component {
       totalVRF: 0,
       vrfDataSource: [],
       dataSource: [],
+      priceFeedJobArrs: [],
+      vrfJobArrs: [],
       size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
-      page: 1,
     };
   };
 
@@ -108,16 +110,27 @@ class Jobs extends Component {
     clearFilters();
   };
 
+  // List of job return
+  // Separate based on page view
+  // each index contains an array of elements with length based on page view
+  // If next index does not contain to the max length based on the page view ( 2/10), will trigger next api call to retrieve next page, and append to current index.
+  //
+  handleOnPageChange = (page, tableView, dataArr, type) => {
+
+  }
+
   getJobs = (page, size) => {
     this.setState({loading: true});
     let promises = [];
     API_URLS.map(api => {
       const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
       promises.push(xhr.get(url(PRICE_FEED), {timeout: 1000 * 10})
-          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .then(response => this.setJobToState(response.data.data, this.state.dataSource, PRICE_FEED, api, size))
+          // .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
           .catch(e => console.log(e)));
       promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
-          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .then(response => this.setJobToState(response.data.data, this.state.vrfDataSource, RANDOMNESS_LOG, api, size))
+          // .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
           .catch(e => console.log(e)));
     });
     Promise.all(promises).then(() => this.setState({loading: false}));
@@ -150,19 +163,112 @@ class Jobs extends Component {
     };
   }
 
-  filterJobsAndSetToState = (job) => {
-    if (job.Initiator === RANDOMNESS_LOG) {
-      if (this.state.vrfDataSource.findIndex(o => o.key === job.key) < 0) {
-        this.setState({
-          vrfDataSource: [...this.state.vrfDataSource, job],
+  // filterJobsAndSetToState = (job) => {
+  //   if (job.Initiator === RANDOMNESS_LOG) {
+  //     if (this.state.vrfDataSource.findIndex(o => o.key === job.key) < 0) {
+  //       this.setState({
+  //         vrfDataSource: [...this.state.vrfDataSource, job],
+  //       });
+  //     }
+  //   } else {
+  //     if (this.state.dataSource.findIndex(o =>  o.key === job.key) < 0) {
+  //       this.setState({
+  //         dataSource: [...this.state.dataSource, job],
+  //       });
+  //     }
+  //   }
+  // }
+
+  pageDataSource = (type, page, currentSize) => {
+    console.log("PGS STATE:: ", this.state);
+    if (type === RANDOMNESS_LOG) {
+      const vrfArr = this.state.vrfJobArrs;
+
+      if(vrfArr[page-1] !== undefined) {
+        vrfArr[page - 1].map(job => {
+          if (this.state.vrfDataSource.find(dsJob => {
+            return job.key !== dsJob.key
+          }, "Found") !== "Found") {
+            this.state.vrfDataSource.push(job);
+          }
         });
       }
+      return this.state.vrfDataSource;
+
     } else {
-      if (this.state.dataSource.findIndex(o =>  o.key === job.key) < 0) {
-        this.setState({
-          dataSource: [...this.state.dataSource, job],
+      const priceFeedArr = this.state.priceFeedJobArrs;
+      if (priceFeedArr[page-1] !== undefined) {
+        priceFeedArr.forEach(jobArr => {
+          jobArr.map(jobFromArr => {
+            let res = this.state.dataSource.find(job => {
+              console.log("Job :: ", job, " JobFromArr :: ", jobFromArr);
+              return job.key !== jobFromArr.key;
+            });
+             console.log("Result :: ", res);
+            if(res === undefined || res === true) {
+              this.state.dataSource.push(jobFromArr);
+            }
+          });
         });
       }
+      return this.state.dataSource;
+    }
+
+  }
+
+  setJobToState = (jobArr, currentDataSource, type, api, recordPerPage) => {
+    if (!isEmpty(currentDataSource)) {
+      const arrToPad = currentDataSource[currentDataSource.length - 1];
+      const numOfDataToPad = recordPerPage - arrToPad.length;
+      if (jobArr.length > numOfDataToPad) {
+        //pad and slice
+        for(let i = 0; i < numOfDataToPad; i ++){
+          let job = this.createJob(jobArr[i], api);
+          arrToPad.push(job);
+        }
+        currentDataSource[currentDataSource.length - 1] = arrToPad;
+        jobArr = jobArr.slice(0, numOfDataToPad-1);
+        //pad everything
+        this.setJobToState(jobArr, currentDataSource, type, api, recordPerPage);
+      } else {
+        //pad everything to
+        this.setJobBasedOnEmptyRow(jobArr, currentDataSource, type, api, recordPerPage);
+      }
+      // Do padding and insert into current element
+      // get number of index after splicing away current jobArr with the padded data
+    } else {
+      this.setJobBasedOnEmptyRow(jobArr, currentDataSource, type, api, recordPerPage);
+    }
+  }
+
+  setJobBasedOnEmptyRow = (jobArr, currentDataSource, type, api, recordPerPage) => {
+    // get number of index to insert
+    const numOfRowsToInsert = Math.ceil(jobArr.length/recordPerPage);
+    // console.log("Current Data source :: ", currentDataSource, " :: TYPE BEING USED :: ", type, " :: Job ARR :: ", jobArr, " API :: ", api, " Num Of Index to add :: ", numOfRowsToInsert);
+    // based on current job arr size
+    for(let i = 0; i < numOfRowsToInsert; i++) {
+      let elementsToBeAdded = [];
+      if (jobArr.length < recordPerPage) {
+        // Add all based on jobArr as index
+        jobArr.forEach(job => elementsToBeAdded.push(this.createJob(job, api)));
+        // console.log("Element to be added array: ", elementsToBeAdded.length);
+      } else {
+        // Add all based on recordPerPage as index
+        for (let j = 0; j < recordPerPage; j++) {
+          elementsToBeAdded.push(this.createJob(jobArr[j], api));
+          // console.log("Before Slice: ", jobArr.length);
+          jobArr.slice(0, recordPerPage -1);
+          // console.log("After Slice: ", jobArr.length);
+        }
+        // console.log("Elements to be added array: ", elementsToBeAdded.length);
+      }
+      currentDataSource.push(elementsToBeAdded);
+    }
+
+    if (type === RANDOMNESS_LOG) {
+      this.setState({vrfJobArrs: currentDataSource}, () => {console.log(type, "CURRENT STATE : ", this.state)});
+    } else {
+      this.setState({priceFeedJobArrs: currentDataSource}, () => {console.log(type, " CURRENT STATE : ", this.state)});
     }
   }
 
@@ -303,6 +409,7 @@ class Jobs extends Component {
       loading,
       textValue,
       warning,
+      currentPage,
       dataSource,
       vrfDataSource,
       providerList,
@@ -464,12 +571,13 @@ class Jobs extends Component {
       <Row gutter={16}>
 
         <Table
-            dataSource={dataSource}
+            dataSource={this.pageDataSource(PRICE_FEED, this.state.currentPage, DS_SIZE)}
             columns={columns}
             loading={loading}
             pagination={{
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
+              onShowSizeChange: (page, currentSize) => this.pageDataSource(PRICE_FEED, page, currentSize),
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
@@ -482,12 +590,13 @@ class Jobs extends Component {
       <TabPane tab="VRF" key="2">
 
         <Table
-            dataSource={vrfDataSource}
+            dataSource= {this.pageDataSource(RANDOMNESS_LOG, this.state.currentPage, DS_SIZE)}
             columns={vrfColumns}
             loading={loading}
             pagination={{
               pageSizeOptions: pageSizeOption,
               showSizeChanger: true,
+              onShowSizeChange: (page, currentSize) => this.pageDataSource(RANDOMNESS_LOG, page, currentSize),
               showQuickJumper: true,
               hideOnSinglePage: false,
             }}
