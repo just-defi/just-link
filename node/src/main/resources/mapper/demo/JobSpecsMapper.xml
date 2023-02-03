@@ -13,6 +13,18 @@
 		<result column="params" property="params" jdbcType="LONGVARCHAR"/>
 	</resultMap>
 
+
+	<resultMap id="DetailJobResultMap" type="com.tron.web.entity.DetailActiveJob">
+		<result property="initiatorId" column="id" jdbcType="BIGINT"/>
+		<result property="address" column="address" jdbcType="VARCHAR"/>
+			<result property="jobSpecsId" column="job_specs_id" jdbcType="VARCHAR"/>
+			<result property="type" column="type" jdbcType="VARCHAR" />
+			<result property="createdAt" column="created_at" jdbcType="TIMESTAMP"/>
+			<result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
+			<result property="deletedAt" column="deleted_at" jdbcType="TIMESTAMP"/>
+			<result property="params" column="params" jdbcType="LONGVARCHAR"/>
+	</resultMap>
+
   <insert id="insert" parameterType="com.tron.web.entity.JobSpec">
 		insert into job_specs
 		(
@@ -43,10 +55,17 @@
 		from job_specs
 	</select>
 
-	<select id="getAllActive" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
-		select id, `start_at`, `end_at`, `min_payment`, `params`, created_at, updated_at, deleted_at
-		from job_specs
-		where `deleted_at` is null
+	<select id="getAllActive" resultType="com.tron.web.entity.DetailActiveJob" resultMap="DetailJobResultMap">
+		select i.id, i.address, i.job_spec_id job_specs_id, i.type, js.created_at, js.updated_at, js.deleted_at, js.params, xjr.result from
+			(select job_spec_id, address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi
+				inner join initiators i using (address, id)
+				inner join job_specs js on i.job_spec_id = js.id
+				left outer join (select distinct xjr.*, xtr.result from
+				(select tr.job_run_id, tr.result from (select itr.job_run_id, itr.result, row_number() over(partition by itr.job_run_id order by itr.task_spec_id desc) as rn from task_runs itr) tr where tr.rn = 2) xtr
+					right outer join (select jr.id, jr.job_spec_id from job_runs jr where jr.updated_at = (select max(updated_at) from job_runs ijr where ijr.job_spec_id = jr.job_spec_id)) xjr on xjr.id = xtr.job_run_id) xjr on xjr.job_spec_id = i.job_spec_id
+		where js.deleted_at is null
+		order by js.updated_at desc
+		limit #{offset} ,#{limit};
 	</select>
 
 	<select id="getList" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
@@ -61,6 +80,14 @@
 		select count(1)
 		from job_specs
 		where `deleted_at` is null
+	</select>
+
+	<select id="getActiveJobCount" resultType="long" >
+		select count(1) from
+			(select job_spec_id, address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi
+				inner join initiators i using (address, id)
+				inner join job_specs js on i.job_spec_id = js.id
+		where js.deleted_at is null
 	</select>
 
 	<update id="deleteJob">

@@ -1,7 +1,6 @@
 import React, {Component, Fragment} from 'react';
 import {Button, Input, Modal, PageHeader, Row, Select, Table, Tag, Icon, Tabs, Tooltip} from 'antd';
 import xhr from "axios/index";
-import $ from 'jquery';
 import {isJSON} from "../../utils/isJson";
 import moment from "moment";
 import {Sorter as sorterUtil} from "../../utils/sorterUtil";
@@ -17,14 +16,19 @@ const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
 const LOCALE = process.env.LOCALE;
 const TIMEZONE = process.env.TIMEZONE;
 const RANDOMNESS_LOG = 'randomnesslog';
+const PRICE_FEED = 'runlog';
+
 class Jobs extends Component {
 
   constructor() {
     super();
     this.state = {
-      loading: false,
+      loading: true,
       warning: false,
       visible: false,
+      currentPage: 1,
+      totalDataSource: 0,
+      totalVRF: 0,
       vrfDataSource: [],
       dataSource: [],
       size: DS_SIZE,
@@ -35,7 +39,8 @@ class Jobs extends Component {
   };
 
   componentDidMount() {
-    this.getJobs().then(() => this.setState({loading: false}));
+    this.setState({loading: true});
+    this.getJobs(this.state.currentPage, DS_SIZE);
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -103,28 +108,28 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = async () => {
+  getJobs = (page, size) => {
     this.setState({loading: true});
-
-    for(const api of API_URLS) {
-      let url = `${api.value}/job/specs/active`;
-      await xhr.get(url)
-      .then(response => {
-        let jobList = response.data.data;
-        jobList.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
-      })
-      .catch(e => console.log(e));
-    }
-
+    let promises = [];
+    API_URLS.map(api => {
+      const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
+      promises.push(xhr.get(url(PRICE_FEED), {timeout: 1000 * 10})
+          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .catch(e => console.log(e)));
+      promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
+          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
+          .catch(e => console.log(e)));
+    });
+    Promise.all(promises).then(() => this.setState({loading: false}));
   }
 
   createJob = (data, api) => {
-    const initiators = data.initiators[0];
+    const params = JSON.parse(data.params);
     return {
-      key: initiators.address + data.id + api.text,
-      Contract: initiators.address,
-      ID: data.id,
-      Initiator: initiators.type,
+      key: data.address + data.jobSpecsId + api.text,
+      Contract: data.address,
+      ID: data.jobSpecsId,
+      Initiator: data.type,
       Created: {
         date: new Date(data.createdAt).toLocaleString(LOCALE, {timeZone: TIMEZONE}),
         epoch: moment(data.createdAt).unix(),
@@ -136,24 +141,28 @@ class Jobs extends Component {
       Node: api.text,
       DataSource: {
         task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
-        ...(this.generateTagColor(JSON.parse(data.params).tasks[0]))
+        ...(this.generateTagColor(params.tasks[0]))
       },
-      LastRunResult: { value: data.result, url: `${api.value}/job/result/${data.id}` },
-      Code: JSON.stringify(JSON.parse(data.params), null, 2),
-      PublicKey: (initiators.type === RANDOMNESS_LOG) ?
-          JSON.parse(data.params).tasks[0].params.publicKey : null,
+      LastRunResult: { value: data.result || '-', url: `${api.value}/job/result/${data.jobSpecsId}` },
+      Code: JSON.stringify(params, null, 2),
+      PublicKey: (params.initiators[0].type === RANDOMNESS_LOG) ?
+          params.tasks[0].params.publicKey : null,
     };
   }
 
   filterJobsAndSetToState = (job) => {
     if (job.Initiator === RANDOMNESS_LOG) {
-      this.setState({
-        vrfDataSource: [...this.state.vrfDataSource, job],
-      });
+      if (this.state.vrfDataSource.findIndex(o => o.key === job.key) < 0) {
+        this.setState({
+          vrfDataSource: [...this.state.vrfDataSource, job],
+        });
+      }
     } else {
-      this.setState({
-        dataSource: [...this.state.dataSource, job],
-      });
+      if (this.state.dataSource.findIndex(o =>  o.key === job.key) < 0) {
+        this.setState({
+          dataSource: [...this.state.dataSource, job],
+        });
+      }
     }
   }
 
@@ -206,7 +215,7 @@ class Jobs extends Component {
     this.setState({textValue: e.target.value})
   };
 
-  success = (message) => {
+  success = () => {
     Modal.success({
       content: 'Successful!',
       onOk: () => window.location.reload(true),
@@ -220,7 +229,7 @@ class Jobs extends Component {
   };
 
   generateTagColor = (task) => {
-    let url, tag, color = "";
+    let url, tag, color ;
 
     url = (task.type === "httpget" || task.type === "converttrx") ? task.params.get : task.type;
 
@@ -295,7 +304,6 @@ class Jobs extends Component {
       textValue,
       warning,
       dataSource,
-      size,
       vrfDataSource,
       providerList,
     } = this.state;
@@ -315,9 +323,7 @@ class Jobs extends Component {
         key: 'Node',
         ellipsis: true,
         filters: API_URLS,
-        onFilter: (record, {Node}) => {
-          return record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value);
-        },
+        onFilter: (record, {Node}) => record.toLowerCase().includes(API_URLS.find((url)=> url.text === Node).value),
         sorter: (a,b, sortOrder) => sorterUtil.STRING(a.Node, b.Node, sortOrder),
       },
       {
