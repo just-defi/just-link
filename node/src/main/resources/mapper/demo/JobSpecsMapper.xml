@@ -56,15 +56,10 @@
 	</select>
 
 	<select id="getAllActive" resultType="com.tron.web.entity.DetailActiveJob" resultMap="DetailJobResultMap">
-		select i.id, i.address, i.type, js.created_at, js.updated_at, js.deleted_at, js.params, xjr.result from
-			(select address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi # ${type}
+		select i.id, i.address, i.job_spec_id job_specs_id, i.type, js.created_at, js.updated_at, js.deleted_at, js.params from
+			(select max(id) as id , address, job_spec_id from initiators where type = #{type} and deleted_at is null group by address) xi
 				inner join initiators i using (address, id)
 				inner join job_specs js on i.job_spec_id = js.id
-				left outer join (select distinct xjr.*, xtr.result from
-				(select tr.job_run_id, tr.result from
-					(select *, if(@prev <![CDATA[ <> itr.job_run_id ]]>, @rn:=0,@rn), @prev:=itr.job_run_id, @rn:=@rn+1 as rn from task_runs itr, (select @rn:=0) rn, (select @prev:='') prev order by itr.job_run_id asc, itr.task_spec_id desc) tr where tr.rn = 2) xtr
-					right outer join (select jr.id, jr.job_spec_id from job_runs jr where jr.updated_at = (select max(updated_at) from job_runs ijr where ijr.job_spec_id = jr.job_spec_id)) xjr on xjr.id = xtr.job_run_id) xjr
-												on xjr.job_spec_id = i.job_spec_id
 		where js.deleted_at is null
 		order by js.updated_at desc
 		limit #{offset},#{limit}
