@@ -27,8 +27,8 @@ class Jobs extends Component {
       warning: false,
       visible: false,
       currentPage: 1,
-      totalDataSource: 0,
-      totalVRF: 0,
+      totalDataSource: [],
+      totalVRF: [],
       pagedDataSource: [],
       vrfDataSource: [],
       dataSource: [],
@@ -52,7 +52,8 @@ class Jobs extends Component {
       // onChange: (page, pageSize) => {},
       // onShowSizeChange: (current, size) => {}
     };
-    this.state.paginationOptions = paginationOptions;
+    this.state.paginationOptions = {...paginationOptions};
+    this.state.vrfPaginationOptions = {...paginationOptions};
 
   };
 
@@ -130,8 +131,8 @@ class Jobs extends Component {
 
   getJobs = (page, size, callback) => {
     this.setState({loading: true});
-    let dsSize = 0;
-    let vrfDsSize = 0;
+    let dsSizeArr = [];
+    let vrfDsSizeArr = [];
     let promises = [];
     API_URLS.map(api => {
       const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
@@ -139,21 +140,22 @@ class Jobs extends Component {
           .then(response => response.data)
           .then(response => {
             response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
-            dsSize += response.count;
+            dsSizeArr.push(response.count);
           })
           .catch(e => console.log(e)));
       promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
           .then(response => response.data)
           .then(response => {
             response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
-            vrfDsSize += response.count;
+            vrfDsSizeArr.push(response.count);
           })
           .catch(e => console.log(e)));
     });
     Promise.all(promises)
-        .then(() => this.setState({totalDataSource: dsSize, totalVRF: vrfDsSize}))
+        .then(() => this.setState({totalDataSource: dsSizeArr, totalVRF: vrfDsSizeArr}))
+        .then(() => this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0))
+        .then(() => this.state.vrfPaginationOptions.total = vrfDsSizeArr.reduce((a, b) => a + b, 0))
         .then(() => this.setState({loading: false}))
-        .then(() => console.log(`[getJobs](${size}s/${page}p) - data_retrieved (${this.state.dataSource.length}, ${this.state.vrfDataSource.length})`))
         .then(() => { if (callback) callback(); });
   }
 
@@ -337,7 +339,7 @@ class Jobs extends Component {
     //    prevPage, maxPage - need to change hardcoded value to formula
     const pager = { ...this.state.paginationOptions, current: pagination.current };
     const offset = pager.current * pager.pageSize;
-    if ((this.state.dataSource.length < this.state.totalDataSource) && (offset > this.state.dataSource.length)) {
+    if ((this.state.dataSource.length < this.state.totalDataSource.reduce((a, b) => a + b, 0)) && (offset > this.state.dataSource.length)) {
 
       let prevPage = 2;
       let maxPage = 4;
@@ -357,6 +359,7 @@ class Jobs extends Component {
       textValue,
       warning,
       paginationOptions,
+      vrfPaginationOptions,
       dataSource,
       vrfDataSource,
       providerList,
@@ -504,7 +507,7 @@ class Jobs extends Component {
 
     const pageSizeOption = ['10','25','50','100'];
 
-    paginationOptions.total = this.state.totalDataSource;
+    // paginationOptions.total = this.state.totalDataSource;
 
     return <Fragment>
       <PageHeader title="Jobs">
@@ -537,12 +540,8 @@ class Jobs extends Component {
             dataSource={vrfDataSource}
             columns={vrfColumns}
             loading={loading}
-            pagination={{
-              pageSizeOptions: pageSizeOption,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              hideOnSinglePage: false,
-            }}
+            pagination={vrfPaginationOptions}
+            onChange={this.handleTableChange}
             // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
