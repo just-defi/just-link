@@ -27,9 +27,9 @@ class Jobs extends Component {
       warning: false,
       visible: false,
       currentPage: 1,
+      vrfCurrentPage: 1,
       totalDataSource: [],
       totalVRF: [],
-      pagedDataSource: [],
       vrfDataSource: [],
       dataSource: [],
       size: DS_SIZE,
@@ -59,7 +59,6 @@ class Jobs extends Component {
 
   componentDidMount() {
     this.setState({loading: true});
-    console.log('[componentDidMount] - retrieving_data');
     new Promise((resolve, reject) => this.getJobs(this.state.currentPage, DS_SIZE, resolve))
         .then(() => this.handleTableChange(this.state.paginationOptions, null, null));
 
@@ -333,23 +332,34 @@ class Jobs extends Component {
     });
   }
 
-  handleTableChange = (pagination, filters, sorter) => {
-    // [Placeholder]
-    //    dataSource, totalDataSource - need to handle VRF table as well
-    //    prevPage, maxPage - need to change hardcoded value to formula
-    const pager = { ...this.state.paginationOptions, current: pagination.current };
-    const offset = pager.current * pager.pageSize;
-    if ((this.state.dataSource.length < this.state.totalDataSource.reduce((a, b) => a + b, 0)) && (offset > this.state.dataSource.length)) {
+  handleTableChange = (pagination, filters, sorter, type) => {
+    // totalDataSource, dataSource, paginationOptions, currentPage
+    // totalVRF, vrfDataSource, vrfPaginationOptions, vrfCurrentPage
 
-      let prevPage = 2;
-      let maxPage = 4;
-
-      for (let i = prevPage; i <= maxPage; i++) this.getJobs(i, DS_SIZE);
+    let pager, dataSource, dataSourceCount;
+    if (type === RANDOMNESS_LOG) {
+      pager = { ...this.state.vrfPaginationOptions, current: pagination.current };
+      dataSource = this.state.vrfDataSource;
+      dataSourceCount = this.state.totalVRF;
+    } else {
+      pager = { ...this.state.paginationOptions, current: pagination.current };
+      dataSource = this.state.dataSource;
+      dataSourceCount = this.state.totalDataSource;
     }
 
-    this.setState({
-      paginationOptions: pager
-    })
+    const offset = pager.current * pager.pageSize;
+
+    if ((dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
+      const maxPage = Math.floor(Math.max(...dataSourceCount)/DS_SIZE);
+      const minPage = this.state.currentPage + 1;
+      console.log("min:", minPage, "max:", maxPage, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+
+      for (let i = minPage; i <= maxPage; i++) this.getJobs(i, DS_SIZE);
+    }
+
+    (type === RANDOMNESS_LOG) ?
+        this.setState({vrfCurrentPage: pagination.current, vrfPaginationOptions: pager}) :
+        this.setState({currentPage: pagination.current, paginationOptions: pager});
   }
 
   render() {
@@ -505,10 +515,6 @@ class Jobs extends Component {
         ...commonActions
     ];
 
-    const pageSizeOption = ['10','25','50','100'];
-
-    // paginationOptions.total = this.state.totalDataSource;
-
     return <Fragment>
       <PageHeader title="Jobs">
 
@@ -527,7 +533,7 @@ class Jobs extends Component {
             columns={columns}
             loading={loading}
             pagination={paginationOptions}
-            onChange={this.handleTableChange}
+            onChange={(pagination, filters, sorter) => this.handleTableChange(pagination, filters, sorter, PRICE_FEED)}
             // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
@@ -541,7 +547,7 @@ class Jobs extends Component {
             columns={vrfColumns}
             loading={loading}
             pagination={vrfPaginationOptions}
-            onChange={this.handleTableChange}
+            onChange={(pagination, filters, sorter) => this.handleTableChange(pagination, filters, sorter, RANDOMNESS_LOG)}
             // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
