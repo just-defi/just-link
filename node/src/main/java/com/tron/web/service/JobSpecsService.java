@@ -14,7 +14,9 @@ public interface JobSpecsService {
 
   List<JobSpec> getJobList(int page, int size);
 
-  List<DetailActiveJob> getActiveJobListWithResults();
+  List<DetailActiveJob> getActiveJobListWithResults(String type, int page, int size);
+
+  long getActiveJobCount(String type);
 
   JobSpec getById(String id);
 
