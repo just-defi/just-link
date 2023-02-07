@@ -21,5 +21,4 @@ public class DetailActiveJob implements Serializable {
   private Date updatedAt;
   private Date deletedAt;
   private String params;
-  private Long result;
 }
