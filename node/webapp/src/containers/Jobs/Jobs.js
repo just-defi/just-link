@@ -353,9 +353,8 @@ class Jobs extends Component {
     console.log('[Before_All]', `currPage: ${pagination.current} with offset: ${offset}, dataSource(len/total): ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
 
     if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
-      const loop = Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1);
+      const maxPage = Math.ceil((Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1))/this.state.servers);
       // const maxPage = loop === 1 ? loop : Math.ceil(pager.current/DS_SIZE);
-      const maxPage = Math.ceil(loop/this.state.servers);
       console.log("[Before] pages:", `${minPage}/${maxPage} (${this.state.servers})`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
       const promises = [];
       this.setState({loading: true});
