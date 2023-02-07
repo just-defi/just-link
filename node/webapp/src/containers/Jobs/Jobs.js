@@ -59,8 +59,11 @@ class Jobs extends Component {
 
   componentDidMount() {
     this.setState({loading: true});
-    new Promise((resolve, reject) => this.getJobs(this.state.currentPage, DS_SIZE, resolve))
-        .then(() => this.handleTableChange(this.state.paginationOptions, null, null));
+    new Promise(resolve => this.getJobs(this.state.currentPage, DS_SIZE, PRICE_FEED, resolve))
+        .then(() => this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED));
+
+    new Promise(resolve => this.getJobs(this.state.vrfCurrentPage, DS_SIZE, RANDOMNESS_LOG, resolve))
+        .then(() => this.handleTableChange(this.state.vrfPaginationOptions, null, null, RANDOMNESS_LOG));
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -332,7 +335,7 @@ class Jobs extends Component {
     });
   }
 
-  handleTableChange = (pagination, filters, sorter, type) => {
+  handleTableChange = (pagination, filters, sorter, type = PRICE_FEED) => {
     // totalDataSource, dataSource, paginationOptions, currentPage
     // totalVRF, vrfDataSource, vrfPaginationOptions, vrfCurrentPage
 
@@ -348,18 +351,20 @@ class Jobs extends Component {
     }
 
     const offset = pager.current * pager.pageSize;
+    console.log('[Calling]', `${pagination.current} with offset: ${offset}, dataSource: ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
 
     if ((dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
       const maxPage = Math.floor(Math.max(...dataSourceCount)/DS_SIZE);
       const minPage = this.state.currentPage + 1;
-      console.log("min:", minPage, "max:", maxPage, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
-
+      console.log("[Before] pages:", `${minPage}/${maxPage}`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
       for (let i = minPage; i <= maxPage; i++) this.getJobs(i, DS_SIZE);
+      console.log("[After] pages:", `${minPage}/${maxPage}`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+
     }
 
     (type === RANDOMNESS_LOG) ?
-        this.setState({vrfCurrentPage: pagination.current, vrfPaginationOptions: pager}) :
-        this.setState({currentPage: pagination.current, paginationOptions: pager});
+        this.setState({vrfPaginationOptions: pager}) :
+        this.setState({paginationOptions: pager});
   }
 
   render() {
