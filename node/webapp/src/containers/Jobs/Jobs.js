@@ -26,6 +26,7 @@ class Jobs extends Component {
       loading: true,
       warning: false,
       visible: false,
+      servers: 0,
       currentPage: 1,
       vrfCurrentPage: 1,
       totalDataSource: [],
@@ -60,10 +61,8 @@ class Jobs extends Component {
   componentDidMount() {
     this.setState({loading: true});
     new Promise(resolve => this.getJobs(this.state.currentPage, DS_SIZE, PRICE_FEED, resolve))
-        .then(() => this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED));
-
-    new Promise(resolve => this.getJobs(this.state.vrfCurrentPage, DS_SIZE, RANDOMNESS_LOG, resolve))
-        .then(() => this.handleTableChange(this.state.vrfPaginationOptions, null, null, RANDOMNESS_LOG));
+      .then(() => this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED))
+      .then(() => this.setState({loading:false}));
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -131,33 +130,34 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = (page, size, callback) => {
-    this.setState({loading: true});
+  getJobs = (page, size, type, callback) => {
+    console.log("RETRIEVING DETAILS : ", type);
+    // this.setState({loading: true});
+    let servers = 0;
     let dsSizeArr = [];
-    let vrfDsSizeArr = [];
     let promises = [];
     API_URLS.map(api => {
       const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
-      promises.push(xhr.get(url(PRICE_FEED), {timeout: 1000 * 10})
+      promises.push(xhr.get(url(type), {timeout: 1000 * 10})
           .then(response => response.data)
           .then(response => {
             response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
             dsSizeArr.push(response.count);
+            servers++;
           })
-          .catch(e => console.log(e)));
-      promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
-          .then(response => response.data)
-          .then(response => {
-            response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
-            vrfDsSizeArr.push(response.count);
-          })
-          .catch(e => console.log(e)));
+          .catch(e => console.log('DS_DOWN')));
     });
     Promise.all(promises)
-        .then(() => this.setState({totalDataSource: dsSizeArr, totalVRF: vrfDsSizeArr}))
-        .then(() => this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0))
-        .then(() => this.state.vrfPaginationOptions.total = vrfDsSizeArr.reduce((a, b) => a + b, 0))
-        .then(() => this.setState({loading: false}))
+        .then(() => {
+          if (type === PRICE_FEED) {
+            this.setState({totalDataSource: dsSizeArr, currentPage: page++, servers: servers});
+            this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
+          } else {
+            this.setState({totalVRF: dsSizeArr, vrfCurrentPage: page++, servers: servers});
+            this.state.vrfPaginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
+          }
+        })
+        // .then(() => this.setState({loading: false}))
         .then(() => { if (callback) callback(); });
   }
 
@@ -181,7 +181,7 @@ class Jobs extends Component {
         task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
         ...(this.generateTagColor(params.tasks[0]))
       },
-      LastRunResult: `${api.value}/job/result/${data.jobSpecsId}`,
+      LastRunResult: { value: data.result || '-', url: `${api.value}/job/result/${data.jobSpecsId}` },
       Code: JSON.stringify(params, null, 2),
       PublicKey: (params.initiators[0].type === RANDOMNESS_LOG) ?
           params.tasks[0].params.publicKey : null,
@@ -336,35 +336,52 @@ class Jobs extends Component {
   }
 
   handleTableChange = (pagination, filters, sorter, type = PRICE_FEED) => {
-    // totalDataSource, dataSource, paginationOptions, currentPage
-    // totalVRF, vrfDataSource, vrfPaginationOptions, vrfCurrentPage
-
-    let pager, dataSource, dataSourceCount;
-    if (type === RANDOMNESS_LOG) {
-      pager = { ...this.state.vrfPaginationOptions, current: pagination.current };
-      dataSource = this.state.vrfDataSource;
-      dataSourceCount = this.state.totalVRF;
-    } else {
+    let minPage, pager, dataSource, dataSourceCount;
+    if (type === PRICE_FEED) {
       pager = { ...this.state.paginationOptions, current: pagination.current };
       dataSource = this.state.dataSource;
       dataSourceCount = this.state.totalDataSource;
+      minPage = this.state.currentPage;
+    } else {
+      pager = { ...this.state.vrfPaginationOptions, current: pagination.current };
+      dataSource = this.state.vrfDataSource;
+      dataSourceCount = this.state.totalVRF;
+      minPage = this.state.vrfCurrentPage;
     }
 
     const offset = pager.current * pager.pageSize;
-    console.log('[Calling]', `${pagination.current} with offset: ${offset}, dataSource: ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
+    console.log('[Before_All]', `currPage: ${pagination.current} with offset: ${offset}, dataSource(len/total): ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
 
-    if ((dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
-      const maxPage = Math.floor(Math.max(...dataSourceCount)/DS_SIZE);
-      const minPage = this.state.currentPage + 1;
-      console.log("[Before] pages:", `${minPage}/${maxPage}`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
-      for (let i = minPage; i <= maxPage; i++) this.getJobs(i, DS_SIZE);
-      console.log("[After] pages:", `${minPage}/${maxPage}`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+    if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
+      const loop = Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1);
+      // const maxPage = loop === 1 ? loop : Math.ceil(pager.current/DS_SIZE);
+      const maxPage = Math.ceil(loop/this.state.servers);
+      console.log("[Before] pages:", `${minPage}/${maxPage} (${this.state.servers})`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+      const promises = [];
+      this.setState({loading: true});
+      for (let i = minPage; i <= maxPage; i++) {
+        promises.push(new Promise(resolve => this.getJobs(i, DS_SIZE, type, resolve)));
+      }
+      Promise.all(promises).then(() => this.setState({loading: false}));
+
+
+
+
+      console.log("[After] pages:", `${minPage}/${maxPage} (${this.state.servers})`, "current:", `${this.state.dataSource.length}/${this.state.totalDataSource.reduce((a, b) => a + b, 0)}`, "offset:", offset);
 
     }
 
-    (type === RANDOMNESS_LOG) ?
-        this.setState({vrfPaginationOptions: pager}) :
-        this.setState({paginationOptions: pager});
+    (type === PRICE_FEED) ?
+        this.setState({paginationOptions: pager}) :
+        this.setState({vrfPaginationOptions: pager}) ;
+  }
+
+  handleOnTabClick = (key) => {
+   if (key === "2") {
+     this.handleTableChange(this.state.vrfPaginationOptions, null, null, RANDOMNESS_LOG)
+   } else {
+     this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED)
+   }
   }
 
   render() {
@@ -424,8 +441,13 @@ class Jobs extends Component {
         sortDirection: ['descend', 'ascend'],
       },
       {
+        title: 'Last Run Result',
+        dataIndex: 'LastRunResult.value',
+        key: 'LastRunResultValue',
+      },
+      {
         title: 'Current Result',
-        dataIndex: 'LastRunResult',
+        dataIndex: 'LastRunResult.url',
         key: 'LastRunResultURL',
         width: 90,
         render: lastRunResult => {
@@ -524,8 +546,12 @@ class Jobs extends Component {
 
       </PageHeader>
 
-      <Tabs defaultActiveKey="1" >
-      <TabPane tab="Price Feed Jobs" key="1">
+      <Tabs
+          defaultActiveKey="1"
+          onTabClick={this.handleOnTabClick}
+      >
+      <TabPane tab={<span> <Icon type="stock" />Price Feed Jobs</span>}
+               key="1">
       <Row gutter={16}>
 
         <Table
@@ -540,7 +566,7 @@ class Jobs extends Component {
 
       </Row>
       </TabPane>
-      <TabPane tab="VRF" key="2">
+        <TabPane tab={<span><Icon type="question" />VRF</span>} key="2">
 
         <Table
             dataSource={vrfDataSource}
