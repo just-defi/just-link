@@ -26,9 +26,8 @@ class Jobs extends Component {
       loading: true,
       warning: false,
       visible: false,
-      servers: 0,
-      currentPage: 1,
-      vrfCurrentPage: 1,
+      currentBackEndPage: 1,
+      vrfCurrentBackEndPage: 1,
       totalDataSource: [],
       totalVRF: [],
       vrfDataSource: [],
@@ -60,7 +59,7 @@ class Jobs extends Component {
 
   componentDidMount() {
     this.setState({loading: true});
-    new Promise(resolve => this.getJobs(this.state.currentPage, DS_SIZE, PRICE_FEED, resolve))
+    new Promise(resolve => this.getJobs(this.state.currentBackEndPage, DS_SIZE, PRICE_FEED, resolve))
       .then(() => this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED))
       .then(() => this.setState({loading:false}));
 
@@ -133,7 +132,6 @@ class Jobs extends Component {
   getJobs = (page, size, type, callback) => {
     console.log("RETRIEVING DETAILS : ", type);
     // this.setState({loading: true});
-    let servers = 0;
     let dsSizeArr = [];
     let promises = [];
     API_URLS.map(api => {
@@ -143,17 +141,16 @@ class Jobs extends Component {
           .then(response => {
             response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
             dsSizeArr.push(response.count);
-            servers++;
           })
           .catch(e => console.log('DS_DOWN')));
     });
     Promise.all(promises)
         .then(() => {
           if (type === PRICE_FEED) {
-            this.setState({totalDataSource: dsSizeArr, currentPage: page++, servers: servers});
+            this.setState({totalDataSource: dsSizeArr, currentBackEndPage: page++});
             this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
           } else {
-            this.setState({totalVRF: dsSizeArr, vrfCurrentPage: page++, servers: servers});
+            this.setState({totalVRF: dsSizeArr, vrfCurrentBackEndPage: page++});
             this.state.vrfPaginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
           }
         })
@@ -336,37 +333,46 @@ class Jobs extends Component {
   }
 
   handleTableChange = (pagination, filters, sorter, type = PRICE_FEED) => {
-    let minPage, pager, dataSource, dataSourceCount;
+    let minPage, pager, dataSource, dataSourceCount, maxPage;
     if (type === PRICE_FEED) {
       pager = { ...this.state.paginationOptions, current: pagination.current };
       dataSource = this.state.dataSource;
       dataSourceCount = this.state.totalDataSource;
-      minPage = this.state.currentPage;
+      minPage = this.state.currentBackEndPage;
     } else {
       pager = { ...this.state.vrfPaginationOptions, current: pagination.current };
       dataSource = this.state.vrfDataSource;
       dataSourceCount = this.state.totalVRF;
-      minPage = this.state.vrfCurrentPage;
+      minPage = this.state.vrfCurrentBackEndPage;
     }
-
+    const serverCount = dataSourceCount.length;
     const offset = pager.current * pager.pageSize;
     console.log('[Before_All]', `currPage: ${pagination.current} with offset: ${offset}, dataSource(len/total): ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
 
     if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
-      const maxPage = Math.ceil((Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1))/this.state.servers);
-      // const maxPage = loop === 1 ? loop : Math.ceil(pager.current/DS_SIZE);
-      console.log("[Before] pages:", `${minPage}/${maxPage} (${this.state.servers})`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+
+      const maxBEPage = Math.ceil((Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1))/serverCount);
+      const numLoopsNeeded = Math.ceil((offset - dataSource.length)/ (serverCount * DS_SIZE));
+      const maxBatchPage = numLoopsNeeded + serverCount;
+      const maxFEPage = Math.floor(maxBEPage/ (serverCount * DS_SIZE));
+
+      maxPage = Math.min(maxBatchPage, maxBEPage);
+      console.log("MIN BACKEND PAGE: ", minPage, " MAX BATCH PAGE: ", maxBatchPage, " MAX PAGE: ", maxPage, "MAX BACKEND PAGE: ", maxBEPage);
+
+
+      console.log("[Before] pages:", `${minPage}/${maxFEPage} (${serverCount})`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
       const promises = [];
       this.setState({loading: true});
       for (let i = minPage; i <= maxPage; i++) {
         promises.push(new Promise(resolve => this.getJobs(i, DS_SIZE, type, resolve)));
       }
+      console.log(this.state);
       Promise.all(promises).then(() => this.setState({loading: false}));
 
 
 
 
-      console.log("[After] pages:", `${minPage}/${maxPage} (${this.state.servers})`, "current:", `${this.state.dataSource.length}/${this.state.totalDataSource.reduce((a, b) => a + b, 0)}`, "offset:", offset);
+      console.log("[After] pages:", `${minPage}/${maxPage} (${serverCount})`, "current:", `${this.state.dataSource.length}/${this.state.totalDataSource.reduce((a, b) => a + b, 0)}`, "offset:", offset);
 
     }
 
