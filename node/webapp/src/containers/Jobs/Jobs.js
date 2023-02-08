@@ -32,10 +32,8 @@ class Jobs extends Component {
       totalVRF: [],
       vrfDataSource: [],
       dataSource: [],
-      size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
-      page: 1,
     };
 
     const paginationOptions = {
@@ -345,14 +343,14 @@ class Jobs extends Component {
 
     if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
 
-      const maxBEPage = (Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ), 1));
-      const numLoopsNeeded = Math.ceil((offset - dataSource.length)/ (serverCount * DS_SIZE));
+      const maxBEPage = (Math.max(Math.ceil(Math.max(...dataSourceCount)/pager.pageSize ), 1));
+      const numLoopsNeeded = Math.ceil((offset - dataSource.length)/ (serverCount * pager.pageSize));
       maxPage = Math.min(minPage+numLoopsNeeded+1, maxBEPage);
 
       const promises = [];
       this.setState({loading: true});
       for (let i = minPage; i <= maxPage; i++) {
-        promises.push(new Promise(resolve => this.getJobs(i, DS_SIZE, type, resolve)));
+        promises.push(new Promise(resolve => this.getJobs(i, pager.pageSize, type, resolve)));
       }
       Promise.all(promises).then(() => this.setState({loading: false}));
     }
