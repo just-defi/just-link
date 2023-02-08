@@ -23,6 +23,7 @@
 			<result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
 			<result property="deletedAt" column="deleted_at" jdbcType="TIMESTAMP"/>
 			<result property="params" column="params" jdbcType="LONGVARCHAR"/>
+			<result property="result" column="result" jdbcType="BIGINT"/>
 	</resultMap>
 
   <insert id="insert" parameterType="com.tron.web.entity.JobSpec">
@@ -56,16 +57,16 @@
 	</select>
 
 	<select id="getAllActive" resultType="com.tron.web.entity.DetailActiveJob" resultMap="DetailJobResultMap">
-		select i.id, i.address, i.job_spec_id job_specs_id, i.type, js.created_at, js.updated_at, js.deleted_at, js.params, xjr.result from
-			(select job_spec_id, address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi
-				inner join initiators i using (address, id)
-				inner join job_specs js on i.job_spec_id = js.id
-				left outer join (select distinct xjr.*, xtr.result from
-				(select tr.job_run_id, tr.result from (select itr.job_run_id, itr.result, row_number() over(partition by itr.job_run_id order by itr.task_spec_id desc) as rn from task_runs itr) tr where tr.rn = 2) xtr
-					right outer join (select jr.id, jr.job_spec_id from job_runs jr where jr.updated_at = (select max(updated_at) from job_runs ijr where ijr.job_spec_id = jr.job_spec_id)) xjr on xjr.id = xtr.job_run_id) xjr on xjr.job_spec_id = i.job_spec_id
-		where js.deleted_at is null
-		order by js.updated_at desc
-		limit #{offset} ,#{limit};
+		SELECT
+			optimized.*
+			,(SELECT tr.result FROM task_runs tr WHERE tr.job_run_id = (SELECT jr.id FROM job_runs jr WHERE optimized.job_specs_id = jr.job_spec_id ORDER BY jr.updated_at DESC LIMIT 1) ORDER BY tr.task_spec_id DESC LIMIT 1, 1) result
+		FROM
+			(SELECT i.id, i.address, i.job_spec_id job_specs_id, i.type, js.created_at, js.updated_at, js.deleted_at, js.params
+			 FROM (SELECT max(initiators.id) AS id, initiators.address, any_value(initiators.job_spec_id) FROM initiators WHERE initiators.type = #{type} AND initiators.deleted_at IS NULL GROUP BY initiators.address ORDER BY NULL) xi
+							INNER JOIN initiators i USING (address, id)
+							INNER JOIN job_specs js ON i.job_spec_id = js.id
+			 WHERE js.deleted_at IS NULL
+			 ORDER BY js.updated_at DESC LIMIT #{offset}, #{limit}) AS optimized
 	</select>
 
 	<select id="getList" resultType="com.tron.web.entity.JobSpec" resultMap="JobSpecResultMap">
@@ -83,11 +84,11 @@
 	</select>
 
 	<select id="getActiveJobCount" resultType="long" >
-		select count(1) from
-			(select job_spec_id, address, max(id) as id from initiators where type = #{type} and deleted_at is null group by address) xi
-				inner join initiators i using (address, id)
-				inner join job_specs js on i.job_spec_id = js.id
-		where js.deleted_at is null
+		SELECT count(1)
+		FROM (SELECT max(initiators.id) AS id, initiators.address, any_value(initiators.job_spec_id) FROM initiators WHERE initiators.type = #{type} AND initiators.deleted_at IS NULL GROUP BY initiators.address ORDER BY NULL) xi
+					 INNER JOIN initiators i USING (address, id)
+					 INNER JOIN job_specs js ON i.job_spec_id = js.id
+		WHERE js.deleted_at IS NULL
 	</select>
 
 	<update id="deleteJob">
