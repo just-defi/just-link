@@ -26,21 +26,37 @@ class Jobs extends Component {
       loading: true,
       warning: false,
       visible: false,
-      currentPage: 1,
-      totalDataSource: 0,
-      totalVRF: 0,
+      currentBackEndPage: 1,
+      vrfCurrentBackEndPage: 1,
+      totalDataSource: [],
+      totalVRF: [],
       vrfDataSource: [],
       dataSource: [],
-      size: DS_SIZE,
       jobUrl: API_URL,
       providerList: [],
-      page: 1,
     };
+
+    const paginationOptions = {
+      total: 0,
+      current: 1,
+      pageSize: 10,
+      pageSizeOptions: ['3', '10', '25', '50', '100'],
+      showTitle: true,
+      showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
+      showSizeChanger: false,
+      showQuickJumper: true,
+      size: "small",
+    };
+    this.state.paginationOptions = {...paginationOptions};
+    this.state.vrfPaginationOptions = {...paginationOptions};
+
   };
 
   componentDidMount() {
     this.setState({loading: true});
-    this.getJobs(this.state.currentPage, DS_SIZE);
+    new Promise(resolve => this.getJobs(this.state.currentBackEndPage, DS_SIZE, PRICE_FEED, resolve))
+      .then(() => this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED))
+      .then(() => this.setState({loading:false}));
 
     if (this.props.location.state && this.props.location.state.create && this.props.location.state.jobUrl) {
       this.setState({jobUrl: this.props.location.state.jobUrl});
@@ -108,19 +124,30 @@ class Jobs extends Component {
     clearFilters();
   };
 
-  getJobs = (page, size) => {
-    this.setState({loading: true});
+  getJobs = (page, size, type, callback) => {
+    let dsSizeArr = [];
     let promises = [];
     API_URLS.map(api => {
       const url = (type) => `${api.value}/job/specs/active?type=${type}&page=${page}&size=${size}`;
-      promises.push(xhr.get(url(PRICE_FEED), {timeout: 1000 * 10})
-          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
-          .catch(e => console.log(e)));
-      promises.push(xhr.get(url(RANDOMNESS_LOG), {timeout: 1000 * 10})
-          .then(response => response.data.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api))))
-          .catch(e => console.log(e)));
+      promises.push(xhr.get(url(type), {timeout: 1000 * 10})
+          .then(response => response.data)
+          .then(response => {
+            response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
+            dsSizeArr.push(response.count);
+          })
+          .catch(e => console.log(`${api.text} is down`)));
     });
-    Promise.all(promises).then(() => this.setState({loading: false}));
+    Promise.all(promises)
+        .then(() => {
+          if (type === PRICE_FEED) {
+            this.setState({totalDataSource: dsSizeArr, currentBackEndPage: Math.max(this.state.currentBackEndPage, ++page)});
+            this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
+          } else {
+            this.setState({totalVRF: dsSizeArr, vrfCurrentBackEndPage: Math.max(this.state.vrfCurrentBackEndPage, ++page)});
+            this.state.vrfPaginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
+          }
+        })
+        .then(() => { if (callback) callback(); });
   }
 
   createJob = (data, api) => {
@@ -297,12 +324,58 @@ class Jobs extends Component {
     });
   }
 
+  handleTableChange = (pagination, filters, sorter, type = PRICE_FEED) => {
+    let minPage, pager, dataSource, dataSourceCount, maxPage;
+    if (type === PRICE_FEED) {
+      pager = { ...this.state.paginationOptions, current: pagination.current };
+      dataSource = this.state.dataSource;
+      dataSourceCount = this.state.totalDataSource;
+      minPage = this.state.currentBackEndPage;
+    } else {
+      pager = { ...this.state.vrfPaginationOptions, current: pagination.current };
+      dataSource = this.state.vrfDataSource;
+      dataSourceCount = this.state.totalVRF;
+      minPage = this.state.vrfCurrentBackEndPage;
+    }
+    const serverCount = dataSourceCount.length;
+    const offset = pager.current * pager.pageSize;
+    console.log(pager);
+
+    if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
+
+      const maxBEPage = (Math.max(Math.ceil(Math.max(...dataSourceCount)/pager.pageSize ), 1));
+      const numLoopsNeeded = Math.ceil((offset - dataSource.length)/ (serverCount * pager.pageSize));
+      maxPage = Math.min(minPage+numLoopsNeeded+1, maxBEPage);
+
+      const promises = [];
+      this.setState({loading: true});
+      for (let i = minPage; i <= maxPage; i++) {
+        promises.push(new Promise(resolve => this.getJobs(i, pager.pageSize, type, resolve)));
+      }
+      Promise.all(promises).then(() => this.setState({loading: false}));
+    }
+
+    (type === PRICE_FEED) ?
+        this.setState({paginationOptions: pager}) :
+        this.setState({vrfPaginationOptions: pager}) ;
+  }
+
+  handleOnTabClick = (key) => {
+   if (key === "2") {
+     this.handleTableChange(this.state.vrfPaginationOptions, null, null, RANDOMNESS_LOG)
+   } else {
+     this.handleTableChange(this.state.paginationOptions, null, null, PRICE_FEED)
+   }
+  }
+
   render() {
     let {
       visible,
       loading,
       textValue,
       warning,
+      paginationOptions,
+      vrfPaginationOptions,
       dataSource,
       vrfDataSource,
       providerList,
@@ -443,8 +516,6 @@ class Jobs extends Component {
         ...commonActions
     ];
 
-    const pageSizeOption = ['10','25','50','100'];
-
     return <Fragment>
       <PageHeader title="Jobs">
 
@@ -454,38 +525,34 @@ class Jobs extends Component {
 
       </PageHeader>
 
-      <Tabs defaultActiveKey="1" >
-      <TabPane tab="Price Feed Jobs" key="1">
+      <Tabs
+          defaultActiveKey="1"
+          onTabClick={this.handleOnTabClick}
+      >
+      <TabPane tab={<span> <Icon type="stock" />Price Feed Jobs</span>}
+               key="1">
       <Row gutter={16}>
 
         <Table
             dataSource={dataSource}
             columns={columns}
             loading={loading}
-            pagination={{
-              pageSizeOptions: pageSizeOption,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              hideOnSinglePage: false,
-            }}
+            pagination={paginationOptions}
+            onChange={(pagination, filters, sorter) => this.handleTableChange(pagination, filters, sorter, PRICE_FEED)}
             // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
 
       </Row>
       </TabPane>
-      <TabPane tab="VRF" key="2">
+        <TabPane tab={<span><Icon type="question" />VRF</span>} key="2">
 
         <Table
             dataSource={vrfDataSource}
             columns={vrfColumns}
             loading={loading}
-            pagination={{
-              pageSizeOptions: pageSizeOption,
-              showSizeChanger: true,
-              showQuickJumper: true,
-              hideOnSinglePage: false,
-            }}
+            pagination={vrfPaginationOptions}
+            onChange={(pagination, filters, sorter) => this.handleTableChange(pagination, filters, sorter, RANDOMNESS_LOG)}
             // scroll={{ y: "calc(100vh - 400px)" }}
         />
 
