@@ -12,7 +12,7 @@ const {confirm} = Modal;
 
 const API_URL = process.env.API_URL;
 const API_URLS = JSON.parse(process.env.API_URLS);
-const DS_SIZE = 3; //process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
+const DS_SIZE = process.env.DATASOURCE_SIZE_PER_RETRIEVAL;
 const LOCALE = process.env.LOCALE;
 const TIMEZONE = process.env.TIMEZONE;
 const RANDOMNESS_LOG = 'randomnesslog';
@@ -41,16 +41,13 @@ class Jobs extends Component {
     const paginationOptions = {
       total: 0,
       current: 1,
-      pageSize: DS_SIZE,
-      pageSizeOptions: ['10', '25', '50', '100'],
+      pageSize: 10,
+      pageSizeOptions: ['3', '10', '25', '50', '100'],
       showTitle: true,
       showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
       showSizeChanger: true,
       showQuickJumper: true,
       size: "small",
-      // simple: true,
-      // onChange: (page, pageSize) => {},
-      // onShowSizeChange: (current, size) => {}
     };
     this.state.paginationOptions = {...paginationOptions};
     this.state.vrfPaginationOptions = {...paginationOptions};
@@ -130,8 +127,6 @@ class Jobs extends Component {
   };
 
   getJobs = (page, size, type, callback) => {
-    console.log("RETRIEVING DETAILS : ", type);
-    // this.setState({loading: true});
     let dsSizeArr = [];
     let promises = [];
     API_URLS.map(api => {
@@ -142,19 +137,18 @@ class Jobs extends Component {
             response.data.map(job => this.filterJobsAndSetToState(this.createJob(job, api)));
             dsSizeArr.push(response.count);
           })
-          .catch(e => console.log('DS_DOWN')));
+          .catch(e => console.log(`${api.text} is down`)));
     });
     Promise.all(promises)
         .then(() => {
           if (type === PRICE_FEED) {
-            this.setState({totalDataSource: dsSizeArr, currentBackEndPage: page++});
+            this.setState({totalDataSource: dsSizeArr, currentBackEndPage: Math.max(this.state.currentBackEndPage, ++page)});
             this.state.paginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
           } else {
-            this.setState({totalVRF: dsSizeArr, vrfCurrentBackEndPage: page++});
+            this.setState({totalVRF: dsSizeArr, vrfCurrentBackEndPage: Math.max(this.state.vrfCurrentBackEndPage, ++page)});
             this.state.vrfPaginationOptions.total = dsSizeArr.reduce((a, b) => a + b, 0);
           }
         })
-        // .then(() => this.setState({loading: false}))
         .then(() => { if (callback) callback(); });
   }
 
@@ -347,33 +341,20 @@ class Jobs extends Component {
     }
     const serverCount = dataSourceCount.length;
     const offset = pager.current * pager.pageSize;
-    console.log('[Before_All]', `currPage: ${pagination.current} with offset: ${offset}, dataSource(len/total): ${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`);
+    console.log(pager);
 
     if ((dataSource.length === 0 || dataSource.length < dataSourceCount.reduce((a, b) => a + b, 0)) && (offset > dataSource.length)) {
 
-      const maxBEPage = Math.ceil((Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ),  1))/serverCount);
+      const maxBEPage = (Math.max(Math.ceil(Math.max(...dataSourceCount)/DS_SIZE ), 1));
       const numLoopsNeeded = Math.ceil((offset - dataSource.length)/ (serverCount * DS_SIZE));
-      const maxBatchPage = numLoopsNeeded + serverCount;
-      const maxFEPage = Math.floor(maxBEPage/ (serverCount * DS_SIZE));
+      maxPage = Math.min(minPage+numLoopsNeeded+1, maxBEPage);
 
-      maxPage = Math.min(maxBatchPage, maxBEPage);
-      console.log("MIN BACKEND PAGE: ", minPage, " MAX BATCH PAGE: ", maxBatchPage, " MAX PAGE: ", maxPage, "MAX BACKEND PAGE: ", maxBEPage);
-
-
-      console.log("[Before] pages:", `${minPage}/${maxFEPage} (${serverCount})`, "current:", `${dataSource.length}/${dataSourceCount.reduce((a, b) => a + b, 0)}`, "offset:", offset);
       const promises = [];
       this.setState({loading: true});
       for (let i = minPage; i <= maxPage; i++) {
         promises.push(new Promise(resolve => this.getJobs(i, DS_SIZE, type, resolve)));
       }
-      console.log(this.state);
       Promise.all(promises).then(() => this.setState({loading: false}));
-
-
-
-
-      console.log("[After] pages:", `${minPage}/${maxPage} (${serverCount})`, "current:", `${this.state.dataSource.length}/${this.state.totalDataSource.reduce((a, b) => a + b, 0)}`, "offset:", offset);
-
     }
 
     (type === PRICE_FEED) ?
