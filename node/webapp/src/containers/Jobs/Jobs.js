@@ -45,7 +45,7 @@ class Jobs extends Component {
       pageSizeOptions: ['3', '10', '25', '50', '100'],
       showTitle: true,
       showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`,
-      showSizeChanger: true,
+      showSizeChanger: false,
       showQuickJumper: true,
       size: "small",
     };
