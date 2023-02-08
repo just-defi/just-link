@@ -170,7 +170,7 @@ class Jobs extends Component {
         task: JSON.parse(data.params).tasks.map(task => task.type).join(" / "),
         ...(this.generateTagColor(params.tasks[0]))
       },
-      LastRunResult: { value: data.result || '-', url: `${api.value}/job/result/${data.jobSpecsId}` },
+      LastRunResult: `${api.value}/job/result/${data.jobSpecsId}` ,
       Code: JSON.stringify(params, null, 2),
       PublicKey: (params.initiators[0].type === RANDOMNESS_LOG) ?
           params.tasks[0].params.publicKey : null,
@@ -425,14 +425,9 @@ class Jobs extends Component {
         sortDirection: ['descend', 'ascend'],
       },
       {
-        title: 'Last Run Result',
-        dataIndex: 'LastRunResult.value',
-        key: 'LastRunResultValue',
-      },
-      {
         title: 'Current Result',
-        dataIndex: 'LastRunResult.url',
-        key: 'LastRunResultURL',
+        dataIndex: 'LastRunResult',
+        key: 'LastRunResult',
         width: 90,
         render: lastRunResult => {
           if (lastRunResult) {
