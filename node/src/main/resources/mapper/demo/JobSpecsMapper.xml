@@ -23,7 +23,7 @@
 			<result property="updatedAt" column="updated_at" jdbcType="TIMESTAMP"/>
 			<result property="deletedAt" column="deleted_at" jdbcType="TIMESTAMP"/>
 			<result property="params" column="params" jdbcType="LONGVARCHAR"/>
-			<result property="result" column="result" jdbcType="BIGINT"/>
+			<result property="result" column="result" jdbcType="LONGVARCHAR" javaType="java.lang.String"/>
 	</resultMap>
 
   <insert id="insert" parameterType="com.tron.web.entity.JobSpec">
