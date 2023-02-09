@@ -427,6 +427,7 @@ class Jobs extends Component {
         title: 'Last Run Result',
         dataIndex: 'LastRunResult.value',
         key: 'LastRunResultValue',
+        ellipsis: true,
       },
       {
         title: 'Current Result',
