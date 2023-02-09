@@ -20,9 +20,9 @@
     </appender>
     <!-- per day -->
     <appender name="FILE"  class="ch.qos.logback.core.rolling.RollingFileAppender">
-        <File>${LOG_HOME}/justlink.log</File>
+        <File>${LOG_HOME}/winklink.log</File>
         <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
-            <FileNamePattern>${LOG_HOME}/justlink.log.%d{yyyy-MM-dd}.%i.log</FileNamePattern>
+            <FileNamePattern>${LOG_HOME}/winklink.log.%d{yyyy-MM-dd}.%i.log</FileNamePattern>
             <MaxHistory>15</MaxHistory>
             <totalSizeCap>10GB</totalSizeCap>
             <maxFileSize>500MB</maxFileSize>

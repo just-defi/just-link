@@ -1,9 +1,11 @@
 package com.tron.job.adapters;
 
+import static com.tron.common.Constant.HTTP_EVENT_HOST;
 import static com.tron.common.Constant.TRX_DECIMAL_STR;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Maps;
+import com.tron.common.Constant;
 import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import java.io.IOException;
@@ -14,10 +16,11 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.http.HttpResponse;
 import org.apache.http.util.EntityUtils;
 import org.spongycastle.util.encoders.Hex;
-
+@Slf4j
 public class ContractAdapter {
 
   private static final String TRONGRID_HOST = "api.trongrid.io";
@@ -29,15 +32,21 @@ public class ContractAdapter {
   private static final String DECIMAL = "decimals()";
 
   public static long getTRXBalance(String addr) throws Exception {
-    return getTRXBalance(addr, true);
+    return getTRXBalance(addr, true, false);
   }
 
-  public static long getTRXBalance(String addr, boolean visible) throws Exception {
+  public static long getTRXBalance(String addr, boolean visible, boolean flexibleHost) throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("address", addr);
     params.put("visible", visible);
-    String response = HttpUtil.post(
-            "https", TRONGRID_HOST, GET_ACCOUNT, params);
+    String response = null;
+    if (flexibleHost) {
+      response = HttpUtil.post("https", Constant.FULLNODE_HOST, GET_ACCOUNT, params);
+      log.info("Get TRX balance - Request {} | Params {} | Response {}", "https://" + Constant.FULLNODE_HOST + GET_ACCOUNT, params, response);
+    } else {
+      response = HttpUtil.post("https", TRONGRID_HOST, GET_ACCOUNT, params);
+      log.info("Get TRX balance - Request {} | Params {} | Response {}", "https://" + TRONGRID_HOST + GET_ACCOUNT, params, response);
+    }
     ObjectMapper mapper = new ObjectMapper();
     assert response != null;
     Map<String, Object> result = mapper.readValue(response, Map.class);
@@ -110,6 +119,7 @@ public class ContractAdapter {
 
   // todo 1. rename  2. check handle exception when blance is 0
   public static double getTradePriceWithTRX(TradePair pair) throws Exception {
+    log.info("Using pool addr: {} | trc20 addr: {}", pair.getPoolAddr(), pair.getTrc20Addr());
     return getTradePriceWithTRX(pair.getPoolAddr(), pair.getTrc20Addr());
   }
 
@@ -117,6 +127,7 @@ public class ContractAdapter {
     // 1. get trx balance
     BigDecimal trxBalance = new BigDecimal(getTRXBalance(poolAddr));
     trxBalance = trxBalance.divide(new BigDecimal(TRX_DECIMAL_STR), 4, RoundingMode.HALF_UP);
+    log.info("trxBalance: {}", trxBalance);
     // 2. get trc20 decimal
     int decimals = getDecimal(trc20Addr);
     StringBuilder strDecimals = new StringBuilder("1");
@@ -126,6 +137,7 @@ public class ContractAdapter {
     // 3. get trc20 balance
     BigDecimal trc20balance = new BigDecimal(balanceOf(poolAddr, trc20Addr));
     trc20balance = trc20balance.divide(new BigDecimal(strDecimals.toString()), 4, RoundingMode.HALF_UP);
+    log.info("trxBalance: {}", trc20balance);
 
     return trxBalance.divide(trc20balance, 8, RoundingMode.HALF_UP).doubleValue();
   }

@@ -8,6 +8,7 @@ import com.tron.job.adapters.HttpGetAdapter;
 import com.tron.job.adapters.JustSwapAdapter;
 import com.tron.job.adapters.MultiplyAdapter;
 import com.tron.web.common.util.JsonUtil;
+import com.tron.web.entity.DetailActiveJob;
 import com.tron.web.entity.Initiator;
 import com.tron.web.entity.InitiatorRequest;
 import com.tron.web.entity.JobSpec;
@@ -64,8 +65,17 @@ public class JobSpecsServiceImpl implements JobSpecsService {
     return jobSpecs;
   }
 
+  public List<DetailActiveJob> getActiveJobListWithResults( String type, int page, int size) {
+    int offset = ((page - 1 )* size);
+    return jobSpecsMapper.getAllActive(type, offset, size);
+  }
+
   public long getJobCount() {
     return jobSpecsMapper.getCount();
+  }
+
+  public long getActiveJobCount(String type){
+    return jobSpecsMapper.getActiveJobCount(type);
   }
 
   public JobSpec getById(String id) {
@@ -138,7 +148,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   // check the job and its associated Initiators and Tasks for any
   // application logic errors
   private void checkJobSpec(JobSpec job) throws TronException {
-    if (job.getInitiators().size() < 1 || job.getTaskSpecs().size() < 1) {
+    if (job.getInitiators().isEmpty() || job.getTaskSpecs().isEmpty()) {
       throw new TronException("Must have at least one Initiator and one Task");
     }
 
@@ -154,6 +164,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
   private void checkInitiator(Initiator initiator) throws TronException {
     switch (initiator.getType()) {
       case Constant.INITIATOR_TYPE_RUN_LOG:
+      case Constant.INITIATOR_TYPE_RANDOMNESS_LOG:
         if (initiator.getAddress() == null || initiator.getAddress().isEmpty()) {
           throw new TronException("Initiator's address parameter is required");
         }
@@ -198,6 +209,7 @@ public class JobSpecsServiceImpl implements JobSpecsService {
       case Constant.TASK_TYPE_TRX_TO_USDT:
       case Constant.TASK_TYPE_CACHE:
       case Constant.TASK_TYPE_CONVERT_TRX:
+      case Constant.TASK_TYPE_RANDOM:
         break;
       default:
         throw new TronException("Task type " + taskSpec.getType() + " dose dot support");
