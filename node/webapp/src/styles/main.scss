@@ -17,3 +17,23 @@ a:link {
   padding-bottom: 0px !important;
 }
 
+.wink-btn-success {
+  color: #87d068 !important;
+  &:hover {
+    color:white !important;
+    background: #87d068 !important;
+  }
+}
+.wink-btn-primary {
+  color: #2db7f5 !important;
+  &:hover {
+    color:white !important;
+    background: #2db7f5 !important;
+  }
+}
+.ant-table-column-title {
+  white-space: pre-line !important;
+}
+
+
+

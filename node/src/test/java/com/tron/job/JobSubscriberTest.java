@@ -2,6 +2,7 @@ package com.tron.job;
 
 import com.tron.OracleApplication;
 import com.tron.client.EventRequest;
+import com.tron.client.VrfEventRequest;
 import com.tron.common.Constant;
 import com.tron.keystore.KeyStore;
 import java.io.FileNotFoundException;

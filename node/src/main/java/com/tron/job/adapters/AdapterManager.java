@@ -3,7 +3,6 @@ package com.tron.job.adapters;
 import com.tron.common.Constant;
 import com.tron.web.common.util.JsonUtil;
 import com.tron.web.entity.TaskParams;
-import com.tron.web.entity.TaskRun;
 import com.tron.web.entity.TaskSpec;
 
 public class AdapterManager {
@@ -25,13 +24,19 @@ public class AdapterManager {
         adapter = new MultiplyAdapter(params.getTimes());
         break;
       case Constant.TASK_TYPE_CONVERT_USD:
-        adapter = new ConvertUsdAdapter();
+        adapter = ConvertUsdAdapter.getInstance();
         break;
       case Constant.TASK_TYPE_TRON_TX:
+        String tronTxType = "";
+        try {
+          tronTxType = params.getType();
+        } catch (Exception e) {
+          tronTxType = "";
+        }
         if (params != null) {
-          adapter = new TronTxAdapter(params.getVersion());
+          adapter = new TronTxAdapter(params.getVersion(), tronTxType);
         } else {
-          adapter = new TronTxAdapter(null);
+          adapter = new TronTxAdapter(null, tronTxType);
         }
         break;
       case Constant.TASK_TYPE_RECIPROCAL:
@@ -45,6 +50,9 @@ public class AdapterManager {
         break;
       case Constant.TASK_TYPE_CACHE:
         adapter = new CacheAdapter();
+        break;
+      case Constant.TASK_TYPE_RANDOM:
+        adapter = new RandomAdapter(params.getPublicKey());
         break;
       default:
         break;

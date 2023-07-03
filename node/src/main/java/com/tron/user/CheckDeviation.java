@@ -4,27 +4,28 @@ import static com.tron.common.Constant.FULLNODE_HOST;
 import static com.tron.common.Constant.READONLY_ACCOUNT;
 import static com.tron.common.Constant.TRIGGET_CONSTANT_CONTRACT;
 
+import com.alibaba.fastjson.JSONObject;
 import com.beust.jcommander.JCommander;
 import com.beust.jcommander.Parameter;
 import com.beust.jcommander.internal.Lists;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.Strings;
 import com.google.common.collect.Maps;
-import com.google.common.util.concurrent.AtomicLongMap;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.tron.client.message.BroadCastResponse;
 import com.tron.common.util.AbiUtil;
 import com.tron.common.util.HttpUtil;
 import com.tron.common.util.Tool;
+
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.*;
+
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
@@ -35,17 +36,25 @@ public class CheckDeviation {
 
   private static DeviationConfig config = null;
   private static ECKey key;
-  private static long DEVIATION = 10;
-  private static Map<String, Long> deviationMap = new HashMap<>();
-  private static Map<String, Long> forceRequestTime = new HashMap<>();
+  private static final long DEVIATION = 10;
+  private static final Map<String, Long> deviationMap = new HashMap<>();
   private static String schema = "https";
   private static String fullnode = FULLNODE_HOST;
+
+  private static final ScheduledExecutorService comparePriceExecutor = Executors.newSingleThreadScheduledExecutor();
+  private static final ScheduledExecutorService intervalUpdateExecutor = Executors.newSingleThreadScheduledExecutor();
+  private static final ScheduledExecutorService sendRequestExecutor = Executors.newSingleThreadScheduledExecutor();
+  private static final BlockingQueue<String> sendRequestQueue = new LinkedBlockingQueue<>();
+  private static boolean updateFlag = false;
+  private static HashMap<String, Long> updateTimeMap;
+
+  private static HashMap<String, PairInfo> pairInfoMap;
 
   public static void main(String[] args) {
     Args argv = new Args();
     JCommander jct = JCommander.newBuilder()
-            .addObject(argv)
-            .build();
+        .addObject(argv)
+        .build();
     jct.setProgramName("Deviation check");
     jct.setAcceptUnknownOptions(true);
     jct.parse(args);
@@ -61,67 +70,153 @@ public class CheckDeviation {
       if (!Strings.isNullOrEmpty(config.getFullnode())) {
         fullnode = config.getFullnode();
       }
-      run();
+      if (!config.getPairs().isEmpty()) {
+        pairInfoMap = config.getPairs().stream().collect(Collectors.toMap(PairInfo::getName, Function.identity(), (prev, next) -> next, HashMap::new));
+      }
+      start();
     } catch (FileNotFoundException e) {
       e.printStackTrace();
-      return;
     }
   }
 
-  private static void run() {
+  private static void start() {
     setDeviation();
-    setForceRequestTime();
-    AtomicLongMap forceMap = AtomicLongMap.create();
-    while (true) {
-      for (PairInfo pairInfo: config.getPairs()) {
-        String contract = pairInfo.getContract();
-        long price = getAggPrice(pairInfo.getName());
-        if (price == 0) {
-          forceMap.addAndGet(contract, config.getSleep());
-          continue;
+    updateTimeMap = new HashMap<>(config.getPairs().size());
+
+    //start comparePriceExecutor schedule config.getSleep()
+    comparePriceExecutor.scheduleWithFixedDelay(() -> {
+      try {
+        if (!updateFlag) {
+          updateFlag = true;
+          comparePrice();
         }
-        if (!compare(contract, price) && !mustForce(forceMap, contract)) {
-          forceMap.addAndGet(contract, config.getSleep());
-        } else {
-          sendRequest(contract);
-          log.info("send request");
-          forceMap.remove(contract);
-        }
-        sleep(100);  // for slow down the http qps
+      } catch (Exception e) {
+        log.error("comparePriceExecutor execute error.", e);
+      } finally {
+        updateFlag = false;
       }
-      sleep(config.getSleep());
+    }, 1, config.getSleep(), TimeUnit.MILLISECONDS);
+
+    //start intervalUpdateExecutor schedule 120s
+    intervalUpdateExecutor.scheduleWithFixedDelay(() -> {
+      try {
+        if (!updateFlag) {
+          updateFlag = true;
+          intervalUpdate();
+        }
+      } catch (Exception e) {
+        log.error("intervalUpdateExecutor execute error.", e);
+      } finally {
+        updateFlag = false;
+      }
+    }, 5, 120, TimeUnit.SECONDS);
+
+    //start sendRequestExecutor schedule 1s
+    sendRequestExecutor.scheduleWithFixedDelay(() -> {
+      try {
+        takeContractFromQueue();
+      } catch (Exception e) {
+        log.error("sendRequestExecutor execute error.", e);
+      } finally {
+        updateFlag = false;
+      }
+    }, 1, 1, TimeUnit.SECONDS);
+
+    log.info("CheckDeviation start success!");
+  }
+
+  private static void comparePrice() {
+    for (PairInfo pairInfo : config.getPairs()) {
+      String contract = pairInfo.getContract();
+      long price = getAggPrice(pairInfo.getName());
+      if (price == 0) {
+        continue;
+      }
+      if (compare(contract, price)) {
+        putContractIntoQueue(contract);
+        updateTimeMap.put(pairInfo.getName(), System.currentTimeMillis());
+        log.info("comparePrice put pairInfo into sendRequestQueue : {}", JSONObject.toJSONString(pairInfo));
+      }
+    }
+  }
+
+  private static void intervalUpdate() {
+    for (PairInfo pairInfo : config.getPairs()) {
+      String contract = pairInfo.getContract();
+      Long lastUpdateTime = updateTimeMap.get(pairInfo.getName());
+      if (null == lastUpdateTime) {
+        updateTimeMap.put(pairInfo.getName(), System.currentTimeMillis());
+        log.info("intervalUpdate init update time for pairInfo: {}", JSONObject.toJSONString(pairInfo));
+        continue;
+      }
+
+      if (lastUpdateTime + pairInfo.getUpdateInterval() > System.currentTimeMillis()) {
+        continue;
+      }
+
+      putContractIntoQueue(contract);
+      updateTimeMap.put(pairInfo.getName(), System.currentTimeMillis());
+      log.info("intervalUpdate put pairInfo into sendRequestQueue : {}", JSONObject.toJSONString(pairInfo));
     }
   }
 
   private static long getAggPrice(String pair) {
-    List<String> jobs = config.getJobs().get(pair);
-    if (jobs == null) {
-      log.error("can not get jobUrls, pair: {}", pair);
-      throw new RuntimeException("can get jobUrls");
-    }
     List<Long> priceList = Lists.newArrayList();
-    for (int i = 0; i < jobs.size(); i++) {
-      Map<String, Object> server = config.getNodeServer().get(i);
-      priceList.add(getPrice(
-              String.format("http://%s:%d/job/result/%s",
-                      server.get("host"), server.get("port"), jobs.get(i))
-      ));
+    List<String> hostPriceList = Lists.newArrayList();
+    for (int i = 0; i < config.getNodeServer().size(); i++) {
+      Object host = config.getNodeServer().get(i).get("host");
+      Object port = config.getNodeServer().get(i).get("port");
+      String alias = String.valueOf(config.getNodeServer().get(i).get("alias"));
+      String jobId = getJobId(String.format("http://%s:%d/job/active/%s", host, port, pairInfoMap.get(pair).getContract()), alias);
+      if (jobId == null) {
+        log.error("unable to get job id from host {}, contract {}, pair: {}", host + String.valueOf(port), pairInfoMap.get(pair).getContract(), pair);
+        throw new RuntimeException("unable to get job id");
+      }
+      Long price = getPrice(String.format("http://%s:%d/job/result/%s", host, port, jobId), alias);
+      priceList.add(price);
+      hostPriceList.add(getHostWithPrice(alias, price));
     }
-    Long[] priceArr = priceList.toArray(new Long[priceList.size()]);
+
+    Long[] priceArr = priceList.toArray(new Long[0]);
     Arrays.sort(priceArr);
-    log.info("pair: {}, price: {}", pair, priceArr);
-    return priceArr[priceArr.length/2];
+    log.info("pair: {}, price: {}", pair, hostPriceList.toArray(new String[0]));
+    return priceArr[priceArr.length / 2];
   }
 
-  private static long getPrice(String jobUrl) {
+  private static void takeContractFromQueue() {
+    String contract = "";
+    try {
+      if (!sendRequestQueue.isEmpty()) {
+        contract = sendRequestQueue.peek();
+        sendRequest(contract);
+        sendRequestQueue.poll();
+        log.info("sendRequestQueue take success ! contract : {}", contract);
+      }
+    } catch (Exception ex) {
+      log.error("sendRequestQueue take error. contract : {}", contract, ex);
+    }
+  }
+
+  private static void putContractIntoQueue(String contract) {
+    try {
+      if (!sendRequestQueue.contains(contract)) {
+        sendRequestQueue.put(contract);
+      }
+    } catch (Exception ex) {
+      log.error("sendRequestQueue put error. contract : {}", contract, ex);
+    }
+  }
+
+  private static long getPrice(String jobUrl, String alias) {
     long price = 0;
     try {
       String response = HttpUtil.getByUri(jobUrl);
+      log.info("Get price from {} | {}, response = {}", alias, jobUrl, response);
       if (!Strings.isNullOrEmpty(response)) {
         JsonObject data = (JsonObject) JsonParser.parseString(response);
         return data.getAsJsonPrimitive("data").getAsLong();
       } else {
-        log.error("[alarm]getPrice fail. job="+jobUrl);
+        log.error("[alarm]getPrice fail. job=" + jobUrl);
       }
     } catch (Exception e) {
       e.printStackTrace();
@@ -149,7 +244,7 @@ public class CheckDeviation {
       BroadCastResponse rps = Tool.triggerContract(key, params, schema, config.getFullnode());
       if (rps != null) {
         log.info("trigger " + contract + " Contract result is: " + rps.isResult()
-                + ", msg is: " + rps.getMessage());
+            + ", msg is: " + rps.getMessage());
       }
     } catch (Throwable e) {
       e.printStackTrace();
@@ -165,20 +260,20 @@ public class CheckDeviation {
     params.put("parameter", param);
     params.put("visible", true);
     String response = HttpUtil.post(
-            schema, fullnode, TRIGGET_CONSTANT_CONTRACT, params);
+        schema, fullnode, TRIGGET_CONSTANT_CONTRACT, params);
     ObjectMapper mapper = new ObjectMapper();
     Map<String, Object> result = mapper.readValue(response, Map.class);
-    return Optional.ofNullable((List<String>)result.get("constant_result"))
-            .map(constantResult -> constantResult.get(0))
-            .map(str-> str.replaceAll("^0[x|X]", ""))
-            .map(str -> Long.parseLong(str, 16))
-            .orElseThrow(() -> new IllegalArgumentException("can not get the price, contract:" + contract));
+    return Optional.ofNullable((List<String>) result.get("constant_result"))
+        .map(constantResult -> constantResult.get(0))
+        .map(str -> str.replaceAll("^0[x|X]", ""))
+        .map(str -> Long.parseLong(str, 16))
+        .orElseThrow(() -> new IllegalArgumentException("can not get the price, contract:" + contract));
   }
 
   private static boolean compare(String contract, long nowPrice) {
     try {
       long prePrice = getPriceFromContract(contract);
-      log.info(contract +": " + prePrice + "  " + nowPrice);
+      log.info(contract + ": " + prePrice + "  " + nowPrice);
       if (prePrice == 0) {
         return true;
       }
@@ -193,44 +288,43 @@ public class CheckDeviation {
   }
 
   private static void setDeviation() {
-    for (PairInfo pairInfo: config.getPairs()) {
+    for (PairInfo pairInfo : config.getPairs()) {
       deviationMap.put(pairInfo.getContract(), pairInfo.getDeviation());
     }
   }
 
-  private static void setForceRequestTime() {
-    for (PairInfo pairInfo: config.getPairs()) {
-      forceRequestTime.put(pairInfo.getContract(), pairInfo.getUpdateInterval());
-    }
+  private static String getHostWithPrice(Object host, Long price) {
+    return String.format("%s - %d", host, price);
   }
 
-  private static boolean mustForce(AtomicLongMap forceMap, String contract) {
-    Long forceTime = forceRequestTime.get(contract);
-    if (forceTime == null) {
-      return true;
-    }
-    return forceMap.get(contract) >= forceTime;
-  }
-
-  private static void sleep(long millis) {
+  private static String getJobId(String uri, String alias) {
+    String jobId = null;
     try {
-      Thread.sleep(millis);
-    } catch (InterruptedException e) {
+      String response = HttpUtil.getByUri(uri);
+      log.info("Get jobId from {} | {}, response = {}", alias, uri, response);
+      if (!Strings.isNullOrEmpty(response)) {
+        JsonObject data = (JsonObject) JsonParser.parseString(response);
+        return data.getAsJsonPrimitive("data").getAsString();
+      } else {
+        log.error("[alarm]getJobId fail. contract=" + uri);
+      }
+    } catch (Exception e) {
       e.printStackTrace();
     }
+    return jobId;
   }
 
   static class Args {
     @Parameter(
-            names = {"--config", "-c"},
-            help = true,
-            description = "specify the config file",
-            order = 1)
+        names = {"--config", "-c"},
+        help = true,
+        description = "specify the config file",
+        order = 1)
     private String config;
     @Parameter(
-            names = "--help",
-            help = true,
-            order = 2)
+        names = "--help",
+        help = true,
+        order = 2)
     private boolean help;
   }
 }

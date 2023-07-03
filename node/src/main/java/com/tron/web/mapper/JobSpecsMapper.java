@@ -1,5 +1,6 @@
 package com.tron.web.mapper;
 
+import com.tron.web.entity.DetailActiveJob;
 import com.tron.web.entity.JobSpec;
 import java.util.Date;
 import java.util.List;
@@ -15,9 +16,14 @@ public interface JobSpecsMapper {
 
   List<JobSpec> getAll();
 
+  List<DetailActiveJob> getAllActive(@Param("type") String type, @Param("offset") int offset, @Param("limit") int limit);
+
+
   List<JobSpec> getList(@Param("offset") int offset, @Param("limit") int limit);
 
   int deleteJob(@Param("id") String id, @Param("deletedAt") Date deletedAt);
 
   long getCount();
+
+  long getActiveJobCount(@Param("type")String type);
 }

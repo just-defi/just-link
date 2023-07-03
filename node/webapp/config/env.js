@@ -20,10 +20,9 @@ var dotenvFiles = [
   paths.dotenv,
 ].filter(Boolean);
 
-
 dotenvFiles.forEach(dotenvFile => {
   if (fs.existsSync(dotenvFile)) {
-    require('dotenv-expand')(
+    require('dotenv-expand').expand(
       require('dotenv').config({
         path: dotenvFile,
       })
@@ -53,16 +52,20 @@ function getClientEnvironment(publicUrl) {
         NODE_ENV: process.env.NODE_ENV || 'development',
         PUBLIC_URL: publicUrl,
         API_URL: process.env.API_URL || `http://localhost:8080`,
+        API_URLS: process.env.API_URLS || JSON.stringify([
+          {text:"winklink-price-001" ,value:"http://localhost:8080"},
+          {text:"winklink-price-002", value:"http://localhost:8081"}]),
+        DATASOURCE_SIZE_PER_RETRIEVAL: process.env.DATASOURCE_SIZE_PER_RETRIEVAL || 100,
+        LOCALE: process.env.LOCALE || "en-SG",
+        TIMEZONE: process.env.TIMEZONE || "Asia/Singapore",
       }
     );
-
   const stringified = {
     'process.env': Object.keys(raw).reduce((env, key) => {
       env[key] = JSON.stringify(raw[key]);
       return env;
     }, {}),
   };
-
   return { raw, stringified };
 }
 

@@ -7,6 +7,9 @@ import lombok.AllArgsConstructor;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
+import java.util.List;
+
 @Lazy
 @Service
 @AllArgsConstructor
@@ -15,5 +18,22 @@ public class TronTxServiceImpl implements TronTxService {
 
   public int insert(TronTx tronTx) {
     return txesMapper.insert(tronTx);
+  }
+
+  public int update(TronTx tronTx) {
+    return txesMapper.update(tronTx);
+  }
+
+  public TronTx getById(Long id) {
+    return txesMapper.getById(id);
+  }
+
+  public TronTx getByTxId(String txId) {
+    return txesMapper.getByTxId(txId);
+  }
+
+  @Override
+  public List<TronTx> getByConfirmedAndDate(Long confirmed, Long sentAt) {
+    return txesMapper.getByConfirmedAndDate(confirmed, sentAt);
   }
 }

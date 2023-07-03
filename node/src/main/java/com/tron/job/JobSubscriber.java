@@ -1,6 +1,7 @@
 package com.tron.job;
 
 import com.tron.client.EventRequest;
+import com.tron.client.VrfEventRequest;
 import com.tron.client.FluxAggregator;
 import com.tron.client.OracleClient;
 import com.tron.client.message.OracleRoundState;
@@ -17,8 +18,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 public class JobSubscriber {
-  private static JobRunner jobRunner;
-
+  public static JobRunner jobRunner;
   private List<String> jobSubscriberList = new ArrayList<>();
 
   @Autowired
@@ -26,12 +26,11 @@ public class JobSubscriber {
     JobSubscriber.jobRunner = jobRunner;
   }
 
-
   public boolean addJob(JobSpec jobSpec) {
 
     for (Initiator initiator : jobSpec.getInitiators()) {
       // register job subscription
-      OracleClient.registerJob(initiator.getAddress(), jobSpec.getId());
+      OracleClient.registerJob(initiator.getAddress(), jobSpec.getId(), initiator.getType());
     }
     jobSubscriberList.add(jobSpec.getId());
     return true;
@@ -53,7 +52,26 @@ public class JobSubscriber {
     }
 
     log.info("event: " + event);
-    jobRunner.addJobRun(event);
+    jobRunner.addJobRun(com.tron.web.common.util.JsonUtil.obj2String(event));
+  }
+
+  public static void receiveVrfRequest(VrfEventRequest event) {
+    // validate request
+    if (event.getJobId() == null || event.getJobId().isEmpty()) {
+      log.error("Job id in VRF event request is empty");
+      return;
+    }
+
+    if (event.getSeed() == null || event.getSeed().isEmpty() ||
+            event.getKeyHash() == null || event.getKeyHash().isEmpty() ||
+            event.getRequestId() == null || event.getRequestId().isEmpty() ||
+            event.getContractAddr() == null || event.getContractAddr().isEmpty()) {
+      log.error("Necessary parameters in  VRF event request is empty");
+      return;
+    }
+
+    log.info("VRF event: " + event);
+    jobRunner.addJobRun(com.tron.web.common.util.JsonUtil.obj2String(event));
   }
 
   public static void receiveNewRoundLog(String addr, String startBy, long roundId, long startAt) {
@@ -81,7 +99,7 @@ public class JobSubscriber {
   public static void setup() {
     List<Initiator> initiators = jobRunner.getAllJobInitiatorList();
     for (Initiator initiator : initiators) {
-      OracleClient.registerJob(initiator.getAddress(), initiator.getJobSpecID());
+      OracleClient.registerJob(initiator.getAddress(), initiator.getJobSpecID(), initiator.getType());
     }
   }
 

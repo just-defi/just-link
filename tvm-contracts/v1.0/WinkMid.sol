@@ -69,7 +69,7 @@ contract Receiver {
 
 // ----------------------------------------------------------------------------
 // ----------------------------------------------------------------------------
-contract JustMid is Ownable {
+contract WinkMid is Ownable {
 
   TRC20Interface private token ;
 

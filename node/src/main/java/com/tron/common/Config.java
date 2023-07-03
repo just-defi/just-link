@@ -13,6 +13,9 @@ public class Config {
   @Getter
   private static String apiKey;
 
+  @Getter
+  private static String usdtUsdAggregator;
+
   @Value("${node.minFeeLimit:#{10000000}}")
   public void setMinFeeLimit(long minFeeLimit) {
     Config.minFeeLimit = minFeeLimit;
@@ -21,5 +24,10 @@ public class Config {
   @Value("${node.tronApiKey}")
   public void setApiKey(String apiKey) {
     Config.apiKey = apiKey;
+  }
+
+  @Value("${node.usdtUsdAggregator:}")
+  public void setUsdtUsdAggregator(String address) {
+    Config.usdtUsdAggregator = address;
   }
 }

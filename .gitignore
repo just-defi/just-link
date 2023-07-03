@@ -1,8 +1,11 @@
+.DS_Store
+*/.DS_Store
 .gradle/
 .idea/
 build/
 logs/
 key.store
+vrfKeyStore.yml
 deviation.yml
 flux_deviation.yml
 tvm-contracts/v0.6/
@@ -13,6 +16,7 @@ node/build/
 node/logs/
 node/src/main/resources/static
 node/src/main/resources/key.store
+node/src/main/resources/vrfKeyStore.yml
 !node/gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -27,3 +31,4 @@ node/out/
 !**/src/test/**/out/
 
 *.log
+.direnv/

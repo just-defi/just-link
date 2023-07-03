@@ -3,9 +3,19 @@ package com.tron.web.entity;
 import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
-import lombok.Data;
+import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
-@Data
+@ToString
+@EqualsAndHashCode
+@Getter
+@Setter
+@AllArgsConstructor
+@NoArgsConstructor
 public class JobSpec implements Serializable {
   private String id;
   private Date createdAt;

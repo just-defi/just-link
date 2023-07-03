@@ -26,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.aspectj.weaver.ast.Or;
 import org.spongycastle.util.encoders.Hex;
 import org.tron.common.crypto.ECKey;
 import org.tron.common.utils.ByteArray;
@@ -33,10 +34,10 @@ import org.tron.common.utils.JsonUtil;
 import org.tron.common.utils.Sha256Hash;
 import org.tron.core.capsule.TransactionCapsule;
 import org.tron.protos.Protocol;
-import org.tron.tronj.abi.datatypes.Bool;
-import org.tron.tronj.abi.datatypes.Int;
-import org.tron.tronj.abi.datatypes.Type;
-import org.tron.tronj.abi.datatypes.Uint;
+import org.tron.trident.abi.datatypes.Bool;
+import org.tron.trident.abi.datatypes.Int;
+import org.tron.trident.abi.datatypes.Type;
+import org.tron.trident.abi.datatypes.Uint;
 
 @Slf4j
 public class FluxAggregator {
@@ -46,8 +47,8 @@ public class FluxAggregator {
    * @param
    * @return transactionid
    */
-  public static TronTx submit(String addr, long roundId, long result)
-      throws IOException, URISyntaxException {
+  public static void submit(String addr, long roundId, long result, TronTx tx)
+      throws Exception {
     Map<String, Object> params = Maps.newHashMap();
     params.put("owner_address", KeyStore.getAddr());
     params.put("contract_address", addr);
@@ -59,35 +60,8 @@ public class FluxAggregator {
     params.put("fee_limit", Config.getMinFeeLimit());
     params.put("call_value",0);
     params.put("visible",true);
-    String response = HttpUtil.post("https", FULLNODE_HOST,
-        "/wallet/triggersmartcontract", params);
-    TriggerResponse triggerResponse = null;
-    triggerResponse = JsonUtil.json2Obj(response, TriggerResponse.class);
 
-    // sign
-    ECKey key = KeyStore.getKey();
-    String rawDataHex = triggerResponse.getTransaction().getRawDataHex();
-    Protocol.Transaction.raw raw = Protocol.Transaction.raw.parseFrom(ByteArray.fromHexString(rawDataHex));
-    byte[] hash = Sha256Hash.hash(true, raw.toByteArray());
-    ECKey.ECDSASignature signature = key.sign(hash);
-    ByteString bsSign = ByteString.copyFrom(signature.toByteArray());
-    TransactionCapsule transactionCapsule = new TransactionCapsule(raw, Arrays.asList(bsSign));
-
-    // broadcast
-    params.clear();
-    params.put("transaction", Hex.toHexString(transactionCapsule.getInstance().toByteArray()));
-    response = HttpUtil.post("https", FULLNODE_HOST,
-        "/wallet/broadcasthex", params);
-    BroadCastResponse broadCastResponse =
-        JsonUtil.json2Obj(response, BroadCastResponse.class);
-    TronTx tx = new TronTx();
-    tx.setFrom(KeyStore.getAddr());
-    tx.setTo(addr);
-    tx.setSurrogateId(broadCastResponse.getTxid());
-    tx.setSignedRawTx(bsSign.toString());
-    tx.setHash(ByteArray.toHexString(hash));
-    tx.setData(AbiUtil.parseParameters(SUBMIT_METHOD_SIGN, list));
-    return tx;
+    OracleClient.triggerSignAndResponse(params, tx);
   }
 
   public static OracleRoundState getOracleRoundState(String addr, long roundId) {

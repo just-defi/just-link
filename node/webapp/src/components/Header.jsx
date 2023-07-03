@@ -34,6 +34,8 @@ class Header extends React.Component {
       currentPath: e.key,
     });
     localStorage.setItem('PersistPath', e.key);
+    sessionStorage.removeItem('jobUrl');
+    sessionStorage.removeItem('nodeName');
   };
 
   onMenuVisibleChange = menuVisible => {
@@ -90,7 +92,7 @@ class Header extends React.Component {
             <Col xxl={4} xl={5} lg={8} md={8} sm={24} xs={24}>
               <div id="logo" to="/">
                 <img src={LOGO_URL} alt="logo"/>
-                <span>JustLink Operation UI</span>
+                <span>WinkLink Operation UI</span>
               </div>
             </Col>
             <Col xxl={20} xl={19} lg={16} md={16} sm={0} xs={0}>

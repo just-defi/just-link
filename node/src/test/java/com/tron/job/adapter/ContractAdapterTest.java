@@ -17,9 +17,9 @@ public class ContractAdapterTest {
   @Test
   public void testGetTRXBalance() throws Exception {
     System.out.println(ContractAdapter.getTRXBalance(
-            "TYukBQZ2XXCcRCReAUguyXncCWNY9CEiDQ", true));
+            "TYukBQZ2XXCcRCReAUguyXncCWNY9CEiDQ", true, false));
     System.out.println(ContractAdapter.getTRXBalance(
-            "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE", true));
+            "TQn9Y2khEsLJW1ChVWFMSMeRDow5KcbLSE", true, false));
   }
 
   @Test
